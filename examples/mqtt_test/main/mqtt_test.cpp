@@ -73,8 +73,6 @@ void waitForNetwork()
 
 extern "C" void app_main(void)
 {
-  vTaskDelay(pdMS_TO_TICKS(5000));
-
   ESP_LOGI("mqtt_test", "Walter modem test v0.0.1");
 
   /* Get the MAC address for board validation */
