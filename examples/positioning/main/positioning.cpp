@@ -43,8 +43,8 @@
  *
  * @section DESCRIPTION
  * 
- * This program sends and receives mqtt data using the DPTechnics BlueCherry cloud platform.
- * It also supports OTA updates which are scheduled through the BlueCherry web interface.
+ * This program connects to LTE to download GNSS assistance
+ * data, gets a GNSS fix and uploads the position to the Walter demo server.
  */
 
 #include <esp_mac.h>
