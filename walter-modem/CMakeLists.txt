@@ -1,3 +1,3 @@
 idf_component_register(SRCS "WalterModem.cpp"
-                    INCLUDE_DIRS "."
+                    INCLUDE_DIRS "include"
                     REQUIRES esp_partition app_update spi_flash driver)

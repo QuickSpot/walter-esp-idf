@@ -1,0 +1,4 @@
+version: "1.0.0"
+
+description: "Walter Modem Driver"
+url: "https://github.com/QuickSpot/walter-esp-idf"

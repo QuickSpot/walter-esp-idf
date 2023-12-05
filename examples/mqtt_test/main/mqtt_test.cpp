@@ -50,7 +50,7 @@
 #include <esp_mac.h>
 #include <esp_log.h>
 #include <driver/uart.h>
-#include <WalterModem.h>
+#include "WalterModem.h"
 
 WalterModem modem;
 
