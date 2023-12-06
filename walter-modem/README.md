@@ -13,7 +13,7 @@ This is the repository of the Walter Modem driver for the Sequans GM02SP.
 This is the easiest way to use Walter Modem component, however, the registration is not done yet. Please go to the manual installation.
 
 ```bash
-idf.py add-dependency "QuickSpot/walter-esp-idf^1.0.0" 
+idf.py add-dependency "dptechnics/walter-esp-idf^1.0.0" 
 ```
 
 This will be available soon!
