@@ -13,7 +13,7 @@ This is the repository of the Walter Modem driver for the Sequans GM02SP.
 This is the easiest way to use Walter Modem component.
 
 ```bash
-idf.py add-dependency "dptechnics/walter-modem^1.0.0" 
+idf.py add-dependency "dptechnics/walter-modem^1.0.1" 
 ```
 
 ### Manual
