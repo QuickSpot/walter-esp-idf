@@ -1,5 +1,5 @@
 /**
- * @file mqtt_test.cpp
+ * @file bluecherry_test.cpp
  * @author Jonas Maes <jonas@dptechnics.com>
  * @date 27 Nov 2023
  * @copyright DPTechnics bv
@@ -50,16 +50,13 @@
 #include <esp_mac.h>
 #include <esp_log.h>
 #include <driver/uart.h>
-#include <cstring>
 #include "WalterModem.h"
-
-#define TLS_PROFILE 1
 
 WalterModem modem;
 
-uint8_t incomingBuf[256] = { 0 };
-
-char macString[32];
+uint8_t dataBuf[256] = { 0 };
+uint8_t otaBuffer[SPI_FLASH_BLOCK_SIZE];
+uint8_t counter = 0;
 
 void waitForNetwork()
 {
@@ -71,64 +68,64 @@ void waitForNetwork()
     vTaskDelay(pdMS_TO_TICKS(100));
     regState = modem.getNetworkRegState();
   }
-  ESP_LOGI("mqtt_test", "Connected to the network");
+  ESP_LOGI("bluecherry_test", "Connected to the network");
 }
 
 extern "C" void app_main(void)
 {
-  ESP_LOGI("mqtt_test", "Walter modem test v0.0.1");
+  ESP_LOGI("bluecherry_test", "Walter modem test v0.0.1");
 
   /* Get the MAC address for board validation */
-  esp_read_mac(incomingBuf, ESP_MAC_WIFI_STA);
-  sprintf(macString, "walter%02X:%02X:%02X:%02X:%02X:%02X",
-    incomingBuf[0],
-    incomingBuf[1],
-    incomingBuf[2],
-    incomingBuf[3],
-    incomingBuf[4],
-    incomingBuf[5]);
+  esp_read_mac(dataBuf, ESP_MAC_WIFI_STA);
+  ESP_LOGI("bluecherry_test", "Walter's MAC is: %02X:%02X:%02X:%02X:%02X:%02X",
+    dataBuf[0],
+    dataBuf[1],
+    dataBuf[2],
+    dataBuf[3],
+    dataBuf[4],
+    dataBuf[5]);
 
   if(WalterModem::begin(UART_NUM_1)) {
-    ESP_LOGI("mqtt_test", "Modem initialization OK");
+    ESP_LOGI("bluecherry_test", "Modem initialization OK");
   } else {
-    ESP_LOGI("mqtt_test", "Modem initialization ERROR");
+    ESP_LOGI("bluecherry_test", "Modem initialization ERROR");
     return;
   }
 
   if(modem.checkComm()) {
-    ESP_LOGI("mqtt_test", "Modem communication is ok");
+    ESP_LOGI("bluecherry_test", "Modem communication is ok");
   } else {
-    ESP_LOGI("mqtt_test", "Modem communication error");
+    ESP_LOGI("bluecherry_test", "Modem communication error");
     return;
   }
 
   WalterModemRsp rsp = {};
   if(modem.getOpState(&rsp)) {
-    ESP_LOGI("mqtt_test", "Modem operational state: %d", rsp.data.opState);
+    ESP_LOGI("bluecherry_test", "Modem operational state: %d", rsp.data.opState);
   } else {
-    ESP_LOGI("mqtt_test", "Could not retrieve modem operational state");
+    ESP_LOGI("bluecherry_test", "Could not retrieve modem operational state");
     return;
   }
 
   if(modem.getRadioBands(&rsp)) {
-    ESP_LOGI("mqtt_test", "Modem is configured for the following bands:");
+    ESP_LOGI("bluecherry_test", "Modem is configured for the following bands:");
     
     for(int i = 0; i < rsp.data.bandSelCfgSet.count; ++i) {
       WalterModemBandSelection *bSel = rsp.data.bandSelCfgSet.config + i;
-      ESP_LOGI("mqtt_test", "  - Operator '%s' on %s: 0x%05lx",
+      ESP_LOGI("bluecherry_test", "  - Operator '%s' on %s: 0x%05lx",
         bSel->netOperator.name,
         bSel->rat == WALTER_MODEM_RAT_NBIOT ? "NB-IoT" : "LTE-M",
         bSel->bands);
     }
   } else {
-    ESP_LOGI("mqtt_test", "Could not retrieve configured radio bands");
+    ESP_LOGI("bluecherry_test", "Could not retrieve configured radio bands");
     return;
   }
 
   if(modem.setOpState(WALTER_MODEM_OPSTATE_NO_RF)) {
-    ESP_LOGI("mqtt_test", "Successfully set operational state to NO RF");
+    ESP_LOGI("bluecherry_test", "Successfully set operational state to NO RF");
   } else {
-    ESP_LOGI("mqtt_test", "Could not set operational state to NO RF");
+    ESP_LOGI("bluecherry_test", "Could not set operational state to NO RF");
     return;
   }
 
@@ -136,42 +133,42 @@ extern "C" void app_main(void)
   vTaskDelay(pdMS_TO_TICKS(2000));
 
   if(modem.unlockSIM()) {
-    ESP_LOGI("mqtt_test", "Successfully unlocked SIM card");
+    ESP_LOGI("bluecherry_test", "Successfully unlocked SIM card");
   } else {
-    ESP_LOGI("mqtt_test", "Could not unlock SIM card");
+    ESP_LOGI("bluecherry_test", "Could not unlock SIM card");
     return;
   }
 
   /* Create PDP context */
   if(modem.createPDPContext("", WALTER_MODEM_PDP_AUTH_PROTO_PAP, "sora", "sora"))
   {
-    ESP_LOGI("mqtt_test", "Created PDP context");
+    ESP_LOGI("bluecherry_test", "Created PDP context");
   } else {
-    ESP_LOGI("mqtt_test", "Could not create PDP context");
+    ESP_LOGI("bluecherry_test", "Could not create PDP context");
     return;
   }
 
   /* Authenticate the PDP context */
   if(modem.authenticatePDPContext()) {
-    ESP_LOGI("mqtt_test", "Authenticated the PDP context");
+    ESP_LOGI("bluecherry_test", "Authenticated the PDP context");
   } else {
-    ESP_LOGI("mqtt_test", "Could not authenticate the PDP context");
+    ESP_LOGI("bluecherry_test", "Could not authenticate the PDP context");
     return;
   }
 
   /* Set the operational state to full */
   if(modem.setOpState(WALTER_MODEM_OPSTATE_FULL)) {
-    ESP_LOGI("mqtt_test", "Successfully set operational state to FULL");
+    ESP_LOGI("bluecherry_test", "Successfully set operational state to FULL");
   } else {
-    ESP_LOGI("mqtt_test", "Could not set operational state to FULL");
+    ESP_LOGI("bluecherry_test", "Could not set operational state to FULL");
     return;
   }
 
   /* Set the network operator selection to automatic */
   if(modem.setNetworkSelectionMode(WALTER_MODEM_NETWORK_SEL_MODE_AUTOMATIC)) {
-    ESP_LOGI("mqtt_test", "Network selection mode to was set to automatic");
+    ESP_LOGI("bluecherry_test", "Network selection mode to was set to automatic");
   } else {
-    ESP_LOGI("mqtt_test", "Could not set the network selection mode to automatic");
+    ESP_LOGI("bluecherry_test", "Could not set the network selection mode to automatic");
     return;
   }
 
@@ -179,77 +176,82 @@ extern "C" void app_main(void)
 
   /* Activate the PDP context */
   if(modem.setPDPContextActive(true)) {
-    ESP_LOGI("mqtt_test", "Activated the PDP context");
+    ESP_LOGI("bluecherry_test", "Activated the PDP context");
   } else {
-    ESP_LOGI("mqtt_test", "Could not activate the PDP context");
+    ESP_LOGI("bluecherry_test", "Could not activate the PDP context");
     return;
   }
 
   /* Attach the PDP context */
   if(modem.attachPDPContext(true)) {
-    ESP_LOGI("mqtt_test", "Attached to the PDP context");
+    ESP_LOGI("bluecherry_test", "Attached to the PDP context");
   } else {
-    ESP_LOGI("mqtt_test", "Could not attach to the PDP context");
+    ESP_LOGI("bluecherry_test", "Could not attach to the PDP context");
     return;
   }
 
   if(modem.getPDPAddress(&rsp)) {
-    ESP_LOGI("mqtt_test", "PDP context address list:");
-    ESP_LOGI("mqtt_test", "  - %s", rsp.data.pdpAddressList.pdpAddress);
+    ESP_LOGI("bluecherry_test", "PDP context address list:");
+    ESP_LOGI("bluecherry_test", "  - %s", rsp.data.pdpAddressList.pdpAddress);
     if(rsp.data.pdpAddressList.pdpAddress2[0] != '\0') {
-      ESP_LOGI("mqtt_test", "  - %s", rsp.data.pdpAddressList.pdpAddress2);
+      ESP_LOGI("bluecherry_test", "  - %s", rsp.data.pdpAddressList.pdpAddress2);
     }
   } else {
-    ESP_LOGI("mqtt_test", "Could not retrieve PDP context addresses");
+    ESP_LOGI("bluecherry_test", "Could not retrieve PDP context addresses");
     return;
   }
 
-  /* Configure TLS profile */
-  if(modem.tlsConfigProfile(TLS_PROFILE, WALTER_MODEM_TLS_VALIDATION_NONE, WALTER_MODEM_TLS_VERSION_13, 1)) {
-    ESP_LOGI("mqtt_test", "Successfully configured the TLS profile");
-  } else {
-    ESP_LOGI("mqtt_test", "Failed to configure TLS profile");
-  }
-
-  // other public mqtt broker with web client: mqtthq.com
-  if(modem.mqttConnect("test.mosquitto.org", 8883, macString, "", "", 1)) {
-    ESP_LOGI("mqtt_test", "MQTT connection succeeded");
-
-    if(modem.mqttSubscribe("waltertopic")) {
-      ESP_LOGI("mqtt_test", "MQTT subscribed to topic 'waltertopic'");
-    } else {
-      ESP_LOGI("mqtt_test", "MQTT subscribe failed");
-    }
-  } else {
-    ESP_LOGI("mqtt_test", "MQTT connection failed");
-  }
+  modem.initBlueCherry("coap.bluecherry.io", 65534, 0x21, otaBuffer);
+  ESP_LOGI("bluecherry_test", "BlueCherry cloud platform link initialized");
 
   /* this loop is basically the Arduino loop function */
   for(;;) {
-    vTaskDelay(pdMS_TO_TICKS(15000));
-
     WalterModemRsp rsp = {};
+    bool moreDataAvailable;
   
-    static int seq = 0;
-    static char outgoingMsg[64];
-    seq++;
-    if(seq % 3 == 0) {
-      sprintf(outgoingMsg, "%s-%d", macString, seq);
-      if(modem.mqttPublish("waltertopic", (uint8_t *) outgoingMsg, strlen(outgoingMsg))) {
-        ESP_LOGI("mqtt_test", "published '%s' on topic 'waltertopic'", outgoingMsg);
-      } else {
-        ESP_LOGI("mqtt_test", "MQTT publish failed");
+    vTaskDelay(pdMS_TO_TICKS(15000));
+  
+    dataBuf[6] = counter++;
+    modem.blueCherryPublish(0x84, 7, dataBuf);
+  
+    do {
+      if(!modem.blueCherrySynchronize()) {
+        ESP_LOGI("bluecherry_test", "Error communicating with BlueCherry cloud platform!");
+        ESP_LOGI("bluecherry_test", "Rebooting modem after BlueCherry sync failure (CoAP stack may be broken)");
+        modem.reset();
+        modem.setOpState(WALTER_MODEM_OPSTATE_FULL);
+        waitForNetwork();
+        ESP_LOGI("bluecherry_test", "Continuing");
+        break;
       }
-    }
-
-    while(modem.mqttDidRing("waltertopic", incomingBuf, sizeof(incomingBuf), &rsp)) {
-      ESP_LOGI("mqtt_test", "incoming: qos=%d msgid=%d len=%d:",
-          rsp.data.mqttResponse.qos,
-          rsp.data.mqttResponse.messageId,
-          rsp.data.mqttResponse.length);
-      for(int i = 0; i < rsp.data.mqttResponse.length; i++) {
-        ESP_LOGI("mqtt_test", "'%c' 0x%02x", incomingBuf[i], incomingBuf[i]);
+  
+      ESP_LOGI("bluecherry_test", "Synchronized with the BlueCherry cloud platform, awaiting ring for ACK");
+  
+      while(!modem.blueCherryDidRing(&moreDataAvailable, &rsp)) {
+        vTaskDelay(pdMS_TO_TICKS(100));
       }
-    }
+  
+      if(rsp.data.blueCherry.nak) {
+        ESP_LOGI("bluecherry_test", "Rebooting modem after timeout waiting for ACK (workaround bug)");
+        modem.reset();
+        modem.setOpState(WALTER_MODEM_OPSTATE_FULL);
+        waitForNetwork();
+        ESP_LOGI("bluecherry_test", "Continuing");
+        break;
+      }
+  
+      ESP_LOGI("bluecherry_test", "Successfully sent message. Nr incoming msgs: %d",
+        rsp.data.blueCherry.messageCount);
+  
+      for(uint8_t msgIdx = 0; msgIdx < rsp.data.blueCherry.messageCount; msgIdx++) {
+        ESP_LOGI("bluecherry_test", "Incoming message %d/%d:", msgIdx + 1, rsp.data.blueCherry.messageCount);
+        ESP_LOGI("bluecherry_test", "topic: %02x", rsp.data.blueCherry.messages[msgIdx].topic);
+        ESP_LOGI("bluecherry_test", "data size: %d", rsp.data.blueCherry.messages[msgIdx].dataSize);
+      }
+  
+      if(moreDataAvailable) {
+        ESP_LOGI("bluecherry_test", "(got some incoming data but more is waiting to be fetched: doing another sync call)");
+      }
+    } while(moreDataAvailable);
   }
 }
