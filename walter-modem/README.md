@@ -34,6 +34,8 @@ dependencies:
 
 ### Note
 
+Please use version 5.1.2 of esp-idf.
+
 Please ignore the warning about esp_spi_flash.h being deprecated.
 
 Because we use the same code base for Arduino as for ESP-IDF,
