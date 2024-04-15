@@ -205,7 +205,7 @@ extern "C" void app_main(void)
   }
 
   /* Configure TLS profile */
-  if(modem.tlsConfigProfile(TLS_PROFILE, WALTER_MODEM_TLS_VALIDATION_NONE, WALTER_MODEM_TLS_VERSION_13, 1)) {
+  if(modem.tlsConfigProfile(TLS_PROFILE, WALTER_MODEM_TLS_VALIDATION_NONE, WALTER_MODEM_TLS_VERSION_12, 1)) {
     ESP_LOGI("mqtt_test", "Successfully configured the TLS profile");
   } else {
     ESP_LOGI("mqtt_test", "Failed to configure TLS profile");
