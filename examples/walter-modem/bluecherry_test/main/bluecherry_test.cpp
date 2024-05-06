@@ -272,7 +272,7 @@ extern "C" void app_main(void)
     ESP_LOGI("bluecherry_test", "Failed to configure TLS profile\r\n");
   }
 
-  modem.initBlueCherry(1, "coap.bluecherry.io", 5684, otaBuffer);
+  modem.initBlueCherry(TLS_PROFILE, "coap.bluecherry.io", 5684, otaBuffer);
   ESP_LOGI("bluecherry_test", "BlueCherry cloud platform link initialized");
 
   /* this loop is basically the Arduino loop function */
