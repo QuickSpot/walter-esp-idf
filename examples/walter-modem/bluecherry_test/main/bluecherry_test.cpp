@@ -286,14 +286,14 @@ extern "C" void app_main(void)
     modem.blueCherryPublish(0x84, 7, dataBuf);
   
     do {
-      if(!modem.blueCherrySynchronize()) {
+      while(!modem.blueCherrySynchronize()) {
         ESP_LOGI("bluecherry_test", "Error communicating with BlueCherry cloud platform!");
         ESP_LOGI("bluecherry_test", "Rebooting modem after BlueCherry sync failure (CoAP stack may be broken)");
         modem.reset();
         modem.setOpState(WALTER_MODEM_OPSTATE_FULL);
         waitForNetwork();
-        ESP_LOGI("bluecherry_test", "Continuing");
-        break;
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        ESP_LOGI("bluecherry_test", "New attempt...");
       }
   
       ESP_LOGI("bluecherry_test", "Synchronized with the BlueCherry cloud platform, awaiting ring for ACK");
@@ -304,6 +304,8 @@ extern "C" void app_main(void)
   
       if(rsp.data.blueCherry.nak) {
         ESP_LOGI("bluecherry_test", "Rebooting modem after timeout waiting for ACK (workaround bug)");
+        ESP_LOGI("bluecherry_test", "Published data lost: next attempt will be a new COAP msg (msgid++)");
+        ESP_LOGI("bluecherry_test", "so the developer has the chance to disregard data that is obsolete by now...");
         modem.reset();
         modem.setOpState(WALTER_MODEM_OPSTATE_FULL);
         waitForNetwork();
