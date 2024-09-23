@@ -1,26 +1,26 @@
 # Walter Modem Driver for ESP-IDF
 
-This is the repository of the Walter Modem driver for the Sequans GM02SP.
+## Overview
 
-## Installation
-
-## Getting Started
+This component contains the WalterModem library which is used to use the 
+Sequans GM02SP modem which is found on the Walter module. The Walter module 
+is a fully certified modem module (CE, UKCA, FCC, IC, RCM) which is designed to 
+be integrated in a cellular IoT product. Walter combines LTE-M, NB-IoT, WiFi,
+BLE and GNSS in a single module and runs on  the ESP32-S3 MCU with 2MB of PSRAM
+and 16MB of flash memory.
 
 ## How to use
-
-### Using via Component Registry
-
 This is the easiest way to use Walter Modem component.
 
 ```bash
-idf.py add-dependency "dptechnics/walter-modem^1.0.2" 
+idf.py add-dependency "dptechnics/walter-modem^1.1.0" 
 ```
 
-### Manual
+To use this component inside your project, you must download the content of this
+repository to a convenient folder.
 
-To use this component inside your project, you must download the content of this repository to a convenient folder.
-
-    Please ensure that the folder path is not excessively long (especially for Windows users).
+Please ensure that the folder path is not excessively long (especially for
+Windows users).
 
 Create the `idf_component.yml` file inside the `main` folder of your project,
 or copy and modify `idf_component.yml` from one of the examples,
@@ -32,14 +32,15 @@ dependencies:
     path: <path_to_the_folder>
 ```
 
-### Note
+## Contributing
 
-Please use version 5.1.2 of esp-idf.
+We welcome all contributions to the software via github pull requests on the 
+[walter-esp-idf repository](https://github.com/QuickSpot/walter-esp-idf). Please
+take the design strategies in mind when contributing. 
 
-Please ignore the warning about esp_spi_flash.h being deprecated.
+## Licence
 
-Because we use the same code base for Arduino as for ESP-IDF,
-and because we support both ESP-IDF version 5.1.2 towards which the in-development
-arduino esp-idf component is currently targeted, and the vanilla
-Arduino ESP32 core which is still based on ESP-IDF 4.4,
-we need to include the file that exists in both versions of ESP-IDF.
+The library is published under the 'DPTechnics 5 clause' license. This is 
+essentially the same as the `BSD-3-Clause` license with the addition that
+binaries of which the source code is not open should run on a Walter board from
+DPTechnics bv.
