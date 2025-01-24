@@ -2215,10 +2215,11 @@ struct WalterModemStpResponseTransferBlock
 };
 
 struct WalterCallbackMqttMessage {
-    char *topic;
+    char topic[256];
     uint16_t length;
     uint8_t qos;
     uint16_t id;
+    uint8_t ringIdx;
 };
 
 #define MAX_MESSAGE_SIZE 32

@@ -180,7 +180,7 @@
  */
 #define _strncpy_s(dst, src, maxLen) \
     strncpy(dst, src == NULL ? "" : src, maxLen); \
-    dst[maxLen] = '\0';
+    dst[maxLen-1] = '\0';
 
 /**
  * @brief Make an array of a list of arguments.
@@ -2756,17 +2756,22 @@ void WalterModem::_processQueueRsp(
             && !strcmp(cmd->atCmd[0], "AT+SQNSMQTTRCVMESSAGE=0,")
             && cmd->rsp->type != WALTER_MODEM_RSP_DATA_TYPE_MQTT)
     {
+        ESP_LOGD("WalterModem", "Doing stuff with mqtt message");
+
         const char *rspStr = _buffStr(buff);
 
-        uint8_t ringIdx = (uint32_t) cmd->completeHandlerArg;
-
-        cmd->rsp->type = WALTER_MODEM_RSP_DATA_TYPE_MQTT;
-        cmd->rsp->data.mqttResponse.messageId = _mqttRings[ringIdx].messageId;
-        cmd->rsp->data.mqttResponse.qos = _mqttRings[ringIdx].qos;
+        cmd->rsp->type = WALTER_MODEM_RSP_DATA_TYPE_MQTT;    
         cmd->rsp->data.mqttResponse.length = cmd->dataSize;
 
-        /* free ring entry */
-        _mqttRings[ringIdx].messageId = 0;
+        if (cmd->completeHandlerArg != NULL) {
+            uint8_t ringIdx = (uint32_t) cmd->completeHandlerArg;
+
+            cmd->rsp->data.mqttResponse.messageId = _mqttRings[ringIdx].messageId;
+            cmd->rsp->data.mqttResponse.qos = _mqttRings[ringIdx].qos;
+
+            /* free ring entry */
+            _mqttRings[ringIdx].messageId = 0;
+        }
 
         if(cmd->data) {
             /* skip leading \r\n */
@@ -2971,17 +2976,6 @@ void WalterModem::_processQueueRsp(
                 }
             }
 
-            WalterCallbackPayload payload = {
-                .cmd = WALTER_CALLBACK_CMD_MQTT_MESSAGE
-            };
-            payload.data.mqtt_message = {
-                .topic = topic,
-                .length = length,
-                .qos = qos,
-                .id = messageId
-            };
-            _sendCallbackToQueues(&payload);
-
             if(ringIdx == sizeof(_mqttRings) / sizeof(WalterModemMqttRing)) {
                 /* ring buffer full unfortunately, dropping ring.
                  * TODO: error reporting mechanism for this failed URC
@@ -2997,6 +2991,20 @@ void WalterModem::_processQueueRsp(
                 _strncpy_s(_mqttRings[ringIdx].topic, topic,
                     WALTER_MODEM_HOSTNAME_BUF_SIZE);
             }
+
+            WalterCallbackPayload payload = {
+                .cmd = WALTER_CALLBACK_CMD_MQTT_MESSAGE
+            };
+            payload.data.mqtt_message = {
+                .length = length,
+                .qos = qos,
+                .id = messageId,
+                .ringIdx = ringIdx
+            };
+            ESP_LOGD("WalterModem", "Sending callback for mqtt message on topic %s", topic);
+            snprintf(payload.data.mqtt_message.topic, sizeof(payload.data.mqtt_message.topic), "%s", topic == NULL ? "" : topic);
+
+            _sendCallbackToQueues(&payload);
         }
     }
 
