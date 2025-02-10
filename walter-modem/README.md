@@ -16,8 +16,8 @@ This is the easiest way to use Walter Modem component.
 idf.py add-dependency "dptechnics/walter-modem^1.1.3" 
 ```
 
-To use this component inside your project must add **dptechnics/walter-modem** to the df_components.yml
-file inside the `main` folder of your project, or copy and modify `idf_component.yml` from one of the examples
+To use this component inside your project you must add `dptechnics/walter-modem` to the `idf_components.yml`
+file inside the `main` folder of your project, or copy and modify `idf_component.yml` from one of the examples.
 
 ```yml
 dependencies:
