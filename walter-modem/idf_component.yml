@@ -11,8 +11,3 @@ tags:
   - IoT
   - cellular
   - Communication
-examples:
-  - path: "./examples/bluecherry_test/main/bluecherry_test.cpp"
-  - path: "./examples/mqtt_test/main/mqtt_test.cpp"
-  - path: "./examples/positioning/main/positiong.cpp"
-  - path: "./examples/socket_test/main/socket_test.cpp"
