@@ -9,27 +9,27 @@
  *
  * Copyright (C) 2023, DPTechnics bv
  * All rights reserved.
- *
+ * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- *
+ * 
  *   1. Redistributions of source code must retain the above copyright notice,
  *      this list of conditions and the following disclaimer.
- *
+ * 
  *   2. Redistributions in binary form must reproduce the above copyright
  *      notice, this list of conditions and the following disclaimer in the
  *      documentation and/or other materials provided with the distribution.
- *
+ * 
  *   3. Neither the name of DPTechnics bv nor the names of its contributors may
  *      be used to endorse or promote products derived from this software
  *      without specific prior written permission.
- *
+ * 
  *   4. This software, with or without modification, must only be used with a
  *      Walter board from DPTechnics bv.
- *
+ * 
  *   5. Any software provided in binary form under this license must not be
  *      reverse engineered, decompiled, modified and/or disassembled.
- *
+ * 
  * THIS SOFTWARE IS PROVIDED BY DPTECHNICS BV “AS IS” AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
  * MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -42,7 +42,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * @section DESCRIPTION
- *
+ * 
  * This file contains Walter's modem library implementation.
  */
 
@@ -133,30 +133,30 @@
  * @brief Check if a WalterModemBuffer starts with a given string literal.
  */
 #define _buffStartsWith(buff, str) ((buff->size >= _strLitLen(str)) && \
-                                    memcmp(str, buff->data, _strLitLen(str)) == 0)
+    memcmp(str, buff->data, _strLitLen(str)) == 0)
 
 /**
  * @brief Check if a WalterModemBuffer starts with an ASCII digit [0-9].
  */
-#define _buffStartsWithDigit(buff) ((buff->size > 0) && (buff->data[0] >= '0' && buff->data[0] <= '9'))
+#define _buffStartsWithDigit(buff) ((buff->size > 0) && (\
+    buff->data[0] >= '0' && buff->data[0] <= '9'))
 
 /**
  * @brief 0-terminate a WalterModemBuffer.
  * This macro is meant to be used as an assignment
  * in the form of x = _buffStr(buff);
  */
-#define _buffStr(buff)        \
-    (const char *)buff->data; \
+#define _buffStr(buff) (const char*) buff->data; \
     buff->data[buff->size] = '\0'
 
 /**
  * Check if the data string in a buffer equals a certain expected value which
  * comes after a certain prefix.
  */
-#define _dataStrIs(buff, prefix, expected)             \
-    ((buff->size - _strLitLen(prefix)) > 0 &&          \
-     memcmp(buff->data + _strLitLen(prefix), expected, \
-            buff->size - _strLitLen(prefix)) == 0)
+#define _dataStrIs(buff, prefix, expected) \
+    ((buff->size - _strLitLen(prefix)) > 0 && \
+    memcmp(buff->data + _strLitLen(prefix), expected, \
+    buff->size - _strLitLen(prefix)) == 0)
 
 /**
  * @brief Convert a string literal into an AT command array. An empty string
@@ -175,18 +175,18 @@
  * @brief Convert a number of up to 6 digits in length into an array of digits
  * which can be passed to an AT command array.
  */
-#define _atNum(num)             \
-    _intToStrDigit(num, 0),     \
-        _intToStrDigit(num, 1), \
-        _intToStrDigit(num, 2), \
-        _intToStrDigit(num, 3), \
-        _intToStrDigit(num, 4), \
-        _intToStrDigit(num, 5)
+#define _atNum(num) \
+    _intToStrDigit(num, 0),\
+    _intToStrDigit(num, 1),\
+    _intToStrDigit(num, 2),\
+    _intToStrDigit(num, 3),\
+    _intToStrDigit(num, 4),\
+    _intToStrDigit(num, 5)
 
 /**
  * @brief Perform a string copy and ensure that the destination is 0-terminated.
  */
-#define _strncpy_s(dst, src, maxLen)              \
+#define _strncpy_s(dst, src, maxLen) \
     strncpy(dst, src == NULL ? "" : src, maxLen); \
     dst[maxLen] = '\0';
 
@@ -198,22 +198,18 @@
 /**
  * @brief Return an error.
  */
-#define _returnState(state)                    \
-    if (cb == NULL)                            \
-    {                                          \
-        if (rsp != NULL)                       \
-        {                                      \
-            rsp->result = state;               \
-        }                                      \
-        return state == WALTER_MODEM_STATE_OK; \
-    }                                          \
-    else                                       \
-    {                                          \
-        WalterModemRsp cbRsp = {};             \
-        cbRsp.result = state;                  \
-        cb(&cbRsp, args);                      \
-        return true;                           \
-    }
+#define _returnState(state) \
+if(cb == NULL) { \
+    if(rsp != NULL) { \
+        rsp->result = state; \
+    } \
+    return state == WALTER_MODEM_STATE_OK; \
+} else { \
+    WalterModemRsp cbRsp = {}; \
+    cbRsp.result = state; \
+    cb(&cbRsp, args); \
+    return true; \
+}
 
 /**
  * @brief Convert little endian to big endian for Monarch modem
@@ -223,12 +219,12 @@
 
 /**
  * @brief Add a command to the queue for it to be execute it.
- *
- * This macro will add a command to the command queue for it to be executed. If
+ * 
+ * This macro will add a command to the command queue for it to be executed. If 
  * the command could not be added to the queue the macro will make the
- * surrounding function return false (when blocking API is used) or call the
+ * surrounding function return false (when blocking API is used) or call the 
  * callback with an out-of-memory error.
- *
+ * 
  * @param atCmd The NULL terminated AT command elements to send to the modem.
  * @param atRsp The expected AT response from the modem.
  * @param rsp Pointer to the response structure to save the response in.
@@ -236,15 +232,14 @@
  * @param args Optional argument to pass to the callback.
  * @param ... Optional arguments for the _addQueueCmd function.
  */
-#define _runCmd(atCmd, atRsp, rsp, cb, args, ...)                    \
-    const char *_cmdArr[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] = atCmd; \
-    WalterModemCmd *cmd =                                            \
-        _addQueueCmd(_cmdArr, atRsp, rsp, cb, args, ##__VA_ARGS__);  \
-    if (cmd == NULL)                                                 \
-    {                                                                \
-        _returnState(WALTER_MODEM_STATE_NO_MEMORY);                  \
-    }                                                                \
-    std::unique_lock<std::mutex> lock{cmd->cmdLock.mutex};
+#define _runCmd(atCmd, atRsp, rsp, cb, args, ...) \
+const char *_cmdArr[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] = atCmd; \
+WalterModemCmd *cmd = \
+    _addQueueCmd(_cmdArr, atRsp, rsp, cb, args, ##__VA_ARGS__); \
+if(cmd == NULL) { \
+    _returnState(WALTER_MODEM_STATE_NO_MEMORY); \
+} \
+std::unique_lock<std::mutex> lock{cmd->cmdLock.mutex};
 
 /**
  * @brief When working asynchronously, it will return true because the response
@@ -253,181 +248,176 @@
  * result of the command is passed and the function returns with true when the
  * state is WALTER_MODEM_STATE_OK, false otherwise.
  */
-#define _returnAfterReply()                                                                                  \
-    if (cmd->userCb != NULL)                                                                                 \
-    {                                                                                                        \
-        lock.unlock();                                                                                       \
-        return true;                                                                                         \
-    }                                                                                                        \
-    cmd->cmdLock.cond.wait(lock, [cmd] { return cmd->state == WALTER_MODEM_CMD_STATE_SYNC_LOCK_NOTIFIED; }); \
-    WalterModemState rspResult = cmd->rsp->result;                                                           \
-    cmd->state = WALTER_MODEM_CMD_STATE_COMPLETE;                                                            \
-    lock.unlock();                                                                                           \
-    return rspResult == WALTER_MODEM_STATE_OK;
+#define _returnAfterReply() \
+if(cmd->userCb != NULL) { \
+    lock.unlock(); \
+    return true; \
+} \
+cmd->cmdLock.cond.wait(lock, [cmd] {  \
+    return cmd->state == WALTER_MODEM_CMD_STATE_SYNC_LOCK_NOTIFIED; \
+}); \
+WalterModemState rspResult = cmd->rsp->result; \
+cmd->state = WALTER_MODEM_CMD_STATE_COMPLETE; \
+lock.unlock(); \
+return rspResult == WALTER_MODEM_STATE_OK;
 
 /**
  * @brief Transmit all elements of a command.
  */
 static bool endOfLine;
 #ifdef ARDUINO
-#define _transmitCmd(type, atCmd)                                                                                                                      \
-    {                                                                                                                                                  \
-        ESP_LOGD((endOfLine = false, "WalterModem"),                                                                                                   \
-                 "TX: %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", \
-                 (!endOfLine && atCmd[0]) ? atCmd[0] : (endOfLine = true, ""),                                                                         \
-                 (!endOfLine && atCmd[1]) ? atCmd[1] : (endOfLine = true, ""),                                                                         \
-                 (!endOfLine && atCmd[2]) ? atCmd[2] : (endOfLine = true, ""),                                                                         \
-                 (!endOfLine && atCmd[3]) ? atCmd[3] : (endOfLine = true, ""),                                                                         \
-                 (!endOfLine && atCmd[4]) ? atCmd[4] : (endOfLine = true, ""),                                                                         \
-                 (!endOfLine && atCmd[5]) ? atCmd[5] : (endOfLine = true, ""),                                                                         \
-                 (!endOfLine && atCmd[6]) ? atCmd[6] : (endOfLine = true, ""),                                                                         \
-                 (!endOfLine && atCmd[7]) ? atCmd[7] : (endOfLine = true, ""),                                                                         \
-                 (!endOfLine && atCmd[8]) ? atCmd[8] : (endOfLine = true, ""),                                                                         \
-                 (!endOfLine && atCmd[9]) ? atCmd[9] : (endOfLine = true, ""),                                                                         \
-                 (!endOfLine && atCmd[10]) ? atCmd[10] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[11]) ? atCmd[11] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[12]) ? atCmd[12] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[13]) ? atCmd[13] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[14]) ? atCmd[14] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[15]) ? atCmd[15] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[16]) ? atCmd[16] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[17]) ? atCmd[17] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[18]) ? atCmd[18] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[19]) ? atCmd[19] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[20]) ? atCmd[20] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[21]) ? atCmd[21] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[22]) ? atCmd[22] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[23]) ? atCmd[23] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[24]) ? atCmd[24] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[25]) ? atCmd[25] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[26]) ? atCmd[26] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[27]) ? atCmd[27] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[28]) ? atCmd[28] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[29]) ? atCmd[29] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[30]) ? atCmd[30] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[31]) ? atCmd[31] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[32]) ? atCmd[32] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[33]) ? atCmd[33] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[34]) ? atCmd[34] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[35]) ? atCmd[35] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[36]) ? atCmd[36] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[37]) ? atCmd[37] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[38]) ? atCmd[38] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[39]) ? atCmd[39] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[40]) ? atCmd[40] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[41]) ? atCmd[41] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[42]) ? atCmd[42] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[43]) ? atCmd[43] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[44]) ? atCmd[44] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[45]) ? atCmd[45] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[46]) ? atCmd[46] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[47]) ? atCmd[47] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[48]) ? atCmd[48] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[49]) ? atCmd[49] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[50]) ? atCmd[50] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[51]) ? atCmd[51] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[52]) ? atCmd[52] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[53]) ? atCmd[53] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[54]) ? atCmd[54] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[55]) ? atCmd[55] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[56]) ? atCmd[56] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[57]) ? atCmd[57] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[58]) ? atCmd[58] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[59]) ? atCmd[59] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[60]) ? atCmd[60] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[61]) ? atCmd[61] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[62]) ? atCmd[62] : (endOfLine = true, ""));                                                                      \
-        for (int i = 0; i < WALTER_MODEM_COMMAND_MAX_ELEMS; ++i)                                                                                       \
-        {                                                                                                                                              \
-            if (atCmd[i] == NULL)                                                                                                                      \
-            {                                                                                                                                          \
-                break;                                                                                                                                 \
-            }                                                                                                                                          \
-            _uart->write(atCmd[i]);                                                                                                                    \
-        }                                                                                                                                              \
-        _uart->write(type == WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT ? "\n" : "\r\n");                                                                      \
-    }
+#define _transmitCmd(type, atCmd) { \
+    ESP_LOGD((endOfLine = false, "WalterModem"), \
+            "TX: %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", \
+            (!endOfLine && atCmd[0]) ? atCmd[0] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[1]) ? atCmd[1] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[2]) ? atCmd[2] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[3]) ? atCmd[3] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[4]) ? atCmd[4] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[5]) ? atCmd[5] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[6]) ? atCmd[6] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[7]) ? atCmd[7] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[8]) ? atCmd[8] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[9]) ? atCmd[9] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[10]) ? atCmd[10] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[11]) ? atCmd[11] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[12]) ? atCmd[12] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[13]) ? atCmd[13] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[14]) ? atCmd[14] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[15]) ? atCmd[15] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[16]) ? atCmd[16] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[17]) ? atCmd[17] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[18]) ? atCmd[18] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[19]) ? atCmd[19] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[20]) ? atCmd[20] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[21]) ? atCmd[21] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[22]) ? atCmd[22] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[23]) ? atCmd[23] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[24]) ? atCmd[24] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[25]) ? atCmd[25] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[26]) ? atCmd[26] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[27]) ? atCmd[27] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[28]) ? atCmd[28] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[29]) ? atCmd[29] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[30]) ? atCmd[30] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[31]) ? atCmd[31] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[32]) ? atCmd[32] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[33]) ? atCmd[33] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[34]) ? atCmd[34] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[35]) ? atCmd[35] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[36]) ? atCmd[36] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[37]) ? atCmd[37] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[38]) ? atCmd[38] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[39]) ? atCmd[39] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[40]) ? atCmd[40] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[41]) ? atCmd[41] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[42]) ? atCmd[42] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[43]) ? atCmd[43] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[44]) ? atCmd[44] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[45]) ? atCmd[45] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[46]) ? atCmd[46] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[47]) ? atCmd[47] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[48]) ? atCmd[48] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[49]) ? atCmd[49] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[50]) ? atCmd[50] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[51]) ? atCmd[51] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[52]) ? atCmd[52] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[53]) ? atCmd[53] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[54]) ? atCmd[54] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[55]) ? atCmd[55] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[56]) ? atCmd[56] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[57]) ? atCmd[57] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[58]) ? atCmd[58] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[59]) ? atCmd[59] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[60]) ? atCmd[60] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[61]) ? atCmd[61] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[62]) ? atCmd[62] : (endOfLine = true, "")); \
+    for(int i = 0; i < WALTER_MODEM_COMMAND_MAX_ELEMS; ++i) { \
+        if(atCmd[i] == NULL) { \
+            break; \
+        } \
+        _uart->write(atCmd[i]); \
+    } \
+    _uart->write(type == WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT ? "\n" : "\r\n"); \
+}
 #else
-#define _transmitCmd(type, atCmd)                                                                                                                      \
-    {                                                                                                                                                  \
-        ESP_LOGD((endOfLine = false, "WalterModem"),                                                                                                   \
-                 "TX: %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", \
-                 (!endOfLine && atCmd[0]) ? atCmd[0] : (endOfLine = true, ""),                                                                         \
-                 (!endOfLine && atCmd[1]) ? atCmd[1] : (endOfLine = true, ""),                                                                         \
-                 (!endOfLine && atCmd[2]) ? atCmd[2] : (endOfLine = true, ""),                                                                         \
-                 (!endOfLine && atCmd[3]) ? atCmd[3] : (endOfLine = true, ""),                                                                         \
-                 (!endOfLine && atCmd[4]) ? atCmd[4] : (endOfLine = true, ""),                                                                         \
-                 (!endOfLine && atCmd[5]) ? atCmd[5] : (endOfLine = true, ""),                                                                         \
-                 (!endOfLine && atCmd[6]) ? atCmd[6] : (endOfLine = true, ""),                                                                         \
-                 (!endOfLine && atCmd[7]) ? atCmd[7] : (endOfLine = true, ""),                                                                         \
-                 (!endOfLine && atCmd[8]) ? atCmd[8] : (endOfLine = true, ""),                                                                         \
-                 (!endOfLine && atCmd[9]) ? atCmd[9] : (endOfLine = true, ""),                                                                         \
-                 (!endOfLine && atCmd[10]) ? atCmd[10] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[11]) ? atCmd[11] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[12]) ? atCmd[12] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[13]) ? atCmd[13] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[14]) ? atCmd[14] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[15]) ? atCmd[15] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[16]) ? atCmd[16] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[17]) ? atCmd[17] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[18]) ? atCmd[18] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[19]) ? atCmd[19] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[20]) ? atCmd[20] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[21]) ? atCmd[21] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[22]) ? atCmd[22] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[23]) ? atCmd[23] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[24]) ? atCmd[24] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[25]) ? atCmd[25] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[26]) ? atCmd[26] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[27]) ? atCmd[27] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[28]) ? atCmd[28] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[29]) ? atCmd[29] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[30]) ? atCmd[30] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[31]) ? atCmd[31] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[32]) ? atCmd[32] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[33]) ? atCmd[33] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[34]) ? atCmd[34] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[35]) ? atCmd[35] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[36]) ? atCmd[36] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[37]) ? atCmd[37] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[38]) ? atCmd[38] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[39]) ? atCmd[39] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[40]) ? atCmd[40] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[41]) ? atCmd[41] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[42]) ? atCmd[42] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[43]) ? atCmd[43] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[44]) ? atCmd[44] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[45]) ? atCmd[45] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[46]) ? atCmd[46] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[47]) ? atCmd[47] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[48]) ? atCmd[48] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[49]) ? atCmd[49] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[50]) ? atCmd[50] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[51]) ? atCmd[51] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[52]) ? atCmd[52] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[53]) ? atCmd[53] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[54]) ? atCmd[54] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[55]) ? atCmd[55] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[56]) ? atCmd[56] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[57]) ? atCmd[57] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[58]) ? atCmd[58] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[59]) ? atCmd[59] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[60]) ? atCmd[60] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[61]) ? atCmd[61] : (endOfLine = true, ""),                                                                       \
-                 (!endOfLine && atCmd[62]) ? atCmd[62] : (endOfLine = true, ""));                                                                      \
-        for (int i = 0; i < WALTER_MODEM_COMMAND_MAX_ELEMS; ++i)                                                                                       \
-        {                                                                                                                                              \
-            if (atCmd[i] == NULL)                                                                                                                      \
-            {                                                                                                                                          \
-                break;                                                                                                                                 \
-            }                                                                                                                                          \
-            uart_write_bytes((uart_port_t)_uartNo, atCmd[i], strlen(atCmd[i]));                                                                        \
-        }                                                                                                                                              \
-        if (type == WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT)                                                                                                \
-            uart_write_bytes((uart_port_t)_uartNo, "\n", 1);                                                                                           \
-        else                                                                                                                                           \
-            uart_write_bytes((uart_port_t)_uartNo, "\r\n", 2);                                                                                         \
-    }
+#define _transmitCmd(type, atCmd) { \
+    ESP_LOGD((endOfLine = false, "WalterModem"), \
+            "TX: %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", \
+            (!endOfLine && atCmd[0]) ? atCmd[0] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[1]) ? atCmd[1] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[2]) ? atCmd[2] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[3]) ? atCmd[3] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[4]) ? atCmd[4] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[5]) ? atCmd[5] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[6]) ? atCmd[6] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[7]) ? atCmd[7] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[8]) ? atCmd[8] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[9]) ? atCmd[9] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[10]) ? atCmd[10] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[11]) ? atCmd[11] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[12]) ? atCmd[12] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[13]) ? atCmd[13] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[14]) ? atCmd[14] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[15]) ? atCmd[15] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[16]) ? atCmd[16] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[17]) ? atCmd[17] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[18]) ? atCmd[18] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[19]) ? atCmd[19] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[20]) ? atCmd[20] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[21]) ? atCmd[21] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[22]) ? atCmd[22] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[23]) ? atCmd[23] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[24]) ? atCmd[24] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[25]) ? atCmd[25] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[26]) ? atCmd[26] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[27]) ? atCmd[27] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[28]) ? atCmd[28] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[29]) ? atCmd[29] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[30]) ? atCmd[30] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[31]) ? atCmd[31] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[32]) ? atCmd[32] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[33]) ? atCmd[33] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[34]) ? atCmd[34] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[35]) ? atCmd[35] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[36]) ? atCmd[36] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[37]) ? atCmd[37] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[38]) ? atCmd[38] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[39]) ? atCmd[39] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[40]) ? atCmd[40] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[41]) ? atCmd[41] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[42]) ? atCmd[42] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[43]) ? atCmd[43] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[44]) ? atCmd[44] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[45]) ? atCmd[45] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[46]) ? atCmd[46] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[47]) ? atCmd[47] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[48]) ? atCmd[48] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[49]) ? atCmd[49] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[50]) ? atCmd[50] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[51]) ? atCmd[51] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[52]) ? atCmd[52] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[53]) ? atCmd[53] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[54]) ? atCmd[54] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[55]) ? atCmd[55] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[56]) ? atCmd[56] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[57]) ? atCmd[57] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[58]) ? atCmd[58] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[59]) ? atCmd[59] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[60]) ? atCmd[60] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[61]) ? atCmd[61] : (endOfLine = true, ""), \
+            (!endOfLine && atCmd[62]) ? atCmd[62] : (endOfLine = true, "")); \
+    for(int i = 0; i < WALTER_MODEM_COMMAND_MAX_ELEMS; ++i) { \
+        if(atCmd[i] == NULL) { \
+            break; \
+        } \
+        uart_write_bytes((uart_port_t)_uartNo, atCmd[i], strlen(atCmd[i])); \
+    } \
+    if(type == WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT) \
+        uart_write_bytes((uart_port_t)_uartNo, "\n", 1); \
+    else \
+        uart_write_bytes((uart_port_t)_uartNo, "\r\n", 2); \
+}
 #endif
 
 RTC_DATA_ATTR WalterModemPDPContext _pdpCtxSetRTC[WALTER_MODEM_MAX_PDP_CTXTS] = {};
@@ -439,48 +429,47 @@ struct WalterModemStpResponseTransferBlock stpResponseTransferBlock;
 
 /**
  * @brief Convert a digit to a string literal.
- *
+ * 
  * This function converts a digit [0,9] into a string literal so that it can be
  * passed as an AT command element.
- *
+ * 
  * @param val The value to convert.
- *
- * @return The resulting string literal or an empty string when the value is
+ * 
+ * @return The resulting string literal or an empty string when the value is 
  * not in the [0,9] range.
  */
-static const char *_digitStr(int val)
+static const char* _digitStr(int val) 
 {
-    switch (val)
-    {
-    case 0:
-        return "0";
+    switch(val) {
+        case 0:
+            return "0";
 
-    case 1:
-        return "1";
+        case 1:
+            return "1";
 
-    case 2:
-        return "2";
+        case 2:
+            return "2";
 
-    case 3:
-        return "3";
+        case 3:
+            return "3";
 
-    case 4:
-        return "4";
+        case 4:
+            return "4";
 
-    case 5:
-        return "5";
+        case 5:
+            return "5";
 
-    case 6:
-        return "6";
+        case 6:
+            return "6";
 
-    case 7:
-        return "7";
+        case 7:
+            return "7";
 
-    case 8:
-        return "8";
+        case 8:
+            return "8";
 
-    case 9:
-        return "9";
+        case 9:
+            return "9";
     }
 
     return "";
@@ -488,80 +477,76 @@ static const char *_digitStr(int val)
 
 /**
  * @brief Convert a digit at a certain position in a number to a string literal.
- *
+ * 
  * This function will convert the digit from a certain integer into a string
  * literal. The position starts at 0 which is the leftmost digit of the number.
- * When position is bigger than the number of digits in the number an empty
+ * When position is bigger than the number of digits in the number an empty 
  * string literal is returned.
- *
+ * 
  * @param num The number to get the digit from.
  * @param pos The position of the digit, 0 is the leftmost digit.
- *
+ * 
  * @return The string literal which represents the digit.
  */
-static const char *_intToStrDigit(int num, int pos)
+static const char* _intToStrDigit(int num, int pos)
 {
     pos += 1;
     int pow = 1;
     int tmp = num;
     int digitCount = 1;
 
-    while (tmp >= 10)
-    {
+    while(tmp >= 10) {
         pow *= 10;
         tmp /= 10;
         digitCount += 1;
     }
-
-    if (pos > digitCount)
-    {
+    
+    if(pos > digitCount) {
         return "";
     }
 
     tmp = num;
     int digit = 0;
 
-    for (int i = 1; i <= pos; ++i)
-    {
-        digit = tmp / pow;
-        tmp %= pow;
-        pow /= 10;
+    for(int i = 1; i <= pos; ++i) {
+       digit = tmp/pow;
+       tmp %= pow;
+       pow /= 10;
     }
-
+    
     return _digitStr(digit);
 }
 
 /**
  * @brief Convert a PDP type to a string
- *
+ * 
  * @param type The PDP type to convert.
- *
+ * 
  * @return The resulting string literal.
  */
-static const char *_pdpTypeStr(WalterModemPDPType type)
+static const char* _pdpTypeStr(WalterModemPDPType type)
 {
-    switch (type)
-    {
-    case WALTER_MODEM_PDP_TYPE_X25:
-        return "X.25";
+    switch(type) {
+        case WALTER_MODEM_PDP_TYPE_X25:
+            return "X.25";
 
-    case WALTER_MODEM_PDP_TYPE_IP:
-        return "IP";
-
-    case WALTER_MODEM_PDP_TYPE_IPV6:
-        return "IPV6";
-
-    case WALTER_MODEM_PDP_TYPE_IPV4V6:
-        return "IPV4V6";
-
-    case WALTER_MODEM_PDP_TYPE_OSPIH:
-        return "OSPIH";
-
-    case WALTER_MODEM_PDP_TYPE_PPP:
-        return "PPP";
-
-    case WALTER_MODEM_PDP_TYPE_NON_IP:
-        return "Non-IP";
+        case WALTER_MODEM_PDP_TYPE_IP:
+            return "IP";
+            
+        case WALTER_MODEM_PDP_TYPE_IPV6:
+            return "IPV6";
+            
+        case WALTER_MODEM_PDP_TYPE_IPV4V6:
+            return "IPV4V6";
+            
+        case WALTER_MODEM_PDP_TYPE_OSPIH:
+            return "OSPIH";
+            
+        case WALTER_MODEM_PDP_TYPE_PPP:
+            return "PPP";
+            
+        case WALTER_MODEM_PDP_TYPE_NON_IP:
+            return "Non-IP";
     }
 
     return "";
@@ -569,23 +554,22 @@ static const char *_pdpTypeStr(WalterModemPDPType type)
 
 /**
  * @brief Convert a time string to a unix timestamp.
- *
+ * 
  * No time zone is taken into consideration.
  * If the time string is a local time, the time zone offset
  * must be compensated afterwards.
- *
+ * 
  * @param timeStr The string to convert.
  * @param format The time format to parse.
- *
- * @return The unix timestamp or -1 on error.
+ * 
+ * @return The unix timestamp or -1 on error. 
  */
 static int64_t strTotime(
     const char *timeStr,
     const char *format = "%Y-%m-%dT%H:%M:%S")
 {
     struct tm tm{};
-    if (strptime(timeStr, format, &tm) == NULL)
-    {
+    if(strptime(timeStr, format, &tm) == NULL) {
         return -1;
     }
 
@@ -595,12 +579,12 @@ static int64_t strTotime(
 
     time_t utcTime = std::mktime(&tm);
 
-    return (int64_t)utcTime;
+    return (int64_t) utcTime;
 }
 
 bool strToUint(const char *str, int len, uint32_t *result, int radix)
 {
-    size_t l = len == -1 ? strlen(str) : (size_t)len;
+    size_t l = len == -1 ? strlen(str) : (size_t) len;
 
     /* Create a temp buffer to make the string 0-terminated */
     char buff[l + 1];
@@ -611,29 +595,18 @@ bool strToUint(const char *str, int len, uint32_t *result, int radix)
     errno = 0;
     long long int sl = strtol(buff, &end, radix);
 
-    if (end == buff)
-    {
+    if(end == buff) {
         return false;
-    }
-    else if ('\0' != *end)
-    {
+    } else if ('\0' != *end) {
         return false;
-    }
-    else if (errno == ERANGE)
-    {
+    } else if(errno == ERANGE) {
         return false;
-    }
-    else if (sl > UINT32_MAX)
-    {
+    } else if (sl > UINT32_MAX) {
         return false;
-    }
-    else if (sl < 0)
-    {
+    } else if (sl < 0) {
         return false;
-    }
-    else
-    {
-        *result = (uint32_t)sl;
+    } else {
+        *result = (uint32_t) sl;
         return true;
     }
 
@@ -642,7 +615,7 @@ bool strToUint(const char *str, int len, uint32_t *result, int radix)
 
 bool strToFloat(const char *str, int len, float *result)
 {
-    size_t l = len == -1 ? strlen(str) : (size_t)len;
+    size_t l = len == -1 ? strlen(str) : (size_t) len;
 
     /* Create a temp buffer to make the string 0-terminated */
     char buff[l + 1];
@@ -653,29 +626,22 @@ bool strToFloat(const char *str, int len, float *result)
     errno = 0;
     *result = strtof(buff, &end);
 
-    if (end == buff)
-    {
+    if(end == buff) {
         return false;
-    }
-    else if ('\0' != *end)
-    {
+    } else if ('\0' != *end) {
         return false;
-    }
-    else if (errno == ERANGE)
-    {
+    } else if(errno == ERANGE) {
         return false;
     }
 
     return true;
 }
 
-WalterModemCmd *WalterModem::_cmdPoolGet()
+WalterModemCmd* WalterModem::_cmdPoolGet()
 {
-    for (size_t i = 0; i < WALTER_MODEM_MAX_PENDING_COMMANDS; ++i)
-    {
+    for(size_t i = 0; i < WALTER_MODEM_MAX_PENDING_COMMANDS; ++i) {
         WalterModemCmd *cmd = _cmdPool + i;
-        if (cmd->state == WALTER_MODEM_CMD_STATE_FREE)
-        {
+        if(cmd->state == WALTER_MODEM_CMD_STATE_FREE) {
             cmd->state = WALTER_MODEM_CMD_STATE_POOLED;
             return cmd;
         }
@@ -684,10 +650,10 @@ WalterModemCmd *WalterModem::_cmdPoolGet()
     return NULL;
 }
 
-WalterModemCmd *WalterModem::_cmdQueuePop()
+WalterModemCmd* WalterModem::_cmdQueuePop()
 {
-    if (_cmdQueue.inIdx == _cmdQueue.outIdx &&
-        _cmdQueue.queue[_cmdQueue.outIdx] == NULL)
+    if(_cmdQueue.inIdx == _cmdQueue.outIdx &&
+       _cmdQueue.queue[_cmdQueue.outIdx] == NULL)
     {
         /* The queue is empty */
         return NULL;
@@ -696,8 +662,7 @@ WalterModemCmd *WalterModem::_cmdQueuePop()
     WalterModemCmd *cmd = _cmdQueue.queue[_cmdQueue.outIdx];
     _cmdQueue.queue[_cmdQueue.outIdx] = NULL;
     _cmdQueue.outIdx += 1;
-    if (_cmdQueue.outIdx == WALTER_MODEM_MAX_PENDING_COMMANDS)
-    {
+    if(_cmdQueue.outIdx == WALTER_MODEM_MAX_PENDING_COMMANDS) {
         _cmdQueue.outIdx = 0;
     }
     return cmd;
@@ -705,8 +670,8 @@ WalterModemCmd *WalterModem::_cmdQueuePop()
 
 bool WalterModem::_cmdQueuePut(WalterModemCmd *cmd)
 {
-    if (_cmdQueue.inIdx == _cmdQueue.outIdx &&
-        _cmdQueue.queue[_cmdQueue.outIdx] != NULL)
+    if(_cmdQueue.inIdx == _cmdQueue.outIdx &&
+       _cmdQueue.queue[_cmdQueue.outIdx] != NULL)
     {
         /* The queue is full */
         return false;
@@ -715,21 +680,18 @@ bool WalterModem::_cmdQueuePut(WalterModemCmd *cmd)
     _cmdQueue.queue[_cmdQueue.inIdx] = cmd;
 
     _cmdQueue.inIdx += 1;
-    if (_cmdQueue.inIdx == WALTER_MODEM_MAX_PENDING_COMMANDS)
-    {
+    if(_cmdQueue.inIdx == WALTER_MODEM_MAX_PENDING_COMMANDS) {
         _cmdQueue.inIdx = 0;
     }
     return true;
 }
 
-WalterModemPDPContext *WalterModem::_pdpContextReserve()
+WalterModemPDPContext* WalterModem::_pdpContextReserve()
 {
     WalterModemPDPContext *ctx = NULL;
 
-    for (int i = 0; i < WALTER_MODEM_MAX_PDP_CTXTS; ++i)
-    {
-        if (_pdpCtxSet[i].state == WALTER_MODEM_PDP_CONTEXT_STATE_FREE)
-        {
+    for(int i = 0; i < WALTER_MODEM_MAX_PDP_CTXTS; ++i) {
+        if(_pdpCtxSet[i].state == WALTER_MODEM_PDP_CONTEXT_STATE_FREE) {
             ctx = _pdpCtxSet + i;
             ctx->state = WALTER_MODEM_PDP_CONTEXT_STATE_RESERVED;
             ctx->id = i + 1;
@@ -737,25 +699,22 @@ WalterModemPDPContext *WalterModem::_pdpContextReserve()
         }
     }
 
-    if (ctx != NULL)
-    {
+    if(ctx != NULL) {
         _pdpCtx = ctx;
     }
 
     return ctx;
 }
 
-WalterModemPDPContext *WalterModem::_pdpContextGet(int id)
+WalterModemPDPContext* WalterModem::_pdpContextGet(int id)
 {
-    if (id < 0)
-    {
+    if(id < 0) {
         return _pdpCtx;
     }
 
-    for (int i = 0; i < WALTER_MODEM_MAX_PDP_CTXTS; ++i)
-    {
-        if (_pdpCtxSet[i].state != WALTER_MODEM_PDP_CONTEXT_STATE_FREE &&
-            _pdpCtxSet[i].id == id)
+    for(int i = 0; i < WALTER_MODEM_MAX_PDP_CTXTS; ++i) {
+        if(_pdpCtxSet[i].state != WALTER_MODEM_PDP_CONTEXT_STATE_FREE &&
+           _pdpCtxSet[i].id == id)
         {
             _pdpCtx = _pdpCtxSet + i;
             return _pdpCtxSet + i;
@@ -767,8 +726,7 @@ WalterModemPDPContext *WalterModem::_pdpContextGet(int id)
 
 void WalterModem::_pdpContextRelease(WalterModemPDPContext *ctx)
 {
-    if (ctx == NULL)
-    {
+    if(ctx == NULL) {
         return;
     }
 
@@ -777,35 +735,30 @@ void WalterModem::_pdpContextRelease(WalterModemPDPContext *ctx)
 
 void WalterModem::_saveRTCPdpContextSet(WalterModemPDPContext *_pdpCtxSetRTC)
 {
-    for (int i = 0; i < WALTER_MODEM_MAX_PDP_CTXTS; ++i)
-    {
+    for(int i = 0; i < WALTER_MODEM_MAX_PDP_CTXTS; ++i) {
         _pdpCtxSetRTC[i] = _pdpCtxSet[i];
     }
 }
 
 void WalterModem::_loadRTCPdpContextSet(WalterModemPDPContext *_pdpCtxSetRTC)
 {
-    if (_pdpCtxSetRTC == NULL)
-    {
+    if(_pdpCtxSetRTC == NULL){
         return;
     }
 
-    for (int i = 0; i < WALTER_MODEM_MAX_PDP_CTXTS; ++i)
-    {
+    for(int i = 0; i < WALTER_MODEM_MAX_PDP_CTXTS; ++i) {
         _pdpCtxSet[i] = _pdpCtxSetRTC[i];
     }
 
     _pdpCtx = _pdpCtxSet;
 }
 
-WalterModemSocket *WalterModem::_socketReserve()
+WalterModemSocket* WalterModem::_socketReserve()
 {
     WalterModemSocket *sock = NULL;
 
-    for (int i = 0; i < WALTER_MODEM_MAX_SOCKETS; ++i)
-    {
-        if (_socketSet[i].state == WALTER_MODEM_SOCKET_STATE_FREE)
-        {
+    for(int i = 0; i < WALTER_MODEM_MAX_SOCKETS; ++i) {
+        if(_socketSet[i].state == WALTER_MODEM_SOCKET_STATE_FREE) {
             sock = _socketSet + i;
             sock->state = WALTER_MODEM_SOCKET_STATE_RESERVED;
             sock->id = i + 1;
@@ -813,25 +766,22 @@ WalterModemSocket *WalterModem::_socketReserve()
         }
     }
 
-    if (sock != NULL)
-    {
+    if(sock != NULL) {
         _socket = sock;
     }
 
     return sock;
 }
 
-WalterModemSocket *WalterModem::_socketGet(int id)
+WalterModemSocket* WalterModem::_socketGet(int id)
 {
-    if (id < 0)
-    {
+    if(id < 0) {
         return _socket;
     }
 
-    for (int i = 0; i < WALTER_MODEM_MAX_SOCKETS; ++i)
-    {
-        if (_socketSet[i].state != WALTER_MODEM_SOCKET_STATE_FREE &&
-            _socketSet[i].id == id)
+    for(int i = 0; i < WALTER_MODEM_MAX_SOCKETS; ++i) {
+        if(_socketSet[i].state != WALTER_MODEM_SOCKET_STATE_FREE &&
+           _socketSet[i].id == id)
         {
             _socket = _socketSet + i;
             return _socketSet + i;
@@ -843,22 +793,19 @@ WalterModemSocket *WalterModem::_socketGet(int id)
 
 void WalterModem::_socketRelease(WalterModemSocket *sock)
 {
-    if (sock == NULL)
-    {
+    if(sock == NULL) {
         return;
     }
 
     sock->state = WALTER_MODEM_SOCKET_STATE_FREE;
 }
 
-WalterModemBuffer *WalterModem::_getFreeBuffer(void)
+WalterModemBuffer* WalterModem::_getFreeBuffer(void)
 {
-    WalterModemBuffer *chosenBuf = NULL;
+    WalterModemBuffer* chosenBuf = NULL;
 
-    for (int i = 0; i < WALTER_MODEM_BUFFER_POOL_SIZE; ++i)
-    {
-        if (_bufferPool[i].free)
-        {
+    for(int i = 0; i < WALTER_MODEM_BUFFER_POOL_SIZE; ++i) {
+        if(_bufferPool[i].free) {
             chosenBuf = _bufferPool + i;
             chosenBuf->free = false;
             chosenBuf->size = 0;
@@ -872,65 +819,68 @@ WalterModemBuffer *WalterModem::_getFreeBuffer(void)
 
 void WalterModem::_addATByteToBuffer(char data, bool raw)
 {
-    // TODO: in the future we must be aware of length, or at least check if the
-    // ending \r\n is escaped when data is transmitted.
-    if (!raw && data == '\r')
-    {
+    //TODO: in the future we must be aware of length, or at least check if the
+    //ending \r\n is escaped when data is transmitted.
+    if(!raw && data == '\r') {
         _parserData.state = WALTER_MODEM_RSP_PARSER_END_LF;
         return;
     }
 
     /* Try to get a free response buffer from the pool */
-    if (_parserData.buf == NULL)
-    {
+    if(_parserData.buf == NULL) {
         _parserData.buf = _getFreeBuffer();
     }
-
-    /*
+    
+    /* 
      * The buffer could be NULL when all buffers in the pool are in use. When
      * this happens we will continue parsing but drop the fully parsed command.
      */
-    if (_parserData.buf != NULL)
-    {
+    if(_parserData.buf != NULL) {
         _parserData.buf->data[_parserData.buf->size++] = data;
     }
 }
 
 uint16_t WalterModem::_extractRawBufferChunkSize()
 {
-    if (_parserData.buf == NULL || !_parserData.buf->size)
-    {
+    if(_parserData.buf == NULL || !_parserData.buf->size) {
         return 0;
     }
 
-    // TODO: add cases to parse SQNSRING length
+    //TODO: add cases to parse SQNSRING length
 
     /* parse +SQNCOAPRCV raw data chunk size */
-    if (_parserData.buf->size > _strLitLen("+SQNCOAPRCV: ") && _parserData.buf->data[0] == '+' && _parserData.buf->data[1] == 'S' && _parserData.buf->data[2] == 'Q' && _parserData.buf->data[3] == 'N' && _parserData.buf->data[4] == 'C' && _parserData.buf->data[5] == 'O' && _parserData.buf->data[6] == 'A' && _parserData.buf->data[7] == 'P' && _parserData.buf->data[8] == 'R' && _parserData.buf->data[9] == 'C' && _parserData.buf->data[10] == 'V' && _parserData.buf->data[11] == ':' && _parserData.buf->data[12] == ' ')
-    {
+    if(_parserData.buf->size > _strLitLen("+SQNCOAPRCV: ")
+            && _parserData.buf->data[0] == '+'
+            && _parserData.buf->data[1] == 'S'
+            && _parserData.buf->data[2] == 'Q'
+            && _parserData.buf->data[3] == 'N'
+            && _parserData.buf->data[4] == 'C'
+            && _parserData.buf->data[5] == 'O'
+            && _parserData.buf->data[6] == 'A'
+            && _parserData.buf->data[7] == 'P'
+            && _parserData.buf->data[8] == 'R'
+            && _parserData.buf->data[9] == 'C'
+            && _parserData.buf->data[10] == 'V'
+            && _parserData.buf->data[11] == ':'
+            && _parserData.buf->data[12] == ' ') {
         uint8_t nrCommasSeen = 0;
         short i = _strLitLen("+SQNCOAPRCV: ");
-        for (; i < _parserData.buf->size && nrCommasSeen < 6; i++)
-        {
-            if (_parserData.buf->data[i] == ',')
-            {
+        for(; i < _parserData.buf->size && nrCommasSeen < 6; i++) {
+            if(_parserData.buf->data[i] == ',') {
                 nrCommasSeen++;
             }
         }
 
-        if (nrCommasSeen == 6)
-        {
+        if(nrCommasSeen == 6) {
             uint16_t chunkSize = 0;
-            for (; i < _parserData.buf->size; i++)
-            {
+            for(; i < _parserData.buf->size; i++) {
                 chunkSize *= 10;
                 chunkSize += (_parserData.buf->data[i] - '0');
             }
 
-            return chunkSize + _strLitLen("\r\nOK\r\n") + (chunkSize ? _strLitLen("\r\n") : 0);
-        }
-        else
-        {
+            return chunkSize + _strLitLen("\r\nOK\r\n")
+                + (chunkSize ? _strLitLen("\r\n") : 0);
+        } else {
             return _strLitLen("\r\nOK\r\n");
         }
     }
@@ -940,16 +890,13 @@ uint16_t WalterModem::_extractRawBufferChunkSize()
 
 void WalterModem::_queueRxBuffer()
 {
-    if (_parserData.buf != NULL)
-    {
-        if (_parserData.buf->size > 0)
-        {
+    if(_parserData.buf != NULL) {
+        if(_parserData.buf->size > 0) {
             WalterModemTaskQueueItem qItem = {};
             qItem.rsp = _parserData.buf;
 
-            if (xQueueSend(_taskQueue.handle, &qItem, 0) != pdTRUE)
-            {
-                /*
+            if(xQueueSend(_taskQueue.handle, &qItem, 0) != pdTRUE) {
+                /* 
                  * When we can not send the buffer to the queue we
                  * release it immediately and thus drop the packet.
                  * In the other case the buffer will be released by
@@ -968,21 +915,18 @@ size_t WalterModem::_uartRead(uint8_t *buf, int readSize, bool tryHard)
     size_t totalBytesRead = 0;
 
 #ifdef ARDUINO
-    do
-    {
+    do {
         totalBytesRead += _uart->readBytes(buf, readSize - totalBytesRead);
-    } while (tryHard && totalBytesRead < readSize);
+    } while(tryHard && totalBytesRead < readSize);
 #else
-    do
-    {
-        int bytesRead = uart_read_bytes((uart_port_t)_uartNo, buf, readSize - totalBytesRead,
-                                        WALTER_MODEM_CMD_TIMEOUT_TICKS);
-        if (bytesRead < 0)
-        {
-            break;
-        }
-        totalBytesRead += bytesRead;
-    } while (tryHard && totalBytesRead < readSize);
+    do {
+       int bytesRead = uart_read_bytes((uart_port_t)_uartNo, buf, readSize - totalBytesRead,
+            WALTER_MODEM_CMD_TIMEOUT_TICKS);
+       if(bytesRead < 0) {
+           break;
+       }
+       totalBytesRead += bytesRead;
+    } while(tryHard && totalBytesRead < readSize);
 #endif
 
     return totalBytesRead;
@@ -1001,42 +945,34 @@ size_t WalterModem::_uartWrite(uint8_t *buf, int writeSize)
     return writeSize;
 }
 
-// TODO: check if the modem response is not longer than the buffer size
+//TODO: check if the modem response is not longer than the buffer size
 #ifdef ARDUINO
 void WalterModem::_handleRxData(void)
 {
-    if (_rxHandlerInterrupted)
-    {
+    if(_rxHandlerInterrupted) {
         return;
     }
 
     static char incomingBuf[UART_BUF_SIZE];
 
     int uartBufLen = _uart->available();
-    if (uartBufLen > UART_BUF_SIZE)
-    {
+    if(uartBufLen > UART_BUF_SIZE) {
         uartBufLen = UART_BUF_SIZE;
     }
-    if (!uartBufLen)
-    {
+    if(!uartBufLen) {
         return;
     }
 
-    uartBufLen = _uartRead((uint8_t *)incomingBuf, uartBufLen);
+    uartBufLen = _uartRead((uint8_t *) incomingBuf, uartBufLen);
 
-    for (size_t i = 0; i < uartBufLen; ++i)
-    {
+    for(size_t i = 0; i < uartBufLen; ++i) {
         char data = incomingBuf[i];
-
-        switch (_parserData.state)
-        {
+        
+        switch (_parserData.state) {
         case WALTER_MODEM_RSP_PARSER_START_CR:
-            if (data == '\r')
-            {
+            if(data == '\r') {
                 _parserData.state = WALTER_MODEM_RSP_PARSER_START_LF;
-            }
-            else if (data == '+')
-            {
+            } else if(data == '+') {
                 /* This is the start of a new line in a multiline response */
                 _parserData.state = WALTER_MODEM_RSP_PARSER_DATA;
                 _addATByteToBuffer(data, false);
@@ -1044,40 +980,30 @@ void WalterModem::_handleRxData(void)
             break;
 
         case WALTER_MODEM_RSP_PARSER_START_LF:
-            if (data == '\n')
-            {
+            if(data == '\n') {
                 _parserData.state = WALTER_MODEM_RSP_PARSER_DATA;
             }
             break;
 
         case WALTER_MODEM_RSP_PARSER_DATA:
-            if (data == '>')
-            {
+            if(data == '>') {
                 _parserData.state = WALTER_MODEM_RSP_PARSER_DATA_PROMPT;
-            }
-            else if (data == '<')
-            {
+            } else if(data == '<') {
                 _parserData.state = WALTER_MODEM_RSP_PARSER_DATA_HTTP_START1;
             }
             _addATByteToBuffer(data, false);
             break;
-
+       
         case WALTER_MODEM_RSP_PARSER_DATA_PROMPT:
             _addATByteToBuffer(data, false);
-            if (data == ' ')
-            {
+            if(data == ' ') {
                 _parserData.state = WALTER_MODEM_RSP_PARSER_START_CR;
                 _queueRxBuffer();
-            }
-            else if (data == '>')
-            {
+            } else if(data == '>') {
                 _parserData.state = WALTER_MODEM_RSP_PARSER_DATA_PROMPT_HTTP;
-            }
-            else
-            {
+            } else {
                 /* state might have changed after detecting end \r */
-                if (_parserData.state == WALTER_MODEM_RSP_PARSER_DATA_PROMPT)
-                {
+                if(_parserData.state == WALTER_MODEM_RSP_PARSER_DATA_PROMPT) {
                     _parserData.state = WALTER_MODEM_RSP_PARSER_DATA;
                 }
             }
@@ -1085,70 +1011,56 @@ void WalterModem::_handleRxData(void)
 
         case WALTER_MODEM_RSP_PARSER_DATA_PROMPT_HTTP:
             _addATByteToBuffer(data, false);
-            if (data == '>')
-            {
+            if(data == '>') {
                 _parserData.state = WALTER_MODEM_RSP_PARSER_START_CR;
                 _queueRxBuffer();
-            }
-            else
-            {
+            } else {
                 /* state might have changed after detecting end \r */
-                if (_parserData.state == WALTER_MODEM_RSP_PARSER_DATA_PROMPT_HTTP)
-                {
+                if(_parserData.state == WALTER_MODEM_RSP_PARSER_DATA_PROMPT_HTTP) {
                     _parserData.state = WALTER_MODEM_RSP_PARSER_DATA;
                 }
             }
             break;
 
         case WALTER_MODEM_RSP_PARSER_DATA_HTTP_START1:
-            if (data == '<')
-            {
+            if(data == '<') {
                 _parserData.state = WALTER_MODEM_RSP_PARSER_DATA_HTTP_START2;
-            }
-            else
-            {
+            } else {
                 _parserData.state = WALTER_MODEM_RSP_PARSER_DATA;
             }
             _addATByteToBuffer(data, false);
             break;
 
         case WALTER_MODEM_RSP_PARSER_DATA_HTTP_START2:
-            if (data == '<' && _httpCurrentProfile < WALTER_MODEM_MAX_HTTP_PROFILES)
-            {
+            if(data == '<'
+                    && _httpCurrentProfile < WALTER_MODEM_MAX_HTTP_PROFILES) {
                 /* FIXME:
                  * - modem might block longer than cmd timeout,
                  *   will lead to retry, error etc - fix properly
                  * - no buffer size checking!
                  */
                 _parserData.rawChunkSize =
-                    _httpContextSet[_httpCurrentProfile].contentLength + _strLitLen("\r\nOK\r\n");
+                    _httpContextSet[_httpCurrentProfile].contentLength
+                    + _strLitLen("\r\nOK\r\n");
                 _parserData.state = WALTER_MODEM_RSP_PARSER_RAW;
-            }
-            else
-            {
+            } else {
                 _parserData.state = WALTER_MODEM_RSP_PARSER_DATA;
             }
             _addATByteToBuffer(data, false);
             break;
 
         case WALTER_MODEM_RSP_PARSER_END_LF:
-            if (data == '\n')
-            {
+            if(data == '\n') {
                 uint16_t chunkSize = _extractRawBufferChunkSize();
-                if (chunkSize)
-                {
+                if(chunkSize) {
                     _parserData.rawChunkSize = chunkSize;
                     _parserData.buf->data[_parserData.buf->size++] = '\r';
                     _parserData.state = WALTER_MODEM_RSP_PARSER_RAW;
-                }
-                else
-                {
+                } else {
                     _parserData.state = WALTER_MODEM_RSP_PARSER_START_CR;
                     _queueRxBuffer();
                 }
-            }
-            else
-            {
+            } else {
                 /* only now we know the \r was thrown away for no good reason */
                 _parserData.buf->data[_parserData.buf->size++] = '\r';
 
@@ -1157,8 +1069,7 @@ void WalterModem::_handleRxData(void)
                  * (but > will not lead to data prompt mode)
                  */
                 _addATByteToBuffer(data, false);
-                if (data != '\r')
-                {
+                if(data != '\r') {
                     _parserData.state = WALTER_MODEM_RSP_PARSER_DATA;
                 }
             }
@@ -1168,8 +1079,7 @@ void WalterModem::_handleRxData(void)
             _addATByteToBuffer(data, true);
             _parserData.rawChunkSize--;
 
-            if (_parserData.rawChunkSize == 0)
-            {
+            if(_parserData.rawChunkSize == 0) {
                 _parserData.state = WALTER_MODEM_RSP_PARSER_START_CR;
                 _queueRxBuffer();
             }
@@ -1184,45 +1094,35 @@ void WalterModem::_handleRxData(void *params)
     static char incomingBuf[UART_BUF_SIZE];
 
     /* init watchdog for uart rx task on ESP-IDF */
-    if (_watchdogTimeout)
-    {
+    if(_watchdogTimeout) {
         esp_task_wdt_add(NULL);
     }
 
-    for (;;)
-    {
+    for(;;) {
         tickleWatchdog();
 
-        if (_rxHandlerInterrupted)
-        {
+        if(_rxHandlerInterrupted) {
             vTaskDelay(pdMS_TO_TICKS(1000));
             continue;
         }
 
-        uart_get_buffered_data_len((uart_port_t)_uartNo, (size_t *)&uartBufLen);
-        if (uartBufLen > UART_BUF_SIZE)
-        {
+        uart_get_buffered_data_len((uart_port_t)_uartNo, (size_t *) &uartBufLen);
+        if(uartBufLen > UART_BUF_SIZE) {
             uartBufLen = UART_BUF_SIZE;
         }
-        if (!uartBufLen)
-        {
+        if(!uartBufLen) {
             /* if nothing available, yield by waiting for 1 new byte */
             uartBufLen = 1;
         }
-        uartBufLen = _uartRead((uint8_t *)incomingBuf, uartBufLen);
-        for (size_t idxNow = 0; idxNow < uartBufLen; idxNow++)
-        {
+        uartBufLen = _uartRead((uint8_t *) incomingBuf, uartBufLen);
+        for(size_t idxNow = 0; idxNow < uartBufLen; idxNow++) {
             char data = incomingBuf[idxNow];
 
-            switch (_parserData.state)
-            {
+            switch (_parserData.state) {
             case WALTER_MODEM_RSP_PARSER_START_CR:
-                if (data == '\r')
-                {
+                if(data == '\r') {
                     _parserData.state = WALTER_MODEM_RSP_PARSER_START_LF;
-                }
-                else if (data == '+')
-                {
+                } else if(data == '+') {
                     /* This is the start of a new line in a multiline response */
                     _parserData.state = WALTER_MODEM_RSP_PARSER_DATA;
                     _addATByteToBuffer(data, false);
@@ -1230,40 +1130,30 @@ void WalterModem::_handleRxData(void *params)
                 break;
 
             case WALTER_MODEM_RSP_PARSER_START_LF:
-                if (data == '\n')
-                {
+                if(data == '\n') {
                     _parserData.state = WALTER_MODEM_RSP_PARSER_DATA;
                 }
                 break;
 
             case WALTER_MODEM_RSP_PARSER_DATA:
-                if (data == '>')
-                {
+                if(data == '>') {
                     _parserData.state = WALTER_MODEM_RSP_PARSER_DATA_PROMPT;
-                }
-                else if (data == '<')
-                {
+                } else if(data == '<') {
                     _parserData.state = WALTER_MODEM_RSP_PARSER_DATA_HTTP_START1;
                 }
                 _addATByteToBuffer(data, false);
                 break;
-
+       
             case WALTER_MODEM_RSP_PARSER_DATA_PROMPT:
                 _addATByteToBuffer(data, false);
-                if (data == ' ')
-                {
+                if(data == ' ') {
                     _parserData.state = WALTER_MODEM_RSP_PARSER_START_CR;
                     _queueRxBuffer();
-                }
-                else if (data == '>')
-                {
+                } else if(data == '>') {
                     _parserData.state = WALTER_MODEM_RSP_PARSER_DATA_PROMPT_HTTP;
-                }
-                else
-                {
+                } else {
                     /* state might have changed after detecting end \r */
-                    if (_parserData.state == WALTER_MODEM_RSP_PARSER_DATA_PROMPT)
-                    {
+                    if(_parserData.state == WALTER_MODEM_RSP_PARSER_DATA_PROMPT) {
                         _parserData.state = WALTER_MODEM_RSP_PARSER_DATA;
                     }
                 }
@@ -1271,70 +1161,56 @@ void WalterModem::_handleRxData(void *params)
 
             case WALTER_MODEM_RSP_PARSER_DATA_PROMPT_HTTP:
                 _addATByteToBuffer(data, false);
-                if (data == '>')
-                {
+                if(data == '>') {
                     _parserData.state = WALTER_MODEM_RSP_PARSER_START_CR;
                     _queueRxBuffer();
-                }
-                else
-                {
+                } else {
                     /* state might have changed after detecting end \r */
-                    if (_parserData.state == WALTER_MODEM_RSP_PARSER_DATA_PROMPT_HTTP)
-                    {
+                    if(_parserData.state == WALTER_MODEM_RSP_PARSER_DATA_PROMPT_HTTP) {
                         _parserData.state = WALTER_MODEM_RSP_PARSER_DATA;
                     }
                 }
                 break;
 
             case WALTER_MODEM_RSP_PARSER_DATA_HTTP_START1:
-                if (data == '<')
-                {
+                if(data == '<') {
                     _parserData.state = WALTER_MODEM_RSP_PARSER_DATA_HTTP_START2;
-                }
-                else
-                {
+                } else {
                     _parserData.state = WALTER_MODEM_RSP_PARSER_DATA;
                 }
                 _addATByteToBuffer(data, false);
                 break;
 
             case WALTER_MODEM_RSP_PARSER_DATA_HTTP_START2:
-                if (data == '<' && _httpCurrentProfile < WALTER_MODEM_MAX_HTTP_PROFILES)
-                {
+                if(data == '<'
+                        && _httpCurrentProfile < WALTER_MODEM_MAX_HTTP_PROFILES) {
                     /* FIXME:
                      * - modem might block longer than cmd timeout,
                      *   will lead to retry, error etc - fix properly
                      * - no buffer size checking!
                      */
                     _parserData.rawChunkSize =
-                        _httpContextSet[_httpCurrentProfile].contentLength + _strLitLen("\r\nOK\r\n");
+                        _httpContextSet[_httpCurrentProfile].contentLength
+                        + _strLitLen("\r\nOK\r\n");
                     _parserData.state = WALTER_MODEM_RSP_PARSER_RAW;
-                }
-                else
-                {
+                } else {
                     _parserData.state = WALTER_MODEM_RSP_PARSER_DATA;
                 }
                 _addATByteToBuffer(data, false);
                 break;
 
             case WALTER_MODEM_RSP_PARSER_END_LF:
-                if (data == '\n')
-                {
+                if(data == '\n') {
                     uint16_t chunkSize = _extractRawBufferChunkSize();
-                    if (chunkSize)
-                    {
+                    if(chunkSize) {
                         _parserData.rawChunkSize = chunkSize;
                         _parserData.buf->data[_parserData.buf->size++] = '\r';
                         _parserData.state = WALTER_MODEM_RSP_PARSER_RAW;
-                    }
-                    else
-                    {
+                    } else {
                         _parserData.state = WALTER_MODEM_RSP_PARSER_START_CR;
                         _queueRxBuffer();
                     }
-                }
-                else
-                {
+                } else {
                     /* only now we know the \r was thrown away for no good reason */
                     _parserData.buf->data[_parserData.buf->size++] = '\r';
 
@@ -1343,8 +1219,7 @@ void WalterModem::_handleRxData(void *params)
                      * (but > will not lead to data prompt mode)
                      */
                     _addATByteToBuffer(data, false);
-                    if (data != '\r')
-                    {
+                    if(data != '\r') {
                         _parserData.state = WALTER_MODEM_RSP_PARSER_DATA;
                     }
                 }
@@ -1354,8 +1229,7 @@ void WalterModem::_handleRxData(void *params)
                 _addATByteToBuffer(data, true);
                 _parserData.rawChunkSize--;
 
-                if (_parserData.rawChunkSize == 0)
-                {
+                if(_parserData.rawChunkSize == 0) {
                     _parserData.state = WALTER_MODEM_RSP_PARSER_START_CR;
                     _queueRxBuffer();
                 }
@@ -1369,124 +1243,107 @@ void WalterModem::_handleRxData(void *params)
 void WalterModem::_queueProcessingTask(void *args)
 {
     /* init watchdog for internal queue processing task */
-    if (_watchdogTimeout)
-    {
+    if(_watchdogTimeout) {
         esp_task_wdt_add(NULL);
     }
 
-    WalterModemTaskQueueItem qItem = {};
+    WalterModemTaskQueueItem qItem = { };
     WalterModemCmd *curCmd = NULL;
     TickType_t blockTime = WALTER_MODEM_CMD_TIMEOUT_TICKS;
 
-    while (true)
-    {
+    while(true) {
         tickleWatchdog();
 
-        if (xQueueReceive(_taskQueue.handle, &qItem, blockTime) == pdTRUE)
-        {
-            if (qItem.cmd != NULL)
-            {
-                if (curCmd == NULL)
-                {
+        if(xQueueReceive(_taskQueue.handle, &qItem, blockTime) == pdTRUE) {
+            if(qItem.cmd != NULL) {
+                if(curCmd == NULL) {
                     curCmd = qItem.cmd;
-                }
-                else
-                {
-                    if (!_cmdQueuePut(qItem.cmd))
-                    {
+                } else {
+                    if(!_cmdQueuePut(qItem.cmd)) {
                         _processQueueCmd(qItem.cmd, true);
                     }
                 }
-            }
-            else if (qItem.rsp != NULL)
-            {
+            } else if(qItem.rsp != NULL) {
                 _processQueueRsp(curCmd, qItem.rsp);
             }
         }
 
         blockTime = WALTER_MODEM_CMD_TIMEOUT_TICKS;
 
-        if (curCmd != NULL)
-        {
-            switch (curCmd->state)
-            {
-            case WALTER_MODEM_CMD_STATE_FREE:
-            case WALTER_MODEM_CMD_STATE_POOLED:
-                /*
-                 * There was a programming issue, commands with these states
-                 * should never be sent to the queue. We are going to ignore
-                 * them.
-                 */
-                curCmd = NULL;
-                break;
+        if(curCmd != NULL) {
+            switch(curCmd->state) {
+                case WALTER_MODEM_CMD_STATE_FREE:
+                case WALTER_MODEM_CMD_STATE_POOLED:
+                    /* 
+                    * There was a programming issue, commands with these states
+                    * should never be sent to the queue. We are going to ignore
+                    * them.
+                    */
+                    curCmd = NULL;
+                    break;
 
-            case WALTER_MODEM_CMD_STATE_RETRY_AFTER_ERROR:
-                blockTime = _processQueueCmd(curCmd);
-                break;
+                case WALTER_MODEM_CMD_STATE_RETRY_AFTER_ERROR:
+                    blockTime = _processQueueCmd(curCmd);
+                    break;
 
-            case WALTER_MODEM_CMD_STATE_NEW:
-            case WALTER_MODEM_CMD_STATE_PENDING:
-                blockTime = _processQueueCmd(curCmd);
-                if (curCmd->state == WALTER_MODEM_CMD_STATE_COMPLETE)
-                {
+                case WALTER_MODEM_CMD_STATE_NEW:
+                case WALTER_MODEM_CMD_STATE_PENDING:
+                    blockTime = _processQueueCmd(curCmd);
+                    if(curCmd->state == WALTER_MODEM_CMD_STATE_COMPLETE) {
+                        curCmd->state = WALTER_MODEM_CMD_STATE_FREE;
+                        curCmd = NULL;
+                    }
+                    break;
+
+                
+                case WALTER_MODEM_CMD_STATE_SYNC_LOCK_NOTIFIED:
+                    /* We need to wait until the other thread is ready */
+                    break;
+
+                case WALTER_MODEM_CMD_STATE_COMPLETE:
                     curCmd->state = WALTER_MODEM_CMD_STATE_FREE;
                     curCmd = NULL;
-                }
-                break;
-
-            case WALTER_MODEM_CMD_STATE_SYNC_LOCK_NOTIFIED:
-                /* We need to wait until the other thread is ready */
-                break;
-
-            case WALTER_MODEM_CMD_STATE_COMPLETE:
-                curCmd->state = WALTER_MODEM_CMD_STATE_FREE;
-                curCmd = NULL;
-                break;
+                    break;
             }
         }
 
-        if (curCmd == NULL)
-        {
+        if(curCmd == NULL) {
             curCmd = _cmdQueuePop();
-            if (curCmd != NULL)
-            {
+            if(curCmd != NULL) {
                 blockTime = 0;
             }
         }
     }
 }
 
-WalterModemCmd *WalterModem::_addQueueCmd(
+WalterModemCmd* WalterModem::_addQueueCmd(
     const char *atCmd[WALTER_MODEM_COMMAND_MAX_ELEMS + 1],
     const char *atRsp,
     WalterModemRsp *rsp,
     walterModemCb userCb,
     void *userCbArgs,
     void (*completeHandler)(struct sWalterModemCmd *cmd,
-                            WalterModemState result),
+        WalterModemState result),
     void *completeHandlerArg,
     WalterModemCmdType type,
     uint8_t *data,
     uint16_t dataSize,
-    WalterModemBuffer *stringsBuffer,
+    WalterModemBuffer* stringsBuffer,
     uint8_t maxAttempts)
 {
     WalterModemCmd *cmd = _cmdPoolGet();
-    if (cmd == NULL)
-    {
+    if(cmd == NULL) {
         return NULL;
     }
 
-    for (size_t i = 0; i < WALTER_MODEM_COMMAND_MAX_ELEMS; ++i)
-    {
-        if (atCmd[i] == NULL)
-        {
+    for(size_t i = 0; i < WALTER_MODEM_COMMAND_MAX_ELEMS; ++i) {
+        if(atCmd[i] == NULL) {
             cmd->atCmd[i] = NULL;
             break;
         }
         cmd->atCmd[i] = atCmd[i];
     }
-    cmd->atCmd[WALTER_MODEM_COMMAND_MAX_ELEMS] = NULL;
+    cmd->atCmd[WALTER_MODEM_COMMAND_MAX_ELEMS] = NULL; 
     cmd->atRsp = atRsp;
     cmd->rsp = rsp == NULL ? &(cmd->rspMem) : rsp;
     cmd->userCb = userCb;
@@ -1507,11 +1364,9 @@ WalterModemCmd *WalterModem::_addQueueCmd(
     WalterModemTaskQueueItem qItem = {};
     qItem.cmd = cmd;
 
-    if (xQueueSend(_taskQueue.handle, &qItem, 0) != pdTRUE)
-    {
+    if(xQueueSend(_taskQueue.handle, &qItem, 0) != pdTRUE) {
         cmd->state = WALTER_MODEM_CMD_STATE_FREE;
-        if (stringsBuffer)
-        {
+        if(stringsBuffer) {
             stringsBuffer->free = true;
         }
 
@@ -1525,23 +1380,18 @@ void WalterModem::_finishQueueCmd(WalterModemCmd *cmd, WalterModemState result)
 {
     cmd->rsp->result = result;
 
-    if (cmd->stringsBuffer)
-    {
+    if(cmd->stringsBuffer) {
         cmd->stringsBuffer->free = true;
     }
 
-    if (cmd->completeHandler != NULL)
-    {
+    if(cmd->completeHandler != NULL) {
         cmd->completeHandler(cmd, result);
     }
 
-    if (cmd->userCb)
-    {
+    if(cmd->userCb) {
         cmd->userCb(cmd->rsp, cmd->userCbArgs);
         cmd->state = WALTER_MODEM_CMD_STATE_COMPLETE;
-    }
-    else
-    {
+    } else {
         cmd->state = WALTER_MODEM_CMD_STATE_SYNC_LOCK_NOTIFIED;
         std::unique_lock<std::mutex> lock{cmd->cmdLock.mutex};
         cmd->cmdLock.cond.notify_one();
@@ -1551,84 +1401,70 @@ void WalterModem::_finishQueueCmd(WalterModemCmd *cmd, WalterModemState result)
 
 TickType_t WalterModem::_processQueueCmd(WalterModemCmd *cmd, bool queueError)
 {
-    if (queueError)
-    {
+    if(queueError) {
         _finishQueueCmd(cmd, WALTER_MODEM_STATE_NO_MEMORY);
         return WALTER_MODEM_CMD_TIMEOUT_TICKS;
     }
 
-    switch (cmd->type)
-    {
-    case WALTER_MODEM_CMD_TYPE_TX:
-        _transmitCmd(cmd->type, cmd->atCmd);
-        cmd->state = WALTER_MODEM_CMD_STATE_PENDING;
-        _finishQueueCmd(cmd);
-        break;
-
-    case WALTER_MODEM_CMD_TYPE_TX_WAIT:
-    case WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT:
-        if (cmd->state == WALTER_MODEM_CMD_STATE_NEW)
-        {
-            /* hack for handling AT+SQNSMQTTRCVMESSAGE response */
-            if (cmd->type == WALTER_MODEM_CMD_TYPE_TX_WAIT && !strcmp(cmd->atCmd[0], "AT+SQNSMQTTRCVMESSAGE=0,"))
-            {
-                _parserData.state = WALTER_MODEM_RSP_PARSER_RAW;
-                /* add 4 bytes for prepending and trailing \r\n */
-                _parserData.rawChunkSize = cmd->dataSize + 4;
-            }
+    switch(cmd->type) {
+        case WALTER_MODEM_CMD_TYPE_TX:
             _transmitCmd(cmd->type, cmd->atCmd);
-            cmd->attempt = 1;
-            cmd->attemptStart = xTaskGetTickCount();
             cmd->state = WALTER_MODEM_CMD_STATE_PENDING;
-            return WALTER_MODEM_CMD_TIMEOUT_TICKS;
-        }
-        else
-        {
-            TickType_t diff = xTaskGetTickCount() - cmd->attemptStart;
-            bool timedOut = diff >= WALTER_MODEM_CMD_TIMEOUT_TICKS;
-            if (timedOut ||
-                cmd->state == WALTER_MODEM_CMD_STATE_RETRY_AFTER_ERROR)
-            {
-                if (cmd->attempt >= cmd->maxAttempts)
-                {
-                    _finishQueueCmd(cmd, timedOut ? WALTER_MODEM_STATE_TIMEOUT : WALTER_MODEM_STATE_ERROR);
-                }
-                else
-                {
-                    _transmitCmd(cmd->type, cmd->atCmd);
-                    cmd->attempt += 1;
-                    cmd->attemptStart = xTaskGetTickCount();
-                    cmd->state = WALTER_MODEM_CMD_STATE_PENDING;
-                    return WALTER_MODEM_CMD_TIMEOUT_TICKS;
-                }
-            }
-            else
-            {
-                return WALTER_MODEM_CMD_TIMEOUT_TICKS - diff;
-            }
-        }
-        break;
+            _finishQueueCmd(cmd);
+            break;
 
-    case WALTER_MODEM_CMD_TYPE_WAIT:
-        if (cmd->state == WALTER_MODEM_CMD_STATE_NEW)
-        {
-            cmd->attemptStart = xTaskGetTickCount();
-            cmd->state = WALTER_MODEM_CMD_STATE_PENDING;
-            return WALTER_MODEM_CMD_TIMEOUT_TICKS;
-        }
-        else
-        {
-            TickType_t diff = xTaskGetTickCount() - cmd->attemptStart;
-            if (diff >= WALTER_MODEM_CMD_TIMEOUT_TICKS)
-            {
-                _finishQueueCmd(cmd, WALTER_MODEM_STATE_TIMEOUT);
+        case WALTER_MODEM_CMD_TYPE_TX_WAIT:
+        case WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT:
+            if(cmd->state == WALTER_MODEM_CMD_STATE_NEW) {
+                /* hack for handling AT+SQNSMQTTRCVMESSAGE response */
+                if(cmd->type == WALTER_MODEM_CMD_TYPE_TX_WAIT
+                        && !strcmp(cmd->atCmd[0], "AT+SQNSMQTTRCVMESSAGE=0,")) {
+                    _parserData.state = WALTER_MODEM_RSP_PARSER_RAW;
+                    /* add 4 bytes for prepending and trailing \r\n */
+                    _parserData.rawChunkSize = cmd->dataSize + 4;
+                }
+                _transmitCmd(cmd->type, cmd->atCmd);
+                cmd->attempt = 1;
+                cmd->attemptStart = xTaskGetTickCount();
+                cmd->state = WALTER_MODEM_CMD_STATE_PENDING;
+                return WALTER_MODEM_CMD_TIMEOUT_TICKS;
+            } else {
+                TickType_t diff = xTaskGetTickCount() - cmd->attemptStart;
+                bool timedOut = diff >= WALTER_MODEM_CMD_TIMEOUT_TICKS;
+                if(timedOut || 
+                   cmd->state == WALTER_MODEM_CMD_STATE_RETRY_AFTER_ERROR)
+                {
+                    if(cmd->attempt >= cmd->maxAttempts) {
+                        _finishQueueCmd(cmd, timedOut ?
+                            WALTER_MODEM_STATE_TIMEOUT : 
+                            WALTER_MODEM_STATE_ERROR);
+                    } else {
+                        _transmitCmd(cmd->type, cmd->atCmd);
+                        cmd->attempt += 1;
+                        cmd->attemptStart = xTaskGetTickCount();
+                        cmd->state = WALTER_MODEM_CMD_STATE_PENDING;
+                        return WALTER_MODEM_CMD_TIMEOUT_TICKS;
+                    }
+                } else {
+                    return WALTER_MODEM_CMD_TIMEOUT_TICKS - diff;
+                }
             }
-            else
-            {
-                return diff;
+            break;
+
+        case WALTER_MODEM_CMD_TYPE_WAIT:
+            if(cmd->state == WALTER_MODEM_CMD_STATE_NEW) {
+                cmd->attemptStart = xTaskGetTickCount();
+                cmd->state = WALTER_MODEM_CMD_STATE_PENDING;
+                return WALTER_MODEM_CMD_TIMEOUT_TICKS;
+            } else {
+                TickType_t diff = xTaskGetTickCount() - cmd->attemptStart;
+                if(diff >= WALTER_MODEM_CMD_TIMEOUT_TICKS) {
+                    _finishQueueCmd(cmd, WALTER_MODEM_STATE_TIMEOUT);
+                } else {
+                    return diff;
+                }
             }
-        }
-        break;
+            break;
     }
 
     return WALTER_MODEM_CMD_TIMEOUT_TICKS;
@@ -1636,10 +1472,9 @@ TickType_t WalterModem::_processQueueCmd(WalterModemCmd *cmd, bool queueError)
 
 static void coap_received_from_bluecherry(const WalterModemRsp *rsp, void *args)
 {
-    WalterModemBlueCherryState *blueCherry = (WalterModemBlueCherryState *)args;
+    WalterModemBlueCherryState *blueCherry = (WalterModemBlueCherryState *) args;
 
-    if (rsp->type != WALTER_MODEM_RSP_DATA_TYPE_COAP)
-    {
+    if(rsp->type != WALTER_MODEM_RSP_DATA_TYPE_COAP) {
         return;
     }
 
@@ -1649,8 +1484,13 @@ static void coap_received_from_bluecherry(const WalterModemRsp *rsp, void *args)
      */
 
     /* sanity checks: valid message (response) ? */
-    if (blueCherry->status == WALTER_MODEM_BLUECHERRY_STATUS_AWAITING_RESPONSE && rsp->data.coapResponse.messageId == blueCherry->curMessageId && rsp->data.coapResponse.sendType == WALTER_MODEM_COAP_SEND_TYPE_ACK && (rsp->data.coapResponse.methodRsp == WALTER_MODEM_COAP_SEND_RSP_CODE_VALID || rsp->data.coapResponse.methodRsp == WALTER_MODEM_COAP_SEND_RSP_CODE_CONTINUE))
-    {
+    if(blueCherry->status == WALTER_MODEM_BLUECHERRY_STATUS_AWAITING_RESPONSE
+            && rsp->data.coapResponse.messageId == blueCherry->curMessageId
+            && rsp->data.coapResponse.sendType == WALTER_MODEM_COAP_SEND_TYPE_ACK
+            && (rsp->data.coapResponse.methodRsp
+                == WALTER_MODEM_COAP_SEND_RSP_CODE_VALID 
+                || rsp->data.coapResponse.methodRsp
+                == WALTER_MODEM_COAP_SEND_RSP_CODE_CONTINUE)) {
         blueCherry->lastAckedMessageId = rsp->data.coapResponse.messageId;
         blueCherry->messageInLen = rsp->data.coapResponse.length;
         blueCherry->status = WALTER_MODEM_BLUECHERRY_STATUS_RESPONSE_READY;
@@ -1667,18 +1507,17 @@ void WalterModem::_processQueueRsp(
 
     WalterModemState result = WALTER_MODEM_STATE_OK;
 
-    if (_buffStartsWith(buff, "+CEREG: "))
-    {
+    if(_buffStartsWith(buff, "+CEREG: ")) {
         const char *rspStr = _buffStr(buff);
         int ceReg = atoi(rspStr + _strLitLen("+CEREG: "));
-        _regState = (WalterModemNetworkRegState)ceReg;
-        // TODO: call correct handlers
+        _regState = (WalterModemNetworkRegState) ceReg;
+        //TODO: call correct handlers
     }
-    else if (_buffStartsWith(buff, "> ") || _buffStartsWith(buff, ">>>"))
+    else if(_buffStartsWith(buff, "> ") || _buffStartsWith(buff, ">>>"))
     {
-        if (cmd != NULL &&
-            cmd->type == WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT &&
-            cmd->data != NULL)
+        if(cmd != NULL &&
+           cmd->type == WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT &&
+           cmd->data != NULL)
         {
 #ifdef ARDUINO
             _uart->write(cmd->data, cmd->dataSize);
@@ -1687,127 +1526,93 @@ void WalterModem::_processQueueRsp(
 #endif
         }
     }
-    else if (_buffStartsWith(buff, "ERROR"))
+    else if(_buffStartsWith(buff, "ERROR"))
     {
-        if (cmd != NULL)
-        {
+        if(cmd != NULL) {
             cmd->rsp->type = WALTER_MODEM_RSP_DATA_TYPE_NO_DATA;
             cmd->state = WALTER_MODEM_CMD_STATE_RETRY_AFTER_ERROR;
         }
         buff->free = true;
         return;
     }
-    else if (_buffStartsWith(buff, "+CME ERROR: "))
+    else if(_buffStartsWith(buff, "+CME ERROR: "))
     {
-        if (cmd != NULL)
-        {
+        if(cmd != NULL) {
             const char *rspStr = _buffStr(buff);
             int cmeError = atoi(rspStr + _strLitLen("+CME ERROR: "));
             cmd->rsp->type = WALTER_MODEM_RSP_DATA_TYPE_CME_ERROR;
-            cmd->rsp->data.cmeError = (WalterModemCMEError)cmeError;
+            cmd->rsp->data.cmeError = (WalterModemCMEError) cmeError;
         }
 
         cmd->state = WALTER_MODEM_CMD_STATE_RETRY_AFTER_ERROR;
         buff->free = true;
         return;
     }
-    else if (_buffStartsWith(buff, "+CFUN: "))
+    else if(_buffStartsWith(buff, "+CFUN: "))
     {
         const char *rspStr = _buffStr(buff);
         int opState = atoi(rspStr + _strLitLen("+CFUN: "));
-        _opState = (WalterModemOpState)opState;
+        _opState = (WalterModemOpState) opState;
 
-        if (cmd == NULL)
-        {
+        if(cmd == NULL) {
             buff->free = true;
             return;
         }
         cmd->rsp->type = WALTER_MODEM_RSP_DATA_TYPE_OPSTATE;
-        cmd->rsp->data.opState = (WalterModemOpState)opState;
+        cmd->rsp->data.opState = (WalterModemOpState) opState;
+
     }
-    else if (_buffStartsWith(buff, "+CPIN: ") && cmd != NULL)
+    else if(_buffStartsWith(buff, "+CPIN: ") && cmd != NULL)
     {
         cmd->rsp->type = WALTER_MODEM_RSP_DATA_TYPE_SIM_STATE;
-        if (_dataStrIs(buff, "+CPIN: ", "READY"))
-        {
+        if(_dataStrIs(buff, "+CPIN: ", "READY")) {
             cmd->rsp->data.simState = WALTER_MODEM_SIM_STATE_READY;
-        }
-        else if (_dataStrIs(buff, "+CPIN: ", "SIM PIN"))
-        {
+        } else if(_dataStrIs(buff, "+CPIN: ", "SIM PIN")) {
             cmd->rsp->data.simState = WALTER_MODEM_SIM_STATE_PIN_REQUIRED;
-        }
-        else if (_dataStrIs(buff, "+CPIN: ", "SIM PUK"))
-        {
+        } else if(_dataStrIs(buff, "+CPIN: ", "SIM PUK")) {
             cmd->rsp->data.simState = WALTER_MODEM_SIM_STATE_PUK_REQUIRED;
-        }
-        else if (_dataStrIs(buff, "+CPIN: ", "PH-SIM PIN"))
-        {
-            cmd->rsp->data.simState =
+        } else if(_dataStrIs(buff, "+CPIN: ", "PH-SIM PIN")) {
+            cmd->rsp->data.simState = 
                 WALTER_MODEM_SIM_STATE_PHONE_TO_SIM_PIN_REQUIRED;
-        }
-        else if (_dataStrIs(buff, "+CPIN: ", "PH-FSIM PIN"))
-        {
-            cmd->rsp->data.simState =
+        } else if(_dataStrIs(buff, "+CPIN: ", "PH-FSIM PIN")) {
+            cmd->rsp->data.simState = 
                 WALTER_MODEM_SIM_STATE_PHONE_TO_FIRST_SIM_PIN_REQUIRED;
-        }
-        else if (_dataStrIs(buff, "+CPIN: ", "PH-FSIM PUK"))
-        {
-            cmd->rsp->data.simState =
+        } else if(_dataStrIs(buff, "+CPIN: ", "PH-FSIM PUK")) {
+            cmd->rsp->data.simState = 
                 WALTER_MODEM_SIM_STATE_PHONE_TO_FIRST_SIM_PUK_REQUIRED;
-        }
-        else if (_dataStrIs(buff, "+CPIN: ", "SIM PIN2"))
-        {
+        } else if(_dataStrIs(buff, "+CPIN: ", "SIM PIN2")) {
             cmd->rsp->data.simState = WALTER_MODEM_SIM_STATE_PIN2_REQUIRED;
-        }
-        else if (_dataStrIs(buff, "+CPIN: ", "SIM PUK2"))
-        {
+        } else if(_dataStrIs(buff, "+CPIN: ", "SIM PUK2")) {
             cmd->rsp->data.simState = WALTER_MODEM_SIM_STATE_PUK2_REQUIRED;
-        }
-        else if (_dataStrIs(buff, "+CPIN: ", "PH-NET PIN"))
-        {
-            cmd->rsp->data.simState =
+        } else if(_dataStrIs(buff, "+CPIN: ", "PH-NET PIN")) {
+            cmd->rsp->data.simState = 
                 WALTER_MODEM_SIM_STATE_NETWORK_PIN_REQUIRED;
-        }
-        else if (_dataStrIs(buff, "+CPIN: ", "PH-NET PUK"))
-        {
-            cmd->rsp->data.simState =
+        } else if(_dataStrIs(buff, "+CPIN: ", "PH-NET PUK")) {
+            cmd->rsp->data.simState = 
                 WALTER_MODEM_SIM_STATE_NETWORK_PUK_REQUIRED;
-        }
-        else if (_dataStrIs(buff, "+CPIN: ", "PH-NETSUB PIN"))
-        {
-            cmd->rsp->data.simState =
+        } else if(_dataStrIs(buff, "+CPIN: ", "PH-NETSUB PIN")) {
+            cmd->rsp->data.simState = 
                 WALTER_MODEM_SIM_STATE_NETWORK_SUBSET_PIN_REQUIRED;
-        }
-        else if (_dataStrIs(buff, "+CPIN: ", "PH-NETSUB PUK"))
-        {
-            cmd->rsp->data.simState =
+        } else if(_dataStrIs(buff, "+CPIN: ", "PH-NETSUB PUK")) {
+            cmd->rsp->data.simState = 
                 WALTER_MODEM_SIM_STATE_NETWORK_SUBSET_PUK_REQUIRED;
-        }
-        else if (_dataStrIs(buff, "+CPIN: ", "PH-SP PIN"))
-        {
-            cmd->rsp->data.simState =
+        } else if(_dataStrIs(buff, "+CPIN: ", "PH-SP PIN")) {
+            cmd->rsp->data.simState = 
                 WALTER_MODEM_SIM_STATE_SERVICE_PROVIDER_PIN_REQUIRED;
-        }
-        else if (_dataStrIs(buff, "+CPIN: ", "PH-SP PUK"))
-        {
-            cmd->rsp->data.simState =
+        } else if(_dataStrIs(buff, "+CPIN: ", "PH-SP PUK")) {
+            cmd->rsp->data.simState = 
                 WALTER_MODEM_SIM_STATE_SERVICE_PROVIDER_PUK_REQUIRED;
-        }
-        else if (_dataStrIs(buff, "+CPIN: ", "PH-CORP PIN"))
-        {
-            cmd->rsp->data.simState =
+        } else if(_dataStrIs(buff, "+CPIN: ", "PH-CORP PIN")) {
+            cmd->rsp->data.simState = 
                 WALTER_MODEM_SIM_STATE_CORPORATE_SIM_REQUIRED;
-        }
-        else if (_dataStrIs(buff, "+CPIN: ", "PH-CORP PUK"))
-        {
-            cmd->rsp->data.simState =
+        } else if(_dataStrIs(buff, "+CPIN: ", "PH-CORP PUK")) {
+            cmd->rsp->data.simState = 
                 WALTER_MODEM_SIM_STATE_CORPORATE_PUK_REQUIRED;
         }
     }
-    else if (_buffStartsWith(buff, "+SQNCCID: ") && cmd != NULL)
+    else if(_buffStartsWith(buff, "+SQNCCID: ") && cmd != NULL)
     {
-        if (cmd == NULL)
-        {
+        if(cmd == NULL) {
             buff->free = true;
             return;
         }
@@ -1816,31 +1621,22 @@ void WalterModem::_processQueueRsp(
         bool inICCID = true;
         size_t offset = 0;
 
-        for (int i = _strLitLen("+SQNCCID: \""); i < buff->size; ++i)
-        {
-            if (inICCID)
-            {
-                if (buff->data[i] == '"' || offset >= 22)
-                {
+        for(int i = _strLitLen("+SQNCCID: \""); i < buff->size; ++i) {
+            if(inICCID) {
+                if(buff->data[i] == '"' || offset >= 22) {
                     cmd->rsp->data.simCardID.iccid[offset] = '\0';
                     i += 3;
 
-                    if (offset >= 22)
-                    {
+                    if(offset >= 22) { 
                         break;
-                    }
-                    else
-                    {
+                    } else {
                         continue;
                     }
                 }
 
                 cmd->rsp->data.simCardID.iccid[offset++] = buff->data[i];
-            }
-            else
-            {
-                if (buff->data[i] == '"' || offset >= 22)
-                {
+            } else {
+                if(buff->data[i] == '"' || offset >= 22) {
                     cmd->rsp->data.simCardID.euiccid[offset] = '\0';
                     break;
                 }
@@ -1849,13 +1645,12 @@ void WalterModem::_processQueueRsp(
             }
         }
     }
-    else if (_buffStartsWith(buff, "+CGPADDR: "))
+    else if(_buffStartsWith(buff, "+CGPADDR: "))
     {
         uint16_t dataSize = buff->size - _strLitLen("+CGPADDR: ");
         uint8_t *data = buff->data + _strLitLen("+CGPADDR: ");
 
-        if (dataSize < 4)
-        {
+        if(dataSize < 4) {
             cmd->state = WALTER_MODEM_CMD_STATE_RETRY_AFTER_ERROR;
             buff->free = true;
             return;
@@ -1863,70 +1658,54 @@ void WalterModem::_processQueueRsp(
 
         uint16_t addr1Offset = 1;
         uint16_t addr2Offset = 1;
-        for (uint16_t i = 0; i < dataSize; ++i)
-        {
-            if (data[i] == ',')
-            {
+        for(uint16_t i = 0; i < dataSize; ++i) {
+            if(data[i] == ',') {
                 data[i] = '\0';
-                if (addr1Offset <= 1)
-                {
+                if(addr1Offset <= 1) {
                     addr1Offset = i + 2;
-                }
-                else
-                {
+                } else {
                     addr2Offset = i + 2;
                 }
-            }
-            else if (data[i] == '"')
-            {
+            } else if(data[i] == '"') {
                 data[i] = '\0';
             }
         }
 
-        if (addr1Offset >= dataSize)
-        {
+        if(addr1Offset >= dataSize) {
             addr1Offset = 0;
         }
 
-        if (addr2Offset >= dataSize)
-        {
+        if(addr2Offset >= dataSize) {
             addr2Offset = 0;
         }
 
-        int pdpCtxId = atoi((const char *)data);
+        int pdpCtxId = atoi((const char*) data);
         WalterModemPDPContext *ctx = _pdpContextGet(pdpCtxId);
-        if (ctx != NULL)
-        {
-            _strncpy_s(ctx->pdpAddress, (const char *)data + addr1Offset,
-                       WALTER_MODEM_PDP_ADDR_MAX_SIZE);
-
-            if (addr2Offset != 0)
-            {
-                _strncpy_s(ctx->pdpAddress2, (const char *)data + addr2Offset,
-                           WALTER_MODEM_PDP_ADDR_MAX_SIZE);
-            }
-            else
-            {
+        if(ctx != NULL) {
+            _strncpy_s(ctx->pdpAddress, (const char*) data + addr1Offset,
+                WALTER_MODEM_PDP_ADDR_MAX_SIZE);
+            
+            if(addr2Offset != 0) {
+                _strncpy_s(ctx->pdpAddress2, (const char*) data + addr2Offset,
+                    WALTER_MODEM_PDP_ADDR_MAX_SIZE);
+            } else {
                 ctx->pdpAddress2[0] = '\0';
             }
 
-            if (cmd != NULL)
-            {
+            if(cmd != NULL) {
                 cmd->rsp->type = WALTER_MODEM_RSP_DATA_TYPE_PDP_ADDR;
                 cmd->rsp->data.pdpAddressList.pdpAddress = ctx->pdpAddress;
                 cmd->rsp->data.pdpAddressList.pdpAddress2 = ctx->pdpAddress2;
             }
         }
     }
-    else if (_buffStartsWith(buff, "+CSQ: "))
+    else if(_buffStartsWith(buff, "+CSQ: "))
     {
         const char *rspStr = _buffStr(buff);
-        char *data = (char *)rspStr + _strLitLen("+CSQ: ");
+        char *data = (char *) rspStr + _strLitLen("+CSQ: ");
 
-        for (size_t i = 0; i < buff->size - _strLitLen("+CSQ: "); ++i)
-        {
-            if (data[i] == ',')
-            {
+        for(size_t i = 0; i < buff->size - _strLitLen("+CSQ: "); ++i) {
+            if(data[i] == ',') {
                 data[i] = '\0';
                 break;
             }
@@ -1934,44 +1713,37 @@ void WalterModem::_processQueueRsp(
 
         int rawRSSI = atoi(data);
 
-        if (cmd == NULL)
-        {
+        if(cmd == NULL) {
             buff->free = true;
             return;
         }
         cmd->rsp->type = WALTER_MODEM_RSP_DATA_TYPE_RSSI;
         cmd->rsp->data.rssi = -113 + (rawRSSI * 2);
     }
-    else if (_buffStartsWith(buff, "+CESQ: "))
+    else if(_buffStartsWith(buff, "+CESQ: "))
     {
         cmd->rsp->type = WALTER_MODEM_RSP_DATA_TYPE_SIGNAL_QUALITY;
 
         uint16_t dataSize = buff->size - _strLitLen("+CESQ: ");
         const char *rspStr = _buffStr(buff);
-        char *data = (char *)rspStr + _strLitLen("+CESQ: ");
+        char *data = (char *) rspStr + _strLitLen("+CESQ: ");
 
         uint16_t offset = 0;
         uint8_t param = 0;
 
-        for (uint16_t i = 0; i <= dataSize; ++i)
-        {
-            if (data[i] != ',' && data[i] != '\0')
-            {
+        for(uint16_t i = 0; i <= dataSize; ++i) {
+            if(data[i] != ',' && data[i] != '\0') {
                 continue;
             }
 
-            if (param > 3)
-            {
+            if(param > 3) {
                 data[i] = 0;
 
-                int quality = atoi((const char *)data + offset);
-
-                if (param == 4)
-                {
+                int quality = atoi((const char *) data + offset);
+                
+                if(param == 4) {
                     cmd->rsp->data.signalQuality.rsrq = -195 + (quality * 5);
-                }
-                else if (param == 5)
-                {
+                } else if(param == 5) {
                     cmd->rsp->data.signalQuality.rsrp = -140 + quality;
                 }
             }
@@ -1980,112 +1752,79 @@ void WalterModem::_processQueueRsp(
             offset = i + 1;
         }
     }
-    else if (_buffStartsWith(buff, "+SQNMONI: "))
+    else if(_buffStartsWith(buff, "+SQNMONI: "))
     {
         cmd->rsp->type = WALTER_MODEM_RSP_DATA_TYPE_CELL_INFO;
 
         const char *rspStr = _buffStr(buff);
-        char *data = (char *)rspStr;
+        char *data = (char*) rspStr;
         uint16_t dataSize = buff->size;
         uint16_t offset = _strLitLen("+SQNMONI: ") - 1;
         int8_t lastColon = -1;
         bool firstKeyParsed = false;
 
-        for (int i = offset + 1; i < dataSize; ++i)
-        {
-            if (data[i] == ':')
-            {
+        for(int i = offset + 1; i < dataSize; ++i) {
+            if(data[i] == ':') {
                 lastColon = i;
-            }
-            else if (data[i] == ' ' || data[i] == '\r')
-            {
-                if (lastColon > 0)
-                {
+            } else if(data[i] == ' ' || data[i] == '\r') {
+                if(lastColon > 0) {
                     const char *key = data + offset + 1;
                     int key_len = lastColon - offset - 1;
                     const char *value = data + lastColon + 1;
                     int value_len = i - lastColon - 1;
-                    if (!firstKeyParsed)
-                    {
-                        if (key_len > 2)
-                        {
+                    if(!firstKeyParsed) {
+                        if(key_len > 2) {
                             /* The operator name is present */
                             memcpy(cmd->rsp->data.cellInformation.netName,
-                                   key, key_len - 3 > (WALTER_MODEM_OPERATOR_MAX_SIZE - 1) ? WALTER_MODEM_OPERATOR_MAX_SIZE - 1 : key_len - 3);
+                                key, key_len - 3 > (WALTER_MODEM_OPERATOR_MAX_SIZE - 1) ?
+                                    WALTER_MODEM_OPERATOR_MAX_SIZE - 1 : key_len - 3);
                             key += key_len - 2;
                             key_len = 2;
                         }
                         firstKeyParsed = true;
                     }
-                    if (strncmp("Cc", key, key_len) == 0)
-                    {
+                    if(strncmp("Cc", key, key_len) == 0) {
                         strToUint(value, value_len,
-                                  (uint32_t *)&(cmd->rsp->data.cellInformation.cc), 10);
-                    }
-                    else if (strncmp("Nc", key, key_len) == 0)
-                    {
+                            (uint32_t *)&(cmd->rsp->data.cellInformation.cc), 10);
+                    } else if(strncmp("Nc", key, key_len) == 0) {
                         strToUint(value, value_len,
-                                  (uint32_t *)&(cmd->rsp->data.cellInformation.nc), 10);
-                    }
-                    else if (strncmp("RSRP", key, key_len) == 0)
-                    {
+                            (uint32_t *)&(cmd->rsp->data.cellInformation.nc), 10);
+                    } else if(strncmp("RSRP", key, key_len) == 0) {
                         strToFloat(value, value_len,
-                                   &(cmd->rsp->data.cellInformation.rsrp));
-                    }
-                    else if (strncmp("CINR", key, key_len) == 0)
-                    {
+                            &(cmd->rsp->data.cellInformation.rsrp));
+                    } else if(strncmp("CINR", key, key_len) == 0) {
                         strToFloat(value, value_len,
-                                   &(cmd->rsp->data.cellInformation.cinr));
-                    }
-                    else if (strncmp("RSRQ", key, key_len) == 0)
-                    {
+                            &(cmd->rsp->data.cellInformation.cinr));
+                    } else if(strncmp("RSRQ", key, key_len) == 0) {
                         strToFloat(value, value_len,
-                                   &(cmd->rsp->data.cellInformation.rsrq));
-                    }
-                    else if (strncmp("TAC", key, key_len) == 0)
-                    {
+                            &(cmd->rsp->data.cellInformation.rsrq));
+                    } else if(strncmp("TAC", key, key_len) == 0) {
                         strToUint(value, value_len,
-                                  (uint32_t *)&(cmd->rsp->data.cellInformation.tac), 10);
-                    }
-                    else if (strncmp("Id", key, key_len) == 0)
-                    {
+                            (uint32_t *)&(cmd->rsp->data.cellInformation.tac), 10);
+                    } else if(strncmp("Id", key, key_len) == 0) {
                         strToUint(value, value_len,
-                                  (uint32_t *)&(cmd->rsp->data.cellInformation.pci), 10);
-                    }
-                    else if (strncmp("EARFCN", key, key_len) == 0)
-                    {
+                            (uint32_t *)&(cmd->rsp->data.cellInformation.pci), 10);
+                    } else if(strncmp("EARFCN", key, key_len) == 0) {
                         strToUint(value, value_len,
-                                  (uint32_t *)&(cmd->rsp->data.cellInformation.earfcn), 10);
-                    }
-                    else if (strncmp("PWR", key, key_len) == 0)
-                    {
+                            (uint32_t *)&(cmd->rsp->data.cellInformation.earfcn), 10);
+                    } else if(strncmp("PWR", key, key_len) == 0) {
                         strToFloat(value, value_len,
-                                   &(cmd->rsp->data.cellInformation.rssi));
-                    }
-                    else if (strncmp("PAGING", key, key_len) == 0)
-                    {
+                            &(cmd->rsp->data.cellInformation.rssi));
+                    } else if(strncmp("PAGING", key, key_len) == 0) {
                         strToUint(value, value_len,
-                                  (uint32_t *)&(cmd->rsp->data.cellInformation.paging), 10);
-                    }
-                    else if (strncmp("CID", key, key_len) == 0)
-                    {
+                            (uint32_t *)&(cmd->rsp->data.cellInformation.paging), 10);
+                    } else if(strncmp("CID", key, key_len) == 0) {
                         strToUint(value, value_len,
-                                  &(cmd->rsp->data.cellInformation.cid), 16);
-                    }
-                    else if (strncmp("BAND", key, key_len) == 0)
-                    {
+                            &(cmd->rsp->data.cellInformation.cid), 16);
+                    } else if(strncmp("BAND", key, key_len) == 0) {
                         strToUint(value, value_len,
-                                  (uint32_t *)&(cmd->rsp->data.cellInformation.band), 10);
-                    }
-                    else if (strncmp("BW", key, key_len) == 0)
-                    {
+                            (uint32_t *)&(cmd->rsp->data.cellInformation.band), 10);
+                    } else if(strncmp("BW", key, key_len) == 0) {
                         strToUint(value, value_len,
-                                  (uint32_t *)&(cmd->rsp->data.cellInformation.bw), 10);
-                    }
-                    else if (strncmp("CE", key, key_len) == 0)
-                    {
+                            (uint32_t *)&(cmd->rsp->data.cellInformation.bw), 10);
+                    } else if(strncmp("CE", key, key_len) == 0) {
                         strToUint(value, value_len,
-                                  (uint32_t *)&(cmd->rsp->data.cellInformation.ceLevel), 10);
+                            (uint32_t *)&(cmd->rsp->data.cellInformation.ceLevel), 10);
                     }
 
                     offset = i;
@@ -2093,10 +1832,10 @@ void WalterModem::_processQueueRsp(
             }
         }
     }
-    else if (_buffStartsWith(buff, "+CGSN: "))
+    else if(_buffStartsWith(buff, "+CGSN: "))
     {
-        if (cmd == NULL ||
-            buff->size < _strLitLen("+CGSN: \"xxxxxxxxxxxxxxxx\""))
+        if(cmd == NULL || 
+           buff->size < _strLitLen("+CGSN: \"xxxxxxxxxxxxxxxx\""))
         {
             buff->free = true;
             return;
@@ -2115,29 +1854,27 @@ void WalterModem::_processQueueRsp(
 
         /* Copy the 14-digit long IMEI number, and add the checksum */
         memcpy(cmd->rsp->data.identity.imei, cmd->rsp->data.identity.imeisv,
-               14);
+            14);
         cmd->rsp->data.identity.imei[14] =
-            _getLuhnChecksum((const char *)cmd->rsp->data.identity.imei);
+            _getLuhnChecksum((const char*) cmd->rsp->data.identity.imei);
         cmd->rsp->data.identity.imei[15] = '\0';
     }
-    else if (_buffStartsWith(buff, "+SQNMODEACTIVE: "))
+    else if(_buffStartsWith(buff, "+SQNMODEACTIVE: "))
     {
         const char *rspStr = _buffStr(buff);
         int rat = atoi(rspStr + _strLitLen("+SQNMODEACTIVE: "));
-        _ratType = (WalterModemRAT)(rat - 1);
+        _ratType = (WalterModemRAT) (rat - 1);
 
-        if (cmd == NULL)
-        {
+        if(cmd == NULL) {
             buff->free = true;
             return;
         }
         cmd->rsp->type = WALTER_MODEM_RSP_DATA_TYPE_RAT;
-        cmd->rsp->data.rat = (WalterModemRAT)(rat - 1);
+        cmd->rsp->data.rat = (WalterModemRAT) (rat - 1);
     }
-    else if (_buffStartsWith(buff, "+SQNBANDSEL: "))
+    else if(_buffStartsWith(buff, "+SQNBANDSEL: "))
     {
-        if (buff->size <= _strLitLen("+SQNBANDSEL: 1,,\"\""))
-        {
+        if(buff->size <= _strLitLen("+SQNBANDSEL: 1,,\"\"")) {
             buff->free = true;
             return;
         }
@@ -2147,388 +1884,351 @@ void WalterModem::_processQueueRsp(
 
         cmd->rsp->type = WALTER_MODEM_RSP_DATA_TYPE_BANDSET_CFG_SET;
         WalterModemBandSelection *bSel = cmd->rsp->data.bandSelCfgSet.config +
-                                         cmd->rsp->data.bandSelCfgSet.count;
+            cmd->rsp->data.bandSelCfgSet.count;
         cmd->rsp->data.bandSelCfgSet.count += 1;
 
         /* Parse RAT */
-        bSel->rat = data[0] == '0' ? WALTER_MODEM_RAT_LTEM : WALTER_MODEM_RAT_NBIOT;
+        bSel->rat = data[0] == '0' ?
+            WALTER_MODEM_RAT_LTEM : WALTER_MODEM_RAT_NBIOT;
         data += 2;
         dataSize -= 2;
 
         /* Parse operator name */
         bSel->netOperator.format =
             WALTER_MODEM_OPERATOR_FORMAT_LONG_ALPHANUMERIC;
-        for (uint16_t i = 0; i < dataSize; ++i)
-        {
-            if (data[i] == ',')
-            {
+        for(uint16_t i = 0; i < dataSize; ++i) {
+            if(data[i] == ',') {
                 data += i + 1;
                 dataSize -= i + 1;
 
-                if (i < WALTER_MODEM_OPERATOR_MAX_SIZE)
-                {
+                if(i < WALTER_MODEM_OPERATOR_MAX_SIZE) {
                     bSel->netOperator.name[i] = '\0';
-                }
-                else
-                {
-                    bSel->netOperator.name[WALTER_MODEM_OPERATOR_MAX_SIZE] = '\0';
+                } else {
+                    bSel->netOperator.name[WALTER_MODEM_OPERATOR_MAX_SIZE]
+                        = '\0';
                 }
                 break;
             }
 
-            if (i < WALTER_MODEM_OPERATOR_MAX_SIZE)
-            {
+            if(i < WALTER_MODEM_OPERATOR_MAX_SIZE) {
                 bSel->netOperator.name[i] = data[i];
             }
         }
 
         /* Parse configured bands */
         uint16_t start = 1;
-        for (uint16_t i = 1; i < dataSize; ++i)
-        {
-            if (!(data[i] == ',' || data[i] == '"') || start == i)
-            {
+        for(uint16_t i = 1; i < dataSize; ++i) {
+            if(!(data[i] == ',' || data[i] == '"') || start == i) {
                 continue;
             }
 
-            int band = atoi((const char *)data + start);
+            int band = atoi((const char *) data + start);
             start = i + 1;
 
-            switch (band)
-            {
-            case 1:
-                bSel->bands |= WALTER_MODEM_BAND_B1;
-                break;
+            switch(band) {
+                case 1:
+                    bSel->bands |= WALTER_MODEM_BAND_B1;
+                    break;
 
-            case 2:
-                bSel->bands |= WALTER_MODEM_BAND_B2;
-                break;
+                case 2:
+                    bSel->bands |= WALTER_MODEM_BAND_B2;
+                    break;
 
-            case 3:
-                bSel->bands |= WALTER_MODEM_BAND_B3;
-                break;
+                case 3:
+                    bSel->bands |= WALTER_MODEM_BAND_B3;
+                    break;
 
-            case 4:
-                bSel->bands |= WALTER_MODEM_BAND_B4;
-                break;
+                case 4:
+                    bSel->bands |= WALTER_MODEM_BAND_B4;
+                    break;
 
-            case 5:
-                bSel->bands |= WALTER_MODEM_BAND_B5;
-                break;
+                case 5:
+                    bSel->bands |= WALTER_MODEM_BAND_B5;
+                    break;
 
-            case 8:
-                bSel->bands |= WALTER_MODEM_BAND_B8;
-                break;
+                case 8:
+                    bSel->bands |= WALTER_MODEM_BAND_B8;
+                    break;
 
-            case 12:
-                bSel->bands |= WALTER_MODEM_BAND_B12;
-                break;
+                case 12:
+                    bSel->bands |= WALTER_MODEM_BAND_B12;
+                    break;
 
-            case 13:
-                bSel->bands |= WALTER_MODEM_BAND_B13;
-                break;
+                case 13:
+                    bSel->bands |= WALTER_MODEM_BAND_B13;
+                    break;
 
-            case 14:
-                bSel->bands |= WALTER_MODEM_BAND_B14;
-                break;
+                case 14:
+                    bSel->bands |= WALTER_MODEM_BAND_B14;
+                    break;
 
-            case 17:
-                bSel->bands |= WALTER_MODEM_BAND_B17;
-                break;
+                case 17:
+                    bSel->bands |= WALTER_MODEM_BAND_B17;
+                    break;
 
-            case 18:
-                bSel->bands |= WALTER_MODEM_BAND_B18;
-                break;
+                case 18:
+                    bSel->bands |= WALTER_MODEM_BAND_B18;
+                    break;
 
-            case 19:
-                bSel->bands |= WALTER_MODEM_BAND_B19;
-                break;
+                case 19:
+                    bSel->bands |= WALTER_MODEM_BAND_B19;
+                    break;
 
-            case 20:
-                bSel->bands |= WALTER_MODEM_BAND_B20;
-                break;
+                case 20:
+                    bSel->bands |= WALTER_MODEM_BAND_B20;
+                    break;
 
-            case 25:
-                bSel->bands |= WALTER_MODEM_BAND_B25;
-                break;
+                case 25:
+                    bSel->bands |= WALTER_MODEM_BAND_B25;
+                    break;
 
-            case 26:
-                bSel->bands |= WALTER_MODEM_BAND_B26;
-                break;
+                case 26:
+                    bSel->bands |= WALTER_MODEM_BAND_B26;
+                    break;
 
-            case 28:
-                bSel->bands |= WALTER_MODEM_BAND_B28;
-                break;
+                case 28:
+                    bSel->bands |= WALTER_MODEM_BAND_B28;
+                    break;
 
-            case 66:
-                bSel->bands |= WALTER_MODEM_BAND_B66;
-                break;
+                case 66:
+                    bSel->bands |= WALTER_MODEM_BAND_B66;
+                    break;
 
-            case 71:
-                bSel->bands |= WALTER_MODEM_BAND_B71;
-                break;
+                case 71:
+                    bSel->bands |= WALTER_MODEM_BAND_B71;
+                    break;
 
-            case 85:
-                bSel->bands |= WALTER_MODEM_BAND_B85;
-                break;
+                case 85:
+                    bSel->bands |= WALTER_MODEM_BAND_B85;
+                    break;
             }
         }
     }
-    else if (_buffStartsWith(buff, "+LPGNSSFIXREADY: "))
+    else if(_buffStartsWith(buff, "+LPGNSSFIXREADY: "))
     {
         uint16_t dataSize = buff->size - _strLitLen("+LPGNSSFIXREADY: ");
         uint8_t *data = buff->data + _strLitLen("+LPGNSSFIXREADY: ");
 
-        char *start = (char *)data;
+        char *start = (char*) data;
         char *lastCharacter = NULL;
         uint8_t partNo = 0;
         bool parenthesisOpen = false;
 
-        for (uint16_t i = 0; i < dataSize; ++i)
-        {
+        for(uint16_t i = 0; i < dataSize; ++i) {
             bool partComplete = false;
 
-            if (data[i] == ',' && !parenthesisOpen)
-            {
+            if(data[i] == ',' && !parenthesisOpen) {
                 data[i] = '\0';
-                lastCharacter = (char *)data + i - 1;
+                lastCharacter = (char *) data + i - 1;
                 partComplete = true;
-            }
-            else if (i + 1 == dataSize)
-            {
+            } else if(i + 1 == dataSize) {
                 data[i + 1] = '\0';
-                lastCharacter = (char *)data + i;
+                lastCharacter = (char *) data + i;
                 partComplete = true;
-            }
-            else if (data[i] == '(')
-            {
+            } else if(data[i] == '(') {
                 parenthesisOpen = true;
-            }
-            else if (data[i] == ')')
-            {
+            } else if(data[i] == ')') {
                 parenthesisOpen = false;
             }
-
-            if (partComplete)
-            {
+            
+            if(partComplete) {
                 /* sometimes we need to skip surrounding " " */
-                switch (partNo)
-                {
-                case 0:
-                    _GNSSfix.fixId = atoi(start);
-                    break;
+                switch(partNo) {
+                    case 0:
+                        _GNSSfix.fixId = atoi(start);
+                        break;
+                    
+                    case 1:
+                        *lastCharacter = '\0';
+                        _GNSSfix.timestamp = strTotime(start + 1);
+                        break;
 
-                case 1:
-                    *lastCharacter = '\0';
-                    _GNSSfix.timestamp = strTotime(start + 1);
-                    break;
+                    case 2:
+                        _GNSSfix.timeToFix = atoi(start);
+                        break;
 
-                case 2:
-                    _GNSSfix.timeToFix = atoi(start);
-                    break;
+                    case 3:
+                        *lastCharacter = '\0';
+                        _GNSSfix.estimatedConfidence = strtod(start + 1, NULL);
+                        break;
 
-                case 3:
-                    *lastCharacter = '\0';
-                    _GNSSfix.estimatedConfidence = strtod(start + 1, NULL);
-                    break;
+                    case 4:
+                        *lastCharacter = '\0';
+                        _GNSSfix.latitude = atof(start + 1);
+                        break;
 
-                case 4:
-                    *lastCharacter = '\0';
-                    _GNSSfix.latitude = atof(start + 1);
-                    break;
+                    case 5:
+                        *lastCharacter = '\0';
+                        _GNSSfix.longitude = atof(start + 1);
+                        break;
 
-                case 5:
-                    *lastCharacter = '\0';
-                    _GNSSfix.longitude = atof(start + 1);
-                    break;
+                    case 6:
+                        *lastCharacter = '\0';
+                        _GNSSfix.height = atof(start + 1);
+                        break;
 
-                case 6:
-                    *lastCharacter = '\0';
-                    _GNSSfix.height = atof(start + 1);
-                    break;
+                    case 7:
+                        *lastCharacter = '\0';
+                        _GNSSfix.northSpeed = atof(start + 1);
+                        break;
 
-                case 7:
-                    *lastCharacter = '\0';
-                    _GNSSfix.northSpeed = atof(start + 1);
-                    break;
+                    case 8:
+                        *lastCharacter = '\0';
+                        _GNSSfix.eastSpeed = atof(start + 1);
+                        break;
 
-                case 8:
-                    *lastCharacter = '\0';
-                    _GNSSfix.eastSpeed = atof(start + 1);
-                    break;
+                    case 9:
+                        *lastCharacter = '\0';
+                        _GNSSfix.downSpeed = atof(start + 1);
+                        break;
 
-                case 9:
-                    *lastCharacter = '\0';
-                    _GNSSfix.downSpeed = atof(start + 1);
-                    break;
+                    case 10:
+                        /* 
+                         * Raw satellite signal sample is ignored, we use this
+                         * occasion to reset the satellite count.
+                         */
+                        _GNSSfix.satCount = 0;
+                        break;
 
-                case 10:
-                    /*
-                     * Raw satellite signal sample is ignored, we use this
-                     * occasion to reset the satellite count.
-                     */
-                    _GNSSfix.satCount = 0;
-                    break;
-
-                default:
-                    if (_GNSSfix.satCount >= WALTER_MODEM_GNSS_MAX_SATS)
-                    {
-                        continue;
-                    }
-
-                    const char *satNoStr = start + 1; /* skip '(' */
-                    const char *satSigStr = start;
-                    for (int i = 0; start[i] != '\0'; ++i)
-                    {
-                        if (start[i] == ',')
-                        {
-                            start[i] = '\0';
-                            satSigStr = start + i + 1;
-                            break;
+                    default:
+                        if(_GNSSfix.satCount >= WALTER_MODEM_GNSS_MAX_SATS) {
+                            continue;
                         }
-                    }
 
-                    _GNSSfix.sats[_GNSSfix.satCount].satNo = atoi(satNoStr);
-                    _GNSSfix.sats[_GNSSfix.satCount].signalStrength = atoi(satSigStr);
-                    _GNSSfix.satCount += 1;
-                    break;
+                        const char *satNoStr = start + 1;   /* skip '(' */
+                        const char *satSigStr = start;
+                        for(int i = 0; start[i] != '\0'; ++i) {
+                            if(start[i] == ',') {
+                                start[i] = '\0';
+                                satSigStr = start + i + 1;
+                                break;
+                            }
+                        }
+
+                        _GNSSfix.sats[_GNSSfix.satCount].satNo = atoi(satNoStr);
+                        _GNSSfix.sats[_GNSSfix.satCount].signalStrength
+                            = atoi(satSigStr);
+                        _GNSSfix.satCount += 1;
+                        break;
                 }
 
                 /* +1 for the comma */
-                start = (char *)data + i + 1;
+                start = (char*) data + i + 1;
                 partNo += 1;
             }
         }
 
-        if (_usrGNSSfixHandler != NULL)
-        {
+        if(_usrGNSSfixHandler != NULL) {
             _usrGNSSfixHandler(&_GNSSfix, _usrGNSSfixHandlerArgs);
         }
     }
-    else if (_buffStartsWith(buff, "+LPGNSSASSISTANCE: "))
+    else if(_buffStartsWith(buff, "+LPGNSSASSISTANCE: "))
     {
         cmd->rsp->type = WALTER_MODEM_RSP_DATA_TYPE_GNSS_ASSISTANCE_DATA;
 
         uint16_t dataSize = buff->size - _strLitLen("+LPGNSSASSISTANCE: ");
         uint8_t *data = buff->data + _strLitLen("+LPGNSSASSISTANCE: ");
 
-        char *start = (char *)data;
+        char *start = (char*) data;
         uint8_t partNo = 0;
 
         WalterModemGNSSAssistanceTypeDetails *details = NULL;
 
-        for (uint16_t i = 0; i < dataSize; ++i)
-        {
+        for(uint16_t i = 0; i < dataSize; ++i) {
             bool partComplete = false;
 
-            if (data[i] == ',')
-            {
+            if(data[i] == ',') {
                 data[i] = '\0';
                 partComplete = true;
-            }
-            else if (i + 1 == dataSize)
-            {
+            } else if(i + 1 == dataSize) {
                 data[i + 1] = '\0';
                 partComplete = true;
             }
 
-            if (partComplete)
-            {
-                switch (partNo)
-                {
-                case 0:
-                    switch (start[0])
-                    {
-                    case '0':
-                        details =
-                            &(cmd->rsp->data.gnssAssistance.almanac);
+            if(partComplete) {
+                switch(partNo) {
+                    case 0:
+                        switch(start[0]) {
+                            case '0':
+                                details =
+                                    &(cmd->rsp->data.gnssAssistance.almanac);
+                                break;
+
+                            case '1':
+                                details =
+                                    &(cmd->rsp->data.gnssAssistance.realtimeEphemeris);
+                                break;
+
+                            case '2':
+                                details =
+                                    &(cmd->rsp->data.gnssAssistance.predictedEphemeris);
+                                break;
+                        }
                         break;
 
-                    case '1':
-                        details =
-                            &(cmd->rsp->data.gnssAssistance.realtimeEphemeris);
+                    case 1:
+                        if(details != NULL) {
+                            details->available = atoi(start) == 1;
+                        }
                         break;
 
-                    case '2':
-                        details =
-                            &(cmd->rsp->data.gnssAssistance.predictedEphemeris);
+                    case 2:
+                        if(details != NULL) {
+                            details->lastUpdate = atoi(start);
+                        }
                         break;
-                    }
-                    break;
 
-                case 1:
-                    if (details != NULL)
-                    {
-                        details->available = atoi(start) == 1;
-                    }
-                    break;
+                    case 3:
+                        if(details != NULL) {
+                            details->timeToUpdate = atoi(start);
+                        }
+                        break;
 
-                case 2:
-                    if (details != NULL)
-                    {
-                        details->lastUpdate = atoi(start);
-                    }
-                    break;
-
-                case 3:
-                    if (details != NULL)
-                    {
-                        details->timeToUpdate = atoi(start);
-                    }
-                    break;
-
-                case 4:
-                    if (details != NULL)
-                    {
-                        details->timeToExpire = atoi(start);
-                    }
-                    break;
+                    case 4:
+                        if(details != NULL) {
+                            details->timeToExpire = atoi(start);
+                        }
+                        break;
                 }
-
+                
                 /* +1 for the comma */
-                start = (char *)data + i + 1;
+                start = (char*) data + i + 1;
                 partNo += 1;
             }
         }
     }
-    else if (_buffStartsWith(buff, "+CCLK: \""))
+    else if(_buffStartsWith(buff, "+CCLK: \""))
     {
         buff->data[buff->size - 1] = '\0';
-        char *data = (char *)buff->data + _strLitLen("+CCLK: \"");
+        char *data = (char*) buff->data + _strLitLen("+CCLK: \"");
         cmd->rsp->type = WALTER_MODEM_RSP_DATA_TYPE_CLOCK;
         int64_t utcTime = strTotime(data, "%y/%m/%d,%H:%M:%S");
         uint16_t tzOffset;
-        if (data[17] == '+')
-        {
+        if(data[17] == '+') {
             tzOffset = atoi(data + 18) * 15 * 60;
-        }
-        else
-        {
+        } else {
             tzOffset = atoi(data + 18) * -15 * 60;
         }
         cmd->rsp->data.clock = utcTime - tzOffset;
-        if (cmd->rsp->data.clock < WALTER_MODEM_MIN_VALID_TIMESTAMP)
-        {
+        if(cmd->rsp->data.clock < WALTER_MODEM_MIN_VALID_TIMESTAMP) {
             cmd->rsp->data.clock = -1;
         }
     }
-    else if (_buffStartsWith(buff, "+SQNCOAPRCV: "))
+    else if(_buffStartsWith(buff, "+SQNCOAPRCV: "))
     {
         const char *rspStr = _buffStr(buff);
         char *payload = strchr(rspStr, '\r');
-        if (payload)
-            payload++;
+        if(payload) payload++;
         char *commaPos = strchr(rspStr, ',');
-        char *start = (char *)rspStr + _strLitLen("+SQNCOAPRCV: ");
+        char *start = (char *) rspStr + _strLitLen("+SQNCOAPRCV: ");
 
         uint8_t profileId = 0;
         uint16_t messageId = 0;
-        // uint8_t reqRsp;
+        //uint8_t reqRsp;
         WalterModemCoapSendType sendType = WALTER_MODEM_COAP_SEND_TYPE_CON;
         uint8_t reqRspCodeRaw = 0;
 
-        if (commaPos)
-        {
+        if(commaPos) {
             /* got prof_id */
             *commaPos = '\0';
             profileId = atoi(start);
@@ -2536,8 +2236,7 @@ void WalterModem::_processQueueRsp(
             commaPos = strchr(commaPos, ',');
         }
 
-        if (commaPos)
-        {
+        if(commaPos) {
             /* got msg_id */
             *commaPos = '\0';
             messageId = atoi(start);
@@ -2545,41 +2244,36 @@ void WalterModem::_processQueueRsp(
             commaPos = strchr(commaPos, ',');
         }
 
-        if (commaPos)
-        {
+        if(commaPos) {
             /* got token */
             *commaPos = '\0';
             start = ++commaPos;
             commaPos = strchr(commaPos, ',');
         }
 
-        if (commaPos)
-        {
+        if(commaPos) {
             /* got req_resp */
             *commaPos = '\0';
-            // reqRsp = atoi(start);
+            //reqRsp = atoi(start);
             start = ++commaPos;
             commaPos = strchr(commaPos, ',');
         }
 
-        if (commaPos)
-        {
+        if(commaPos) {
             /* got type (con, noncon, ack, rst) */
             *commaPos = '\0';
-            sendType = (WalterModemCoapSendType)atoi(start);
+            sendType = (WalterModemCoapSendType) atoi(start);
             start = ++commaPos;
             commaPos = strchr(commaPos, ',');
         }
 
-        if (commaPos)
-        {
+        if(commaPos) {
             /* got rsp code (or method if we allow inbound requests) */
             *commaPos = '\0';
             reqRspCodeRaw = atoi(start);
             uint16_t length = atoi(commaPos + 1);
 
-            if (profileId >= WALTER_MODEM_MAX_COAP_PROFILES)
-            {
+            if(profileId >= WALTER_MODEM_MAX_COAP_PROFILES) {
                 result = WALTER_MODEM_STATE_ERROR;
                 goto after_processing_logic;
             }
@@ -2590,18 +2284,22 @@ void WalterModem::_processQueueRsp(
 
             /* find message id in the stored rings for this profile */
             uint8_t ringIdx;
-            for (ringIdx = 0;
-                 ringIdx < sizeof(_coapContextSet[profileId].rings) / sizeof(WalterModemCoapRing);
-                 ringIdx++)
-            {
-                if (_coapContextSet[profileId].rings[ringIdx].messageId == messageId && _coapContextSet[profileId].rings[ringIdx].sendType == sendType && _coapContextSet[profileId].rings[ringIdx].methodRsp == reqRspCodeRaw)
-                {
+            for(ringIdx = 0;
+                    ringIdx < sizeof(_coapContextSet[profileId].rings)
+                    / sizeof(WalterModemCoapRing);
+                    ringIdx++) {
+                if(_coapContextSet[profileId].rings[ringIdx].messageId
+                        == messageId
+                        && _coapContextSet[profileId].rings[ringIdx].sendType
+                        == sendType
+                        && _coapContextSet[profileId].rings[ringIdx].methodRsp
+                        == reqRspCodeRaw) {
                     break;
                 }
             }
 
-            if (ringIdx < sizeof(_coapContextSet[profileId].rings) / sizeof(WalterModemCoapRing))
-            {
+            if(ringIdx < sizeof(_coapContextSet[profileId].rings)
+                    / sizeof(WalterModemCoapRing)) {
                 /* free ring entry */
                 _coapContextSet[profileId].rings[ringIdx].messageId = 0;
             }
@@ -2611,14 +2309,12 @@ void WalterModem::_processQueueRsp(
             cmd->rsp->data.coapResponse.messageId = messageId;
             cmd->rsp->data.coapResponse.sendType = sendType;
             cmd->rsp->data.coapResponse.methodRsp =
-                (WalterModemCoapSendMethodRsp)reqRspCodeRaw;
+                (WalterModemCoapSendMethodRsp) reqRspCodeRaw;
 
-            if (length > cmd->dataSize)
-            {
+            if(length > cmd->dataSize) {
                 cmd->rsp->data.coapResponse.length = cmd->dataSize;
             }
-            else
-            {
+            else {
                 cmd->rsp->data.coapResponse.length = length;
             }
 
@@ -2626,16 +2322,16 @@ void WalterModem::_processQueueRsp(
              * we can only hope the user is using a callback which has
              * access to the raw buffer.
              */
-            if (cmd->data)
-            {
+            if(cmd->data) {
                 memcpy(cmd->data, payload, cmd->rsp->data.coapResponse.length);
             }
         }
     }
-    else if (_buffStartsWith(buff, "<<<")) /* <<< is start of SQNHTTPRCV answer */
+    else if(_buffStartsWith(buff, "<<<"))   /* <<< is start of SQNHTTPRCV answer */
     {
-        if (_httpCurrentProfile >= WALTER_MODEM_MAX_HTTP_PROFILES || _httpContextSet[_httpCurrentProfile].state != WALTER_MODEM_HTTP_CONTEXT_STATE_GOT_RING)
-        {
+        if(_httpCurrentProfile >= WALTER_MODEM_MAX_HTTP_PROFILES
+                || _httpContextSet[_httpCurrentProfile].state
+                != WALTER_MODEM_HTTP_CONTEXT_STATE_GOT_RING) {
             result = WALTER_MODEM_STATE_ERROR;
             goto after_processing_logic;
         }
@@ -2643,13 +2339,11 @@ void WalterModem::_processQueueRsp(
         cmd->rsp->type = WALTER_MODEM_RSP_DATA_TYPE_HTTP_RESPONSE;
         cmd->rsp->data.httpResponse.httpStatus =
             _httpContextSet[_httpCurrentProfile].httpStatus;
-        if (_httpContextSet[_httpCurrentProfile].contentLength >
-            cmd->dataSize - 1)
-        {
+        if(_httpContextSet[_httpCurrentProfile].contentLength >
+                cmd->dataSize - 1) {
             cmd->rsp->data.httpResponse.contentLength = cmd->dataSize - 1;
         }
-        else
-        {
+        else {
             cmd->rsp->data.httpResponse.contentLength =
                 _httpContextSet[_httpCurrentProfile].contentLength;
         }
@@ -2658,10 +2352,9 @@ void WalterModem::_processQueueRsp(
          * we can only hope the user is using a callback which has
          * access to the raw buffer.
          */
-        if (cmd->data)
-        {
-            memcpy(cmd->data, buff->data + 3, /* skip <<< */
-                   cmd->rsp->data.httpResponse.contentLength);
+        if(cmd->data) {
+            memcpy(cmd->data, buff->data + 3,        /* skip <<< */
+                    cmd->rsp->data.httpResponse.contentLength);
             cmd->data[cmd->rsp->data.httpResponse.contentLength] = '\0';
         }
 
@@ -2669,27 +2362,25 @@ void WalterModem::_processQueueRsp(
          * even if we never received <<< but got an error instead
          */
     }
-    else if (_buffStartsWith(buff, "+SQNHTTPRING: "))
+    else if(_buffStartsWith(buff, "+SQNHTTPRING: "))
     {
         const char *rspStr = _buffStr(buff);
         char *commaPos = strchr(rspStr, ',');
-        char *start = (char *)rspStr + _strLitLen("+SQNHTTPRING: ");
+        char *start = (char *) rspStr + _strLitLen("+SQNHTTPRING: ");
 
         uint8_t profileId = 0;
         uint8_t httpStatus = 0;
         char *contentType = NULL;
         uint16_t contentLength = 0;
 
-        if (commaPos)
-        {
+        if(commaPos) {
             /* got prof_id */
             *commaPos = '\0';
             profileId = atoi(start);
             start = ++commaPos;
             commaPos = strchr(commaPos, ',');
 
-            if (profileId >= WALTER_MODEM_MAX_HTTP_PROFILES)
-            {
+            if(profileId >= WALTER_MODEM_MAX_HTTP_PROFILES) {
                 /* TODO: return error if modem returns invalid profile id.
                  * problem: this message is an URC: the associated cmd
                  * may be any random command currently executing */
@@ -2698,8 +2389,7 @@ void WalterModem::_processQueueRsp(
             }
         }
 
-        if (commaPos)
-        {
+        if(commaPos) {
             /* got http status */
             *commaPos = '\0';
             httpStatus = atoi(start);
@@ -2707,8 +2397,7 @@ void WalterModem::_processQueueRsp(
             commaPos = strchr(commaPos, ',');
         }
 
-        if (commaPos)
-        {
+        if(commaPos) {
             /* got mime type */
             *commaPos = '\0';
             contentType = start;
@@ -2720,9 +2409,8 @@ void WalterModem::_processQueueRsp(
              * (knowing that this is a URC so there is no command
              * to give feedback to)
              */
-            if (_httpContextSet[profileId].state !=
-                WALTER_MODEM_HTTP_CONTEXT_STATE_EXPECT_RING)
-            {
+            if(_httpContextSet[profileId].state !=
+                    WALTER_MODEM_HTTP_CONTEXT_STATE_EXPECT_RING) {
                 buff->free = true;
                 return;
             }
@@ -2732,16 +2420,13 @@ void WalterModem::_processQueueRsp(
             _httpContextSet[profileId].state =
                 WALTER_MODEM_HTTP_CONTEXT_STATE_GOT_RING;
             _httpContextSet[profileId].httpStatus = httpStatus;
-            if (_httpContextSet[profileId].contentType)
-            {
+            if(_httpContextSet[profileId].contentType) {
                 _strncpy_s(_httpContextSet[profileId].contentType,
-                           contentType,
-                           _httpContextSet[profileId].contentTypeSize - 1);
+                        contentType,
+                        _httpContextSet[profileId].contentTypeSize - 1);
             }
             _httpContextSet[profileId].contentLength = contentLength;
-        }
-        else
-        {
+        } else {
             /* incomplete ring message. TODO: report this as an error.
              * length is definitely missing so doing a proper receive
              * is impossible.
@@ -2752,11 +2437,11 @@ void WalterModem::_processQueueRsp(
             return;
         }
     }
-    else if (_buffStartsWith(buff, "+SQNCOAPRING: "))
+    else if(_buffStartsWith(buff, "+SQNCOAPRING: "))
     {
         const char *rspStr = _buffStr(buff);
         char *commaPos = strchr(rspStr, ',');
-        char *start = (char *)rspStr + _strLitLen("+SQNCOAPRING: ");
+        char *start = (char *) rspStr + _strLitLen("+SQNCOAPRING: ");
 
         char *profileIdStr = NULL;
         char *messageIdStr = NULL;
@@ -2764,16 +2449,14 @@ void WalterModem::_processQueueRsp(
         char *reqRspCodeRawStr = NULL;
         char *lengthStr = NULL;
 
-        if (commaPos)
-        {
+        if(commaPos) {
             /* got prof_id */
             *commaPos = '\0';
             profileIdStr = start;
             start = ++commaPos;
             commaPos = strchr(commaPos, ',');
 
-            if (atoi(profileIdStr) >= WALTER_MODEM_MAX_COAP_PROFILES)
-            {
+            if(atoi(profileIdStr) >= WALTER_MODEM_MAX_COAP_PROFILES) {
                 /* TODO: return error if modem returns invalid profile id.
                  * problem: this message is an URC: the associated cmd
                  * may be any random command currently executing */
@@ -2782,8 +2465,7 @@ void WalterModem::_processQueueRsp(
             }
         }
 
-        if (commaPos)
-        {
+        if(commaPos) {
             /* got msg_id */
             *commaPos = '\0';
             messageIdStr = start;
@@ -2791,17 +2473,15 @@ void WalterModem::_processQueueRsp(
             commaPos = strchr(commaPos, ',');
         }
 
-        if (commaPos)
-        {
+        if(commaPos) {
             /* got req_resp */
             *commaPos = '\0';
-            // reqRspStr = start;
+            //reqRspStr = start;
             start = ++commaPos;
             commaPos = strchr(commaPos, ',');
         }
 
-        if (commaPos)
-        {
+        if(commaPos) {
             /* got type (con, noncon, ack, rst) */
             *commaPos = '\0';
             sendTypeStr = start;
@@ -2809,8 +2489,7 @@ void WalterModem::_processQueueRsp(
             commaPos = strchr(commaPos, ',');
         }
 
-        if (commaPos)
-        {
+        if(commaPos) {
             /* got rsp code / method */
             *commaPos = '\0';
             reqRspCodeRawStr = start;
@@ -2819,51 +2498,50 @@ void WalterModem::_processQueueRsp(
             /* convert parameters to int */
             uint8_t profileId = atoi(profileIdStr);
             uint16_t messageId = atoi(messageIdStr);
-            // uint8_t reqRsp = atoi(reqRspStr);   redundant with sendType
+            //uint8_t reqRsp = atoi(reqRspStr);   redundant with sendType
             WalterModemCoapSendType sendType =
-                (WalterModemCoapSendType)atoi(sendTypeStr);
+                (WalterModemCoapSendType) atoi(sendTypeStr);
             uint8_t reqRspCodeRaw = atoi(reqRspCodeRawStr);
             uint16_t length = atoi(lengthStr);
 
-            if (profileId == 0)
-            {
+            if(profileId == 0) {
                 /* profile id 0 is the internal BlueCherry cloud coap profile */
-                if (blueCherry.lastAckedMessageId != messageId)
-                {
+                if(blueCherry.lastAckedMessageId != messageId) {
                     WalterModemBuffer *stringsBuffer = _getFreeBuffer();
-                    stringsBuffer->size += sprintf((char *)stringsBuffer->data,
-                                                   "AT+SQNCOAPRCV=%s,%s,%s",
-                                                   profileIdStr, messageIdStr, lengthStr);
+                    stringsBuffer->size += sprintf((char *) stringsBuffer->data,
+                            "AT+SQNCOAPRCV=%s,%s,%s",
+                            profileIdStr, messageIdStr, lengthStr);
                     const char *_cmdArr[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] =
-                        arr((const char *)stringsBuffer->data);
+                        arr((const char *) stringsBuffer->data);
 
                     _addQueueCmd(_cmdArr, "+SQNCOAPRCV: ", NULL,
-                                 coap_received_from_bluecherry, &blueCherry,
-                                 NULL, NULL, WALTER_MODEM_CMD_TYPE_TX_WAIT,
-                                 blueCherry.messageIn, sizeof(blueCherry.messageIn),
-                                 stringsBuffer);
+                            coap_received_from_bluecherry, &blueCherry,
+                            NULL, NULL, WALTER_MODEM_CMD_TYPE_TX_WAIT,
+                            blueCherry.messageIn, sizeof(blueCherry.messageIn),
+                            stringsBuffer);
                 }
-            }
-            else
-            {
+            } else {
                 /* store ring in ring list for this coap context */
                 uint8_t ringIdx;
-                for (ringIdx = 0;
-                     ringIdx < sizeof(_coapContextSet[profileId].rings) / sizeof(WalterModemCoapRing);
-                     ringIdx++)
-                {
-                    if (!_coapContextSet[profileId].rings[ringIdx].messageId)
-                    {
+                for(ringIdx = 0;
+                        ringIdx < sizeof(_coapContextSet[profileId].rings)
+                        / sizeof(WalterModemCoapRing);
+                        ringIdx++) {
+                    if(!_coapContextSet[profileId].rings[ringIdx].messageId) {
                         break;
                     }
-                    if (_coapContextSet[profileId].rings[ringIdx].messageId == messageId && _coapContextSet[profileId].rings[ringIdx].sendType == sendType && _coapContextSet[profileId].rings[ringIdx].methodRsp == reqRspCodeRaw)
-                    {
+                    if(_coapContextSet[profileId].rings[ringIdx].messageId
+                            == messageId
+                            && _coapContextSet[profileId].rings[ringIdx].sendType
+                            == sendType
+                            && _coapContextSet[profileId].rings[ringIdx].methodRsp
+                            == reqRspCodeRaw) {
                         break;
                     }
                 }
 
-                if (ringIdx == sizeof(_coapContextSet[profileId].rings) / sizeof(WalterModemCoapRing))
-                {
+                if(ringIdx == sizeof(_coapContextSet[profileId].rings)
+                        / sizeof(WalterModemCoapRing)) {
                     /* ring buffer full unfortunately, dropping ring.
                      * TODO: error reporting mechanism for this failed URC
                      */
@@ -2871,22 +2549,23 @@ void WalterModem::_processQueueRsp(
                     return;
                 }
 
-                if (!_coapContextSet[profileId].rings[ringIdx].messageId)
-                {
+                if(!_coapContextSet[profileId].rings[ringIdx].messageId) {
                     _coapContextSet[profileId].rings[ringIdx].messageId = messageId;
                     _coapContextSet[profileId].rings[ringIdx].sendType = sendType;
                     _coapContextSet[profileId].rings[ringIdx].methodRsp =
-                        (WalterModemCoapSendMethodRsp)reqRspCodeRaw;
+                        (WalterModemCoapSendMethodRsp ) reqRspCodeRaw;
                     _coapContextSet[profileId].rings[ringIdx].length = length;
                 }
             }
         }
     }
-    else if (cmd && cmd->atCmd[0] && !strcmp(cmd->atCmd[0], "AT+SQNSMQTTRCVMESSAGE=0,") && cmd->rsp->type != WALTER_MODEM_RSP_DATA_TYPE_MQTT)
+    else if(cmd && cmd->atCmd[0]
+            && !strcmp(cmd->atCmd[0], "AT+SQNSMQTTRCVMESSAGE=0,")
+            && cmd->rsp->type != WALTER_MODEM_RSP_DATA_TYPE_MQTT)
     {
         const char *rspStr = _buffStr(buff);
 
-        uint8_t ringIdx = (uint32_t)cmd->completeHandlerArg;
+        uint8_t ringIdx = (uint32_t) cmd->completeHandlerArg;
 
         cmd->rsp->type = WALTER_MODEM_RSP_DATA_TYPE_MQTT;
         cmd->rsp->data.mqttResponse.messageId = _mqttRings[ringIdx].messageId;
@@ -2896,189 +2575,161 @@ void WalterModem::_processQueueRsp(
         /* free ring entry */
         _mqttRings[ringIdx].messageId = 0;
 
-        if (cmd->data)
-        {
+        if(cmd->data) {
             /* skip leading \r\n */
             memcpy(cmd->data, rspStr + 2, cmd->dataSize);
         }
     }
-    else if (_buffStartsWith(buff, "+SQNCOAPCONNECTED: "))
+    else if(_buffStartsWith(buff, "+SQNCOAPCONNECTED: "))
     {
         const char *rspStr = _buffStr(buff);
         char *commaPos = strchr(rspStr, ',');
-        if (commaPos)
-        {
+        if(commaPos) {
             *commaPos = '\0';
         }
 
         uint8_t profileId = atoi(rspStr + _strLitLen("+SQNCOAPCONNECTED: "));
 
-        if (profileId < WALTER_MODEM_MAX_COAP_PROFILES)
-        {
+        if(profileId < WALTER_MODEM_MAX_COAP_PROFILES) {
             _coapContextSet[profileId].connected = true;
         }
     }
-    else if (_buffStartsWith(buff, "+SQNCOAPCLOSED: "))
+    else if(_buffStartsWith(buff, "+SQNCOAPCLOSED: "))
     {
         const char *rspStr = _buffStr(buff);
         char *commaPos = strchr(rspStr, ',');
-        if (commaPos)
-        {
+        if(commaPos) {
             *commaPos = '\0';
         }
 
         uint8_t profileId = atoi(rspStr + _strLitLen("+SQNCOAPCLOSED: "));
 
-        if (profileId < WALTER_MODEM_MAX_COAP_PROFILES)
-        {
+        if(profileId < WALTER_MODEM_MAX_COAP_PROFILES) {
             _coapContextSet[profileId].connected = false;
 
-            if (profileId == 0)
-            {
+            if(profileId == 0) {
                 /* our own coap profile for BlueCherry was just closed */
 
-                if (blueCherry.status == WALTER_MODEM_BLUECHERRY_STATUS_AWAITING_RESPONSE)
-                {
+                if(blueCherry.status == WALTER_MODEM_BLUECHERRY_STATUS_AWAITING_RESPONSE) {
                     blueCherry.status = WALTER_MODEM_BLUECHERRY_STATUS_TIMED_OUT;
                 }
             }
         }
     }
-    else if (_buffStartsWith(buff, "+SQNHTTPCONNECT: "))
+    else if(_buffStartsWith(buff, "+SQNHTTPCONNECT: "))
     {
         const char *rspStr = _buffStr(buff);
         char *commaPos = strchr(rspStr, ',');
         uint8_t profileId, resultCode;
 
-        if (commaPos)
-        {
+        if(commaPos) {
             *commaPos = '\0';
             resultCode = atoi(commaPos + 1);
-        }
-        else
-        {
+        } else {
             resultCode = 0;
         }
 
         profileId = atoi(rspStr + _strLitLen("+SQNHTTPCONNECT: "));
 
-        if (profileId < WALTER_MODEM_MAX_HTTP_PROFILES)
-        {
-            if (resultCode == 0)
-            {
+        if(profileId < WALTER_MODEM_MAX_HTTP_PROFILES) {
+            if(resultCode == 0) {
                 _httpContextSet[profileId].connected = true;
-            }
-            else
-            {
+            } else {
                 _httpContextSet[profileId].connected = false;
             }
         }
 
         /* TODO: implement event hook for arduino developers */
     }
-    else if (_buffStartsWith(buff, "+SQNHTTPDISCONNECT: "))
+    else if(_buffStartsWith(buff, "+SQNHTTPDISCONNECT: "))
     {
         const char *rspStr = _buffStr(buff);
         uint8_t profileId = atoi(rspStr + _strLitLen("+SQNHTTPDISCONNECT: "));
 
-        if (profileId < WALTER_MODEM_MAX_HTTP_PROFILES)
-        {
+        if(profileId < WALTER_MODEM_MAX_HTTP_PROFILES) {
             _httpContextSet[profileId].connected = false;
         }
 
         /* TODO: implement event hook for arduino developers */
     }
-    else if (_buffStartsWith(buff, "+SQNHTTPSH: "))
+    else if(_buffStartsWith(buff, "+SQNHTTPSH: "))
     {
         const char *rspStr = _buffStr(buff);
         uint8_t profileId = atoi(rspStr + _strLitLen("+SQNHTTPSH: "));
 
-        if (profileId < WALTER_MODEM_MAX_HTTP_PROFILES)
-        {
+        if(profileId < WALTER_MODEM_MAX_HTTP_PROFILES) {
             _httpContextSet[profileId].connected = false;
         }
     }
-    else if (_buffStartsWith(buff, "+SQNSH: "))
+    else if(_buffStartsWith(buff, "+SQNSH: "))
     {
         const char *rspStr = _buffStr(buff);
         int sockId = atoi(rspStr + _strLitLen("+SQNSH: "));
 
         WalterModemSocket *sock = _socketGet(sockId);
 
-        if (sock)
-        {
+        if(sock) {
             _socketRelease(sock);
         }
     }
-    else if (_buffStartsWith(buff, "+SQNSMQTTONCONNECT:0,"))
+    else if(_buffStartsWith(buff, "+SQNSMQTTONCONNECT:0,"))
     {
         const char *rspStr = _buffStr(buff);
         int status = atoi(rspStr + _strLitLen("+SQNSMQTTONCONNECT:0,"));
 
-        if (status)
-        {
+        if(status) {
             result = WALTER_MODEM_STATE_ERROR;
         }
     }
-    else if (_buffStartsWith(buff, "+SQNSMQTTONDISCONNECT:0,"))
+    else if(_buffStartsWith(buff, "+SQNSMQTTONDISCONNECT:0,"))
     {
         const char *rspStr = _buffStr(buff);
         int status = atoi(rspStr + _strLitLen("+SQNSMQTTONDISCONNECT:0,"));
 
-        if (status)
-        {
+        if(status) {
             result = WALTER_MODEM_STATE_ERROR;
         }
     }
-    else if (_buffStartsWith(buff, "+SQNSMQTTONPUBLISH:0,"))
+    else if(_buffStartsWith(buff, "+SQNSMQTTONPUBLISH:0,"))
     {
         const char *rspStr = _buffStr(buff);
         const char *pmid = rspStr + _strLitLen("+SQNSMQTTONPUBLISH:0,");
         const char *statusComma = strchr(pmid, ',');
 
-        if (statusComma == NULL)
-        {
+        if(statusComma == NULL) {
             result = WALTER_MODEM_STATE_ERROR;
-        }
-        else
-        {
-            if (atoi(statusComma + 1))
-            {
+        } else {
+            if(atoi(statusComma + 1)) {
                 result = WALTER_MODEM_STATE_ERROR;
             }
         }
     }
-    else if (_buffStartsWith(buff, "+SQNSMQTTONSUBSCRIBE:0,"))
+    else if(_buffStartsWith(buff, "+SQNSMQTTONSUBSCRIBE:0,"))
     {
         const char *rspStr = _buffStr(buff);
         const char *topic = rspStr + _strLitLen("+SQNSMQTTONSUBSCRIBE:0,");
         const char *statusComma = strchr(topic, ',');
 
-        if (statusComma == NULL)
-        {
+        if(statusComma == NULL) {
             result = WALTER_MODEM_STATE_ERROR;
-        }
-        else
-        {
-            if (atoi(statusComma + 1))
-            {
+        } else {
+            if(atoi(statusComma + 1)) {
                 result = WALTER_MODEM_STATE_ERROR;
             }
         }
     }
-    else if (_buffStartsWith(buff, "+SQNSMQTTONMESSAGE:0,"))
+    else if(_buffStartsWith(buff, "+SQNSMQTTONMESSAGE:0,"))
     {
         const char *rspStr = _buffStr(buff);
         char *commaPos = strchr(rspStr, ',');
-        char *start = (char *)rspStr + _strLitLen("+SQNSMQTTONMESSAGE:0");
+        char *start = (char *) rspStr + _strLitLen("+SQNSMQTTONMESSAGE:0");
 
         char *topic = NULL;
         char *lenStr = NULL;
         char *qosStr = NULL;
         char *midStr = NULL;
 
-        if (commaPos)
-        {
+        if(commaPos) {
             /* got mqtt profile (must be 0) */
             *commaPos = '\0';
             // atoi(start) should be 0
@@ -3086,8 +2737,7 @@ void WalterModem::_processQueueRsp(
             commaPos = strchr(commaPos, ',');
         }
 
-        if (commaPos)
-        {
+        if(commaPos) {
             /* got topic */
             *commaPos = '\0';
             commaPos[-1] = '\0';
@@ -3096,8 +2746,7 @@ void WalterModem::_processQueueRsp(
             commaPos = strchr(commaPos, ',');
         }
 
-        if (commaPos)
-        {
+        if(commaPos) {
             /* got len and qos */
             *commaPos = '\0';
             lenStr = start;
@@ -3105,8 +2754,7 @@ void WalterModem::_processQueueRsp(
             start = ++commaPos;
             commaPos = strchr(commaPos, ',');
 
-            if (commaPos)
-            {
+            if(commaPos) {
                 /* got optional msg id */
                 *commaPos = '\0';
                 midStr = commaPos + 1;
@@ -3119,22 +2767,18 @@ void WalterModem::_processQueueRsp(
 
             /* store ring in ring list for this coap context */
             uint8_t ringIdx;
-            for (ringIdx = 0;
-                 ringIdx < sizeof(_mqttRings) / sizeof(WalterModemMqttRing);
-                 ringIdx++)
-            {
-                if (!_mqttRings[ringIdx].messageId)
-                {
+            for(ringIdx = 0;
+                    ringIdx < sizeof(_mqttRings) / sizeof(WalterModemMqttRing);
+                    ringIdx++) {
+                if(!_mqttRings[ringIdx].messageId) {
                     break;
                 }
-                if (_mqttRings[ringIdx].messageId == messageId)
-                {
+                if(_mqttRings[ringIdx].messageId == messageId) {
                     break;
                 }
             }
 
-            if (ringIdx == sizeof(_mqttRings) / sizeof(WalterModemMqttRing))
-            {
+            if(ringIdx == sizeof(_mqttRings) / sizeof(WalterModemMqttRing)) {
                 /* ring buffer full unfortunately, dropping ring.
                  * TODO: error reporting mechanism for this failed URC
                  */
@@ -3142,20 +2786,18 @@ void WalterModem::_processQueueRsp(
                 return;
             }
 
-            if (!_mqttRings[ringIdx].messageId)
-            {
+            if(!_mqttRings[ringIdx].messageId) {
                 _mqttRings[ringIdx].messageId = messageId;
                 _mqttRings[ringIdx].length = length;
                 _mqttRings[ringIdx].qos = qos;
                 _strncpy_s(_mqttRings[ringIdx].topic, topic,
-                           WALTER_MODEM_HOSTNAME_BUF_SIZE);
+                    WALTER_MODEM_HOSTNAME_BUF_SIZE);
             }
         }
     }
-    else if (_buffStartsWithDigit(buff))
+    else if(_buffStartsWithDigit(buff))
     {
-        if (cmd == NULL)
-        {
+        if(cmd == NULL) {
             buff->free = true;
             return;
         }
@@ -3163,20 +2805,19 @@ void WalterModem::_processQueueRsp(
         cmd->rsp->type = WALTER_MODEM_RSP_DATA_TYPE_SIM_CARD_IMSI;
 
         int offset = 0;
-        for (int i = 0; i < buff->size && offset < 15; ++i)
-        {
+        for(int i = 0; i < buff->size && offset < 15; ++i) {
             cmd->rsp->data.imsi[offset++] = buff->data[i];
         }
         cmd->rsp->data.imsi[offset++] = '\0';
     }
 
 after_processing_logic:
-    if (cmd == NULL ||
-        cmd->type == WALTER_MODEM_CMD_TYPE_TX ||
-        cmd->state == WALTER_MODEM_CMD_STATE_FREE ||
-        cmd->atRsp == NULL ||
-        cmd->atRspLen > buff->size ||
-        memcmp(cmd->atRsp, buff->data, cmd->atRspLen) != 0)
+    if(cmd == NULL ||
+       cmd->type == WALTER_MODEM_CMD_TYPE_TX ||
+       cmd->state == WALTER_MODEM_CMD_STATE_FREE ||
+       cmd->atRsp == NULL ||
+       cmd->atRspLen > buff->size ||
+       memcmp(cmd->atRsp, buff->data, cmd->atRspLen) != 0)
     {
         buff->free = true;
         return;
@@ -3189,19 +2830,19 @@ after_processing_logic:
 
 bool WalterModem::_processOtaInitializeEvent(uint8_t *data, uint16_t len)
 {
-    if (!blueCherry.otaBuffer || len != sizeof(uint32_t))
-    {
+    if(!blueCherry.otaBuffer || len != sizeof(uint32_t)) {
         return true;
     }
 
-    blueCherry.otaSize = *((uint32_t *)data);
-
+    blueCherry.otaSize = *((uint32_t *) data);
+    
     /* check if there is enough space on the update partition */
     blueCherry.otaPartition = esp_ota_get_next_update_partition(NULL);
-    if (!blueCherry.otaPartition || blueCherry.otaSize > blueCherry.otaPartition->size || blueCherry.otaSize == 0)
-    {
+    if(!blueCherry.otaPartition
+            || blueCherry.otaSize > blueCherry.otaPartition->size
+            || blueCherry.otaSize == 0) {
         ESP_LOGD("WalterModem", "OTA init: no OTA partition or size 0 or %lu > %lu",
-                 blueCherry.otaSize, blueCherry.otaPartition->size);
+                blueCherry.otaSize, blueCherry.otaPartition->size);
         return true;
     }
 
@@ -3210,7 +2851,7 @@ bool WalterModem::_processOtaInitializeEvent(uint8_t *data, uint16_t len)
     blueCherry.otaProgress = 0;
 
     ESP_LOGD("WalterModem", "OTA init: size %lu <= partition size %lu",
-             blueCherry.otaSize, blueCherry.otaPartition->size);
+            blueCherry.otaSize, blueCherry.otaPartition->size);
 
     return false;
 }
@@ -3222,11 +2863,9 @@ bool WalterModem::_otaBufferToFlash(void)
      */
     uint8_t skip = 0;
 
-    if (!blueCherry.otaProgress)
-    {
+    if(!blueCherry.otaProgress) {
         /* meanwhile check for the magic byte */
-        if (blueCherry.otaBuffer[0] != ESP_IMAGE_HEADER_MAGIC)
-        {
+        if(blueCherry.otaBuffer[0] != ESP_IMAGE_HEADER_MAGIC){
             ESP_LOGD("WalterModem", "OTA chunk: magic header not found");
             return false;
         }
@@ -3239,34 +2878,38 @@ bool WalterModem::_otaBufferToFlash(void)
 
     // if it's the block boundary, than erase the whole block from here
     bool blockErase =
-        (blueCherry.otaSize - blueCherry.otaProgress >= SPI_FLASH_BLOCK_SIZE) && (flashOffset % SPI_FLASH_BLOCK_SIZE == 0);
+        (blueCherry.otaSize - blueCherry.otaProgress >= SPI_FLASH_BLOCK_SIZE)
+        && (flashOffset % SPI_FLASH_BLOCK_SIZE == 0);
 
     // sector belong to unaligned partition heading block
     bool partitionHeadSectors =
-        blueCherry.otaPartition->address % SPI_FLASH_BLOCK_SIZE && flashOffset <
-                                                                       (blueCherry.otaPartition->address / SPI_FLASH_BLOCK_SIZE + 1) * SPI_FLASH_BLOCK_SIZE;
+        blueCherry.otaPartition->address % SPI_FLASH_BLOCK_SIZE
+        && flashOffset <
+        (blueCherry.otaPartition->address / SPI_FLASH_BLOCK_SIZE + 1)
+        * SPI_FLASH_BLOCK_SIZE;
 
     // sector belong to unaligned partition tailing block
     bool partitionTailSectors =
         flashOffset >=
-        (blueCherry.otaPartition->address + blueCherry.otaSize) / SPI_FLASH_BLOCK_SIZE * SPI_FLASH_BLOCK_SIZE;
+        (blueCherry.otaPartition->address + blueCherry.otaSize)
+        / SPI_FLASH_BLOCK_SIZE
+        * SPI_FLASH_BLOCK_SIZE;
 
-    if (blockErase || partitionHeadSectors || partitionTailSectors)
-    {
-        if (esp_partition_erase_range(blueCherry.otaPartition,
-                                      blueCherry.otaProgress,
-                                      blockErase ? SPI_FLASH_BLOCK_SIZE : SPI_FLASH_SEC_SIZE) != ESP_OK)
-        {
+    if (blockErase || partitionHeadSectors || partitionTailSectors) {
+        if(esp_partition_erase_range(blueCherry.otaPartition,
+                    blueCherry.otaProgress,
+                    blockErase ? SPI_FLASH_BLOCK_SIZE : SPI_FLASH_SEC_SIZE)
+                != ESP_OK) {
             ESP_LOGD("WalterModem", "OTA chunk: could not erase partition");
             return false;
         }
     }
 
-    if (esp_partition_write(blueCherry.otaPartition,
-                            blueCherry.otaProgress + skip,
-                            (uint32_t *)blueCherry.otaBuffer + skip / sizeof(uint32_t),
-                            blueCherry.otaBufferPos - skip) != ESP_OK)
-    {
+    if(esp_partition_write(blueCherry.otaPartition,
+                blueCherry.otaProgress + skip,
+                (uint32_t *) blueCherry.otaBuffer
+                + skip / sizeof(uint32_t),
+                blueCherry.otaBufferPos - skip) != ESP_OK) {
         ESP_LOGD("WalterModem", "OTA chunk: could not write data to partition");
         return false;
     }
@@ -3279,54 +2922,47 @@ bool WalterModem::_otaBufferToFlash(void)
 
 bool WalterModem::_processOtaChunkEvent(uint8_t *data, uint16_t len)
 {
-    if (!blueCherry.otaSize || len == 0 || blueCherry.otaProgress + len > blueCherry.otaSize)
-    {
+    if(!blueCherry.otaSize
+            || len == 0
+            || blueCherry.otaProgress + len > blueCherry.otaSize) {
         ESP_LOGD("WalterModem",
-                 "OTA chunk: cancelled because empty chunk or chunk beyond update size");
+                "OTA chunk: cancelled because empty chunk or chunk beyond update size");
         return true;
     }
 
     size_t left = len;
 
-    while ((blueCherry.otaBufferPos + left) > SPI_FLASH_SEC_SIZE)
-    {
+    while((blueCherry.otaBufferPos + left) > SPI_FLASH_SEC_SIZE) {
         size_t toBuff = SPI_FLASH_SEC_SIZE - blueCherry.otaBufferPos;
 
         memcpy(blueCherry.otaBuffer + blueCherry.otaBufferPos,
-               data + (len - left),
-               toBuff);
+                data + (len - left),
+                toBuff);
         blueCherry.otaBufferPos += toBuff;
 
-        if (!_otaBufferToFlash())
-        {
+        if(!_otaBufferToFlash()) {
             ESP_LOGD("WalterModem", "OTA chunk: failed to write to flash (within loop)");
             return true;
-        }
-        else
-        {
+        } else {
             ESP_LOGD("WalterModem", "OTA chunk written to flash; progress = %lu / %lu",
-                     blueCherry.otaProgress, blueCherry.otaSize);
+                    blueCherry.otaProgress, blueCherry.otaSize);
         }
 
         left -= toBuff;
     }
 
     memcpy(blueCherry.otaBuffer + blueCherry.otaBufferPos,
-           data + (len - left),
-           left);
+            data + (len - left),
+            left);
     blueCherry.otaBufferPos += left;
 
-    if (blueCherry.otaProgress + blueCherry.otaBufferPos == blueCherry.otaSize)
-    {
-        if (!_otaBufferToFlash())
-        {
+    if(blueCherry.otaProgress + blueCherry.otaBufferPos == blueCherry.otaSize) {
+        if(!_otaBufferToFlash()){
             ESP_LOGD("WalterModem", "OTA chunk: failed to write to flash (remainder)");
             return true;
-        }
-        else
-        {
+        } else {
             ESP_LOGD("WalterModem", "OTA remainder written to flash; progress = %lu / %lu",
-                     blueCherry.otaProgress, blueCherry.otaSize);
+                    blueCherry.otaProgress, blueCherry.otaSize);
         }
     }
 
@@ -3335,38 +2971,34 @@ bool WalterModem::_processOtaChunkEvent(uint8_t *data, uint16_t len)
 
 bool WalterModem::_processOtaFinishEvent(void)
 {
-    if (!blueCherry.otaSize || blueCherry.otaProgress != blueCherry.otaSize)
-    {
+    if(!blueCherry.otaSize
+            || blueCherry.otaProgress != blueCherry.otaSize) {
         return true;
     }
 
     /* enable partition: write the stashed first bytes */
-    if (esp_partition_write(blueCherry.otaPartition,
-                            0,
-                            (uint32_t *)blueCherry.otaSkipBuffer,
-                            ENCRYPTED_BLOCK_SIZE) != ESP_OK)
-    {
+    if(esp_partition_write(blueCherry.otaPartition,
+                0,
+                (uint32_t *) blueCherry.otaSkipBuffer,
+                ENCRYPTED_BLOCK_SIZE) != ESP_OK) {
         ESP_LOGD("WalterModem", "OTA Finish: Could not write start of boot sector to partition");
         return true;
     }
 
     /* check if partition is bootable */
-    if (esp_partition_read(blueCherry.otaPartition,
-                           0,
-                           (uint32_t *)blueCherry.otaSkipBuffer,
-                           ENCRYPTED_BLOCK_SIZE) != ESP_OK)
-    {
+    if(esp_partition_read(blueCherry.otaPartition,
+                0,
+                (uint32_t *) blueCherry.otaSkipBuffer,
+                ENCRYPTED_BLOCK_SIZE) != ESP_OK) {
         ESP_LOGD("WalterModem", "OTA Finish: Could not read boot partition");
         return true;
     }
-    if (blueCherry.otaSkipBuffer[0] != ESP_IMAGE_HEADER_MAGIC)
-    {
+    if(blueCherry.otaSkipBuffer[0] != ESP_IMAGE_HEADER_MAGIC) {
         ESP_LOGD("WalterModem", "OTA Finish: Magic header is missing on partition");
         return true;
     }
 
-    if (esp_ota_set_boot_partition(blueCherry.otaPartition))
-    {
+    if(esp_ota_set_boot_partition(blueCherry.otaPartition)) {
         ESP_LOGD("WalterModem", "OTA Finish: Could not set boot partition");
         return true;
     }
@@ -3380,12 +3012,10 @@ bool WalterModem::_processOtaFinishEvent(void)
 bool WalterModem::_formatFat(void)
 {
     esp_err_t result;
-    if (_wl_handle != WL_INVALID_HANDLE)
-    {
+    if(_wl_handle != WL_INVALID_HANDLE){
         // if still mounted, no need to format
         ESP_LOGD("WalterModem", "Trying to format FAT partition but it was already mounted");
-        if (_mota_file_ptr)
-        {
+        if(_mota_file_ptr) {
             fclose(_mota_file_ptr);
             _mota_file_ptr = NULL;
         }
@@ -3397,34 +3027,30 @@ bool WalterModem::_formatFat(void)
     // Attempt to mount to see if there is already data
     wl_handle_t temp_handle;
     const esp_partition_t *ffat_partition = esp_partition_find_first(
-        ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_FAT, "ffat");
-    if (!ffat_partition)
-    {
+       ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_FAT, "ffat");
+    if (!ffat_partition) {
         ESP_LOGD("WalterModem", "No FAT partition found to store new modem firmware in");
         return false;
     }
     result = wl_mount(ffat_partition, &temp_handle);
 
-    if (result == ESP_OK)
-    {
+    if (result == ESP_OK) {
         // Wipe disk- we just wipe the FAT, not the data
         wl_erase_range(temp_handle, 0, 16384);
         wl_unmount(temp_handle);
-    }
-    else
-    {
+    } else {
         ESP_LOGD("WalterModem", "Erase FAT partition failed");
         return false;
     }
 
     // Now do a mount with format_if_fail (which it will)
     esp_vfs_fat_mount_config_t conf = {
-        .format_if_mount_failed = true,
-        .max_files = 1,
-        .allocation_unit_size = CONFIG_WL_SECTOR_SIZE};
+      .format_if_mount_failed = true,
+      .max_files = 1,
+      .allocation_unit_size = CONFIG_WL_SECTOR_SIZE
+    };
     result = esp_vfs_fat_spiflash_mount("/ffat", "ffat", &conf, &_wl_handle);
-    if (result != ESP_OK)
-    {
+    if (result != ESP_OK){
         ESP_LOGD("WalterModem", "Mount/format FAT partition failed!");
         _wl_handle = WL_INVALID_HANDLE;
         return false;
@@ -3435,15 +3061,13 @@ bool WalterModem::_formatFat(void)
 
 bool WalterModem::_processMotaInitializeEvent(uint8_t *data, uint16_t len)
 {
-    if (!blueCherry.otaBuffer || len != sizeof(uint32_t))
-    {
+    if(!blueCherry.otaBuffer || len != sizeof(uint32_t)) {
         return true;
     }
 
-    blueCherry.otaSize = *((uint32_t *)data);
-
-    if (!_formatFat())
-    {
+    blueCherry.otaSize = *((uint32_t *) data);
+    
+    if(!_formatFat()) {
         ESP_LOGD("WalterModem", "MOTA initialize (format partition) failed");
         return true;
     }
@@ -3460,21 +3084,20 @@ bool WalterModem::_processMotaInitializeEvent(uint8_t *data, uint16_t len)
 
 bool WalterModem::_processMotaChunkEvent(uint8_t *data, uint16_t len)
 {
-    if (!blueCherry.otaSize || len == 0 || blueCherry.otaProgress + len > blueCherry.otaSize)
-    {
+    if(!blueCherry.otaSize
+            || len == 0
+            || blueCherry.otaProgress + len > blueCherry.otaSize) {
         ESP_LOGD("WalterModem",
-                 "MOTA chunk: cancelled because empty chunk or chunk beyond update size");
+                "MOTA chunk: cancelled because empty chunk or chunk beyond update size");
         return true;
     }
 
-    if (!_mota_file_ptr)
-    {
+    if(!_mota_file_ptr) {
         ESP_LOGD("WalterModem", "Bug: MOTA file not open!");
         return true;
     }
 
-    if (fwrite(data, 1, len, _mota_file_ptr) != len)
-    {
+    if(fwrite(data, 1, len, _mota_file_ptr) != len) {
         fclose(_mota_file_ptr);
         _mota_file_ptr = NULL;
         ESP_LOGD("WalterModem", "Error: short write to MOTA update file");
@@ -3483,7 +3106,7 @@ bool WalterModem::_processMotaChunkEvent(uint8_t *data, uint16_t len)
 
     blueCherry.otaProgress += len;
 
-    ESP_LOGD("WalterModem", "MOTA: appending new chunk of %d bytes to ESP32 flash; so far %" PRIu32 "/%" PRIu32 " bytes written", len, blueCherry.otaProgress, blueCherry.otaSize);
+    ESP_LOGD("WalterModem", "MOTA: appending new chunk of %d bytes to ESP32 flash; so far %"PRIu32"/%"PRIu32" bytes written", len, blueCherry.otaProgress, blueCherry.otaSize);
 
     return false;
 }
@@ -3491,15 +3114,14 @@ bool WalterModem::_processMotaChunkEvent(uint8_t *data, uint16_t len)
 uint16_t WalterModem::_calculateStpCrc16(const void *input, size_t length)
 {
     uint16_t crc = 0;
-    const uint8_t *data = (const uint8_t *)input;
+    const uint8_t *data = (const uint8_t *) input;
 
-    while (length-- > 0)
-    {
-        crc = (uint16_t)((0xff & (crc >> 8)) | (crc << 8));
-        crc ^= (uint16_t)*data++;
-        crc ^= (uint16_t)((crc & 0xff) >> 4);
-        crc ^= (uint16_t)(crc << 12);
-        crc ^= (uint16_t)((uint8_t)(crc & 0xff) << 5);
+    while(length-- > 0) {
+        crc = (uint16_t) ((0xff & (crc >> 8)) | (crc << 8));
+        crc ^= (uint16_t) *data++;
+        crc ^= (uint16_t) ((crc & 0xff) >> 4);
+        crc ^= (uint16_t) (crc << 12);
+        crc ^= (uint16_t) ((uint8_t) (crc & 0xff) << 5);
     }
 
     /* ESP32 is little-endian but Monarch chip is big-endian */
@@ -3508,7 +3130,7 @@ uint16_t WalterModem::_calculateStpCrc16(const void *input, size_t length)
 
 uint16_t WalterModem::_modemFirmwareUpgradeStart(void)
 {
-    char *atCmd[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] = {NULL};
+    char *atCmd[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] = { NULL };
     int len;
 
     _rxHandlerInterrupted = true;
@@ -3569,29 +3191,29 @@ uint16_t WalterModem::_modemFirmwareUpgradeStart(void)
     stpRequest.payloadCrc16 = 0;
     stpRequest.headerCrc16 = _calculateStpCrc16(&stpRequest, sizeof(stpRequest));
 
-    bytesSent = _uartWrite((uint8_t *)&stpRequest, sizeof(stpRequest));
+    bytesSent = _uartWrite((uint8_t *) &stpRequest, sizeof(stpRequest));
 
-    ESP_LOGD("WalterModem", "sent STP reset: sent=%d header: 0x%" PRIx32 " 0x%x 0x%x %d %" PRIu32 " 0x%x 0x%x",
-             bytesSent,
-             _switchEndian32(stpRequest.signature),
-             stpRequest.operation,
-             stpRequest.sessionId,
-             _switchEndian16(stpRequest.payloadLength),
-             _switchEndian32(stpRequest.transactionId),
-             _switchEndian16(stpRequest.headerCrc16),
-             _switchEndian16(stpRequest.payloadCrc16));
+    ESP_LOGD("WalterModem", "sent STP reset: sent=%d header: 0x%"PRIx32" 0x%x 0x%x %d %"PRIu32" 0x%x 0x%x",
+            bytesSent,
+            _switchEndian32(stpRequest.signature),
+            stpRequest.operation,
+            stpRequest.sessionId,
+            _switchEndian16(stpRequest.payloadLength),
+            _switchEndian32(stpRequest.transactionId),
+            _switchEndian16(stpRequest.headerCrc16),
+            _switchEndian16(stpRequest.payloadCrc16));
 
-    bytesReceived = _uartRead((uint8_t *)&stpRequest, sizeof(stpRequest), true);
+    bytesReceived = _uartRead((uint8_t *) &stpRequest, sizeof(stpRequest), true);
 
-    ESP_LOGD("WalterModem", "received STP reset ack: received=%d header: 0x%" PRIx32 " 0x%x 0x%x %d %" PRIu32 " 0x%x 0x%x",
-             bytesReceived,
-             _switchEndian32(stpRequest.signature),
-             stpRequest.operation,
-             stpRequest.sessionId,
-             _switchEndian16(stpRequest.payloadLength),
-             _switchEndian32(stpRequest.transactionId),
-             _switchEndian16(stpRequest.headerCrc16),
-             _switchEndian16(stpRequest.payloadCrc16));
+    ESP_LOGD("WalterModem", "received STP reset ack: received=%d header: 0x%"PRIx32" 0x%x 0x%x %d %"PRIu32" 0x%x 0x%x",
+            bytesReceived,
+            _switchEndian32(stpRequest.signature),
+            stpRequest.operation,
+            stpRequest.sessionId,
+            _switchEndian16(stpRequest.payloadLength),
+            _switchEndian32(stpRequest.transactionId),
+            _switchEndian16(stpRequest.headerCrc16),
+            _switchEndian16(stpRequest.payloadCrc16));
 
     stpRequest.signature = _switchEndian32(WALTER_MODEM_STP_SIGNATURE_REQUEST);
     stpRequest.operation = WALTER_MODEM_STP_OPERATION_OPEN_SESSION;
@@ -3602,37 +3224,37 @@ uint16_t WalterModem::_modemFirmwareUpgradeStart(void)
     stpRequest.payloadCrc16 = 0;
     stpRequest.headerCrc16 = _calculateStpCrc16(&stpRequest, sizeof(stpRequest));
 
-    bytesSent = _uartWrite((uint8_t *)&stpRequest, sizeof(stpRequest));
+    bytesSent = _uartWrite((uint8_t *) &stpRequest, sizeof(stpRequest));
 
-    ESP_LOGD("WalterModem", "sent STP open session: sent=%d header: 0x%" PRIx32 " 0x%x 0x%x %d %" PRIu32 " 0x%x 0x%x",
-             bytesSent,
-             _switchEndian32(stpRequest.signature),
-             stpRequest.operation,
-             stpRequest.sessionId,
-             _switchEndian16(stpRequest.payloadLength),
-             _switchEndian32(stpRequest.transactionId),
-             _switchEndian16(stpRequest.headerCrc16),
-             _switchEndian16(stpRequest.payloadCrc16));
+    ESP_LOGD("WalterModem", "sent STP open session: sent=%d header: 0x%"PRIx32" 0x%x 0x%x %d %"PRIu32" 0x%x 0x%x",
+            bytesSent,
+            _switchEndian32(stpRequest.signature),
+            stpRequest.operation,
+            stpRequest.sessionId,
+            _switchEndian16(stpRequest.payloadLength),
+            _switchEndian32(stpRequest.transactionId),
+            _switchEndian16(stpRequest.headerCrc16),
+            _switchEndian16(stpRequest.payloadCrc16));
 
-    bytesReceived = _uartRead((uint8_t *)&stpRequest, sizeof(stpRequest), true);
+    bytesReceived = _uartRead((uint8_t *) &stpRequest, sizeof(stpRequest), true);
 
-    ESP_LOGD("WalterModem", "received STP open session ack: received=%d header: 0x%" PRIx32 " 0x%x 0x%x %d %" PRIu32 " 0x%x 0x%x",
-             bytesReceived,
-             _switchEndian32(stpRequest.signature),
-             stpRequest.operation,
-             stpRequest.sessionId,
-             _switchEndian16(stpRequest.payloadLength),
-             _switchEndian32(stpRequest.transactionId),
-             _switchEndian16(stpRequest.headerCrc16),
-             _switchEndian16(stpRequest.payloadCrc16));
+    ESP_LOGD("WalterModem", "received STP open session ack: received=%d header: 0x%"PRIx32" 0x%x 0x%x %d %"PRIu32" 0x%x 0x%x",
+            bytesReceived,
+            _switchEndian32(stpRequest.signature),
+            stpRequest.operation,
+            stpRequest.sessionId,
+            _switchEndian16(stpRequest.payloadLength),
+            _switchEndian32(stpRequest.transactionId),
+            _switchEndian16(stpRequest.headerCrc16),
+            _switchEndian16(stpRequest.payloadCrc16));
 
-    bytesReceived = _uartRead((uint8_t *)&stpResponseSessionOpen, sizeof(stpResponseSessionOpen), true);
+    bytesReceived = _uartRead((uint8_t *) &stpResponseSessionOpen, sizeof(stpResponseSessionOpen), true);
 
     ESP_LOGD("WalterModem", "received STP open session ack data: received=%d payload: %d %d %d",
-             bytesReceived,
-             stpResponseSessionOpen.success,
-             stpResponseSessionOpen.version,
-             _switchEndian16(stpResponseSessionOpen.maxTransferSize));
+            bytesReceived,
+            stpResponseSessionOpen.success,
+            stpResponseSessionOpen.version,
+            _switchEndian16(stpResponseSessionOpen.maxTransferSize));
 
     tickleWatchdog();
 
@@ -3641,11 +3263,10 @@ uint16_t WalterModem::_modemFirmwareUpgradeStart(void)
 
 void WalterModem::_modemFirmwareUpgradeFinish(bool success)
 {
-    char *atCmd[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] = {NULL};
+    char *atCmd[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] = { NULL };
     int len;
 
-    if (!success)
-    {
+    if(!success) {
         _rxHandlerInterrupted = false;
         reset();
         return;
@@ -3663,33 +3284,32 @@ void WalterModem::_modemFirmwareUpgradeFinish(bool success)
     stpRequest.payloadCrc16 = 0;
     stpRequest.headerCrc16 = _calculateStpCrc16(&stpRequest, sizeof(stpRequest));
 
-    bytesSent = _uartWrite((uint8_t *)&stpRequest, sizeof(stpRequest));
+    bytesSent = _uartWrite((uint8_t *) &stpRequest, sizeof(stpRequest));
 
-    ESP_LOGD("WalterModem", "sent STP reset: sent=%d header: 0x%" PRIx32 " 0x%x 0x%x %d %" PRIu32 " 0x%x 0x%x",
-             bytesSent,
-             _switchEndian32(stpRequest.signature),
-             stpRequest.operation,
-             stpRequest.sessionId,
-             _switchEndian16(stpRequest.payloadLength),
-             _switchEndian32(stpRequest.transactionId),
-             _switchEndian16(stpRequest.headerCrc16),
-             _switchEndian16(stpRequest.payloadCrc16));
+    ESP_LOGD("WalterModem", "sent STP reset: sent=%d header: 0x%"PRIx32" 0x%x 0x%x %d %"PRIu32" 0x%x 0x%x",
+            bytesSent,
+            _switchEndian32(stpRequest.signature),
+            stpRequest.operation,
+            stpRequest.sessionId,
+            _switchEndian16(stpRequest.payloadLength),
+            _switchEndian32(stpRequest.transactionId),
+            _switchEndian16(stpRequest.headerCrc16),
+            _switchEndian16(stpRequest.payloadCrc16));
 
-    bytesReceived = _uartRead((uint8_t *)&stpRequest, sizeof(stpRequest), true);
+    bytesReceived = _uartRead((uint8_t *) &stpRequest, sizeof(stpRequest), true);
 
-    ESP_LOGD("WalterModem", "received STP reset ack: received=%d header: 0x%" PRIx32 " 0x%x 0x%x %d %" PRIu32 " 0x%x 0x%x",
-             bytesReceived,
-             _switchEndian32(stpRequest.signature),
-             stpRequest.operation,
-             stpRequest.sessionId,
-             _switchEndian16(stpRequest.payloadLength),
-             _switchEndian32(stpRequest.transactionId),
-             _switchEndian16(stpRequest.headerCrc16),
-             _switchEndian16(stpRequest.payloadCrc16));
+    ESP_LOGD("WalterModem", "received STP reset ack: received=%d header: 0x%"PRIx32" 0x%x 0x%x %d %"PRIu32" 0x%x 0x%x",
+            bytesReceived,
+            _switchEndian32(stpRequest.signature),
+            stpRequest.operation,
+            stpRequest.sessionId,
+            _switchEndian16(stpRequest.payloadLength),
+            _switchEndian32(stpRequest.transactionId),
+            _switchEndian16(stpRequest.headerCrc16),
+            _switchEndian16(stpRequest.payloadCrc16));
 
     /* send AT and retry until we get OK */
-    for (;;)
-    {
+    for(;;) {
         vTaskDelay(pdMS_TO_TICKS(5000));
 
         atCmd[0] = "AT";
@@ -3701,8 +3321,7 @@ void WalterModem::_modemFirmwareUpgradeFinish(bool success)
         blueCherry.otaBuffer[len] = 0;
         ESP_LOGD("WalterModem", "sent AT, got %d:%s", len, blueCherry.otaBuffer);
 
-        if (!strcmp((char *)blueCherry.otaBuffer, "\r\nOK\r\n"))
-        {
+        if(!strcmp((char *) blueCherry.otaBuffer, "\r\nOK\r\n")) {
             break;
         }
     }
@@ -3770,35 +3389,35 @@ void WalterModem::_modemFirmwareUpgradeBlock(size_t blockSize, uint32_t transact
     stpRequest.payloadCrc16 = _calculateStpCrc16(&stpRequestTransferBlockCmd, sizeof(stpRequestTransferBlockCmd));
     stpRequest.headerCrc16 = _calculateStpCrc16(&stpRequest, sizeof(stpRequest));
 
-    bytesSent = _uartWrite((uint8_t *)&stpRequest, sizeof(stpRequest));
+    bytesSent = _uartWrite((uint8_t *) &stpRequest, sizeof(stpRequest));
 
-    ESP_LOGD("WalterModem", "sent STP transfer block command: sent=%d header: 0x%" PRIx32 " 0x%x 0x%x %d %" PRIu32 " 0x%x 0x%x",
-             bytesSent,
-             _switchEndian32(stpRequest.signature),
-             stpRequest.operation,
-             stpRequest.sessionId,
-             _switchEndian16(stpRequest.payloadLength),
-             _switchEndian32(stpRequest.transactionId),
-             _switchEndian16(stpRequest.headerCrc16),
-             _switchEndian16(stpRequest.payloadCrc16));
+    ESP_LOGD("WalterModem", "sent STP transfer block command: sent=%d header: 0x%"PRIx32" 0x%x 0x%x %d %"PRIu32" 0x%x 0x%x",
+            bytesSent,
+            _switchEndian32(stpRequest.signature),
+            stpRequest.operation,
+            stpRequest.sessionId,
+            _switchEndian16(stpRequest.payloadLength),
+            _switchEndian32(stpRequest.transactionId),
+            _switchEndian16(stpRequest.headerCrc16),
+            _switchEndian16(stpRequest.payloadCrc16));
 
-    bytesSent = _uartWrite((uint8_t *)&stpRequestTransferBlockCmd, sizeof(stpRequestTransferBlockCmd));
+    bytesSent = _uartWrite((uint8_t *) &stpRequestTransferBlockCmd, sizeof(stpRequestTransferBlockCmd));
 
     ESP_LOGD("WalterModem", "sent STP transfer block command data: sent=%d payload: %d",
-             bytesSent,
-             _switchEndian16(stpRequestTransferBlockCmd.blockSize));
+            bytesSent,
+            _switchEndian16(stpRequestTransferBlockCmd.blockSize));
 
-    bytesReceived = _uartRead((uint8_t *)&stpRequest, sizeof(stpRequest), true);
+    bytesReceived = _uartRead((uint8_t *) &stpRequest, sizeof(stpRequest), true);
 
-    ESP_LOGD("WalterModem", "received STP transfer block command ack: received=%d header: 0x%" PRIx32 " 0x%x 0x%x %d %" PRIu32 " 0x%x 0x%x",
-             bytesReceived,
-             _switchEndian32(stpRequest.signature),
-             stpRequest.operation,
-             stpRequest.sessionId,
-             _switchEndian16(stpRequest.payloadLength),
-             _switchEndian32(stpRequest.transactionId),
-             _switchEndian16(stpRequest.headerCrc16),
-             _switchEndian16(stpRequest.payloadCrc16));
+    ESP_LOGD("WalterModem", "received STP transfer block command ack: received=%d header: 0x%"PRIx32" 0x%x 0x%x %d %"PRIu32" 0x%x 0x%x",
+            bytesReceived,
+            _switchEndian32(stpRequest.signature),
+            stpRequest.operation,
+            stpRequest.sessionId,
+            _switchEndian16(stpRequest.payloadLength),
+            _switchEndian32(stpRequest.transactionId),
+            _switchEndian16(stpRequest.headerCrc16),
+            _switchEndian16(stpRequest.payloadCrc16));
 
     /* transfer block: actual data transfer */
     stpRequest.signature = _switchEndian32(WALTER_MODEM_STP_SIGNATURE_REQUEST);
@@ -3810,56 +3429,56 @@ void WalterModem::_modemFirmwareUpgradeBlock(size_t blockSize, uint32_t transact
     stpRequest.payloadCrc16 = _calculateStpCrc16(blueCherry.otaBuffer, blockSize);
     stpRequest.headerCrc16 = _calculateStpCrc16(&stpRequest, sizeof(stpRequest));
 
-    bytesSent = _uartWrite((uint8_t *)&stpRequest, sizeof(stpRequest));
+    bytesSent = _uartWrite((uint8_t *) &stpRequest, sizeof(stpRequest));
 
-    ESP_LOGD("WalterModem", "sent STP transfer block: sent=%d header: 0x%" PRIx32 " 0x%x 0x%x %d %" PRIu32 " 0x%x 0x%x",
-             bytesSent,
-             _switchEndian32(stpRequest.signature),
-             stpRequest.operation,
-             stpRequest.sessionId,
-             _switchEndian16(stpRequest.payloadLength),
-             _switchEndian32(stpRequest.transactionId),
-             _switchEndian16(stpRequest.headerCrc16),
-             _switchEndian16(stpRequest.payloadCrc16));
+    ESP_LOGD("WalterModem", "sent STP transfer block: sent=%d header: 0x%"PRIx32" 0x%x 0x%x %d %"PRIu32" 0x%x 0x%x",
+            bytesSent,
+            _switchEndian32(stpRequest.signature),
+            stpRequest.operation,
+            stpRequest.sessionId,
+            _switchEndian16(stpRequest.payloadLength),
+            _switchEndian32(stpRequest.transactionId),
+            _switchEndian16(stpRequest.headerCrc16),
+            _switchEndian16(stpRequest.payloadCrc16));
 
     bytesSent = _uartWrite(blueCherry.otaBuffer, blockSize);
 
     ESP_LOGD("WalterModem", "sent STP transfer block data: sent=%d payload: %d bytes data from flash dup file",
-             bytesSent, blockSize);
+            bytesSent, blockSize);
 
-    bytesReceived = _uartRead((uint8_t *)&stpRequest, sizeof(stpRequest), true);
+    bytesReceived = _uartRead((uint8_t *) &stpRequest, sizeof(stpRequest), true);
 
-    ESP_LOGD("WalterModem", "received STP transfer block ack: received=%d header: 0x%" PRIx32 " 0x%x 0x%x %d %" PRIu32 " 0x%x 0x%x",
-             bytesReceived,
-             _switchEndian32(stpRequest.signature),
-             stpRequest.operation,
-             stpRequest.sessionId,
-             _switchEndian16(stpRequest.payloadLength),
-             _switchEndian32(stpRequest.transactionId),
-             _switchEndian16(stpRequest.headerCrc16),
-             _switchEndian16(stpRequest.payloadCrc16));
+    ESP_LOGD("WalterModem", "received STP transfer block ack: received=%d header: 0x%"PRIx32" 0x%x 0x%x %d %"PRIu32" 0x%x 0x%x",
+            bytesReceived,
+            _switchEndian32(stpRequest.signature),
+            stpRequest.operation,
+            stpRequest.sessionId,
+            _switchEndian16(stpRequest.payloadLength),
+            _switchEndian32(stpRequest.transactionId),
+            _switchEndian16(stpRequest.headerCrc16),
+            _switchEndian16(stpRequest.payloadCrc16));
 
-    bytesReceived = _uartRead((uint8_t *)&stpResponseTransferBlock, sizeof(stpResponseTransferBlock), true);
+    bytesReceived = _uartRead((uint8_t *) &stpResponseTransferBlock, sizeof(stpResponseTransferBlock), true);
 
     ESP_LOGD("WalterModem", "received STP transfer block ack data: received=%d payload: %d",
-             bytesReceived,
-             _switchEndian16(stpResponseTransferBlock.residue));
+            bytesReceived,
+            _switchEndian16(stpResponseTransferBlock.residue));
 }
 
 bool WalterModem::_processMotaFinishEvent(void)
 {
-    char *atCmd[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] = {NULL};
+    char *atCmd[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] = { NULL };
 
-    if (!blueCherry.otaSize || blueCherry.otaProgress != blueCherry.otaSize || !_mota_file_ptr)
-    {
+    if(!blueCherry.otaSize
+            || blueCherry.otaProgress != blueCherry.otaSize
+            || !_mota_file_ptr) {
         ESP_LOGD("WalterModem", "MOTA error: incomplete or missing dup file");
         return true;
     }
 
     /* prepare modem, disable rx until done so we can talk with modem directly */
     uint16_t blockSize = _modemFirmwareUpgradeStart();
-    if (blockSize > SPI_FLASH_BLOCK_SIZE)
-    {
+    if(blockSize > SPI_FLASH_BLOCK_SIZE) {
         blockSize = SPI_FLASH_BLOCK_SIZE;
     }
 
@@ -3868,12 +3487,10 @@ bool WalterModem::_processMotaFinishEvent(void)
     uint32_t transactionId = 2;
     long bytesLeft = blueCherry.otaSize;
 
-    while (bytesLeft > 0)
-    {
+    while(bytesLeft > 0) {
         /* we can reuse otaBuffer since we expect it to be at least 4K (SPI_FLASH_BLOCK_SIZE) */
         size_t bytesRead = fread(blueCherry.otaBuffer, 1, blockSize, _mota_file_ptr);
-        if (bytesRead <= 0)
-        {
+        if(bytesRead <= 0) {
             break;
         }
 
@@ -3883,7 +3500,7 @@ bool WalterModem::_processMotaFinishEvent(void)
 
         /* next block */
         bytesLeft -= bytesRead;
-        ESP_LOGD("WalterModem", "sent chunk of %d bytes from ESP flash to modem; so far %" PRIu32 "/%" PRIu32 " bytes sent", bytesRead, blueCherry.otaSize - bytesLeft, blueCherry.otaSize);
+        ESP_LOGD("WalterModem", "sent chunk of %d bytes from ESP flash to modem; so far %"PRIu32"/%"PRIu32" bytes sent", bytesRead, blueCherry.otaSize - bytesLeft, blueCherry.otaSize);
 
         tickleWatchdog();
     }
@@ -3894,13 +3511,10 @@ bool WalterModem::_processMotaFinishEvent(void)
     _modemFirmwareUpgradeFinish(bytesLeft == 0);
     tickleWatchdog();
 
-    if (bytesLeft != 0)
-    {
+    if(bytesLeft != 0) {
         ESP_LOGD("WalterModem", "MOTA Error: invalid dup file size or read failed");
         return true;
-    }
-    else
-    {
+    } else {
         ESP_LOGD("WalterModem", "MOTA Finished, rebooted into new modem firmware");
         return false;
     }
@@ -3908,30 +3522,29 @@ bool WalterModem::_processMotaFinishEvent(void)
 
 bool WalterModem::_processBlueCherryEvent(uint8_t *data, uint8_t len)
 {
-    switch (data[0])
-    {
-    case WALTER_MODEM_BLUECHERRY_EVENT_TYPE_OTA_INITIALIZE:
-        return _processOtaInitializeEvent(data + 1, len - 1);
+    switch(data[0]) {
+        case WALTER_MODEM_BLUECHERRY_EVENT_TYPE_OTA_INITIALIZE:
+            return _processOtaInitializeEvent(data + 1, len - 1);
 
-    case WALTER_MODEM_BLUECHERRY_EVENT_TYPE_OTA_CHUNK:
-        return _processOtaChunkEvent(data + 1, len - 1);
+        case WALTER_MODEM_BLUECHERRY_EVENT_TYPE_OTA_CHUNK:
+            return _processOtaChunkEvent(data + 1, len - 1);
 
-    case WALTER_MODEM_BLUECHERRY_EVENT_TYPE_OTA_FINISH:
-        return _processOtaFinishEvent();
+        case WALTER_MODEM_BLUECHERRY_EVENT_TYPE_OTA_FINISH:
+            return _processOtaFinishEvent();
 
-    case WALTER_MODEM_BLUECHERRY_EVENT_TYPE_MOTA_INITIALIZE:
-        return _processMotaInitializeEvent(data + 1, len - 1);
+        case WALTER_MODEM_BLUECHERRY_EVENT_TYPE_MOTA_INITIALIZE:
+            return _processMotaInitializeEvent(data + 1, len - 1);
 
-    case WALTER_MODEM_BLUECHERRY_EVENT_TYPE_MOTA_CHUNK:
-        return _processMotaChunkEvent(data + 1, len - 1);
+        case WALTER_MODEM_BLUECHERRY_EVENT_TYPE_MOTA_CHUNK:
+            return _processMotaChunkEvent(data + 1, len - 1);
 
-    case WALTER_MODEM_BLUECHERRY_EVENT_TYPE_MOTA_FINISH:
-        return _processMotaFinishEvent();
+        case WALTER_MODEM_BLUECHERRY_EVENT_TYPE_MOTA_FINISH:
+            return _processMotaFinishEvent();
 
-    default:
-        ESP_LOGD("WalterModem",
-                 "Error: invalid BlueCherry event type 0x%x from cloud server", data[0]);
-        return true;
+        default:
+            ESP_LOGD("WalterModem",
+                    "Error: invalid BlueCherry event type 0x%x from cloud server", data[0]);
+            return true;
     }
 
     return true;
@@ -3939,44 +3552,35 @@ bool WalterModem::_processBlueCherryEvent(uint8_t *data, uint8_t len)
 
 void WalterModem::offlineMotaUpgrade(uint8_t *otaBuffer)
 {
-    if (_wl_handle == WL_INVALID_HANDLE)
-    {
+    if(_wl_handle == WL_INVALID_HANDLE) {
         esp_err_t result;
         esp_vfs_fat_mount_config_t conf = {
-            .format_if_mount_failed = false,
-            .max_files = 1,
-            .allocation_unit_size = CONFIG_WL_SECTOR_SIZE};
+          .format_if_mount_failed = false,
+          .max_files = 1,
+          .allocation_unit_size = CONFIG_WL_SECTOR_SIZE
+        };
         result = esp_vfs_fat_spiflash_mount("/ffat", "ffat", &conf, &_wl_handle);
-        if (result != ESP_OK)
-        {
+        if (result != ESP_OK){
             ESP_LOGD("WalterModem", "Mount FAT partition failed!");
             _wl_handle = WL_INVALID_HANDLE;
         }
     }
-    if (_wl_handle != WL_INVALID_HANDLE)
-    {
-        if (!_mota_file_ptr)
-        {
+    if(_wl_handle != WL_INVALID_HANDLE) {
+        if(!_mota_file_ptr) {
             _mota_file_ptr = fopen("/ffat/mota.dup", "r");
         }
-        if (!_mota_file_ptr)
-        {
+        if(!_mota_file_ptr) {
             ESP_LOGD("WalterModem", "Could not open MOTA update package");
-        }
-        else
-        {
+        } else {
             blueCherry.otaBuffer = otaBuffer;
 
             fseek(_mota_file_ptr, 0L, SEEK_END);
             blueCherry.otaProgress = blueCherry.otaSize = ftell(_mota_file_ptr);
             fseek(_mota_file_ptr, 0L, SEEK_SET);
 
-            if (_processMotaFinishEvent())
-            {
+            if(_processMotaFinishEvent()) {
                 ESP_LOGD("WalterModem", "MOTA offline update failed");
-            }
-            else
-            {
+            } else {
                 ESP_LOGD("WalterModem", "MOTA offline update succeeded");
             }
         }
@@ -3989,26 +3593,24 @@ bool WalterModem::begin(HardwareSerial *uart, uint8_t watchdogTimeout)
 bool WalterModem::begin(uint8_t uartNo, uint8_t watchdogTimeout)
 #endif
 {
-    if (_initialized)
-    {
+    if(_initialized) {
         return true;
     }
 
     _watchdogTimeout = watchdogTimeout;
-    if (_watchdogTimeout)
-    {
+    if(_watchdogTimeout) {
         /* wdt timeout must be longer than max wait time for a modem response */
-        if (_watchdogTimeout * 1000UL < WALTER_MODEM_CMD_TIMEOUT_MS + 5000UL)
-        {
+        if(_watchdogTimeout * 1000UL < WALTER_MODEM_CMD_TIMEOUT_MS + 5000UL) {
             _watchdogTimeout = (WALTER_MODEM_CMD_TIMEOUT_MS / 1000UL) + 5;
         }
 #if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 0, 0)
         esp_task_wdt_init(_watchdogTimeout, true);
 #else
         esp_task_wdt_config_t twdt_config = {
-            .timeout_ms = (uint32_t)(_watchdogTimeout * 1000UL),
-            .idle_core_mask = (1 << portNUM_PROCESSORS) - 1, // Bitmask of all cores
-            .trigger_panic = true};
+            .timeout_ms = (uint32_t) (_watchdogTimeout * 1000UL),
+            .idle_core_mask = (1 << portNUM_PROCESSORS) - 1,    // Bitmask of all cores
+            .trigger_panic = true
+        };
 #if CONFIG_ESP_TASK_WDT_INIT
         esp_task_wdt_reconfigure(&twdt_config);
 #else
@@ -4018,13 +3620,13 @@ bool WalterModem::begin(uint8_t uartNo, uint8_t watchdogTimeout)
 
         esp_task_wdt_add(NULL);
     }
-
+    
     _taskQueue.handle = xQueueCreateStatic(WALTER_MODEM_TASK_QUEUE_MAX_ITEMS,
-                                           sizeof(WalterModemTaskQueueItem), _taskQueue.mem,
-                                           &(_taskQueue.memHandle));
+        sizeof(WalterModemTaskQueueItem), _taskQueue.mem,
+        &(_taskQueue.memHandle));
 
-    gpio_set_direction((gpio_num_t)WALTER_MODEM_PIN_RESET, GPIO_MODE_OUTPUT);
-    gpio_set_pull_mode((gpio_num_t)WALTER_MODEM_PIN_RESET, GPIO_FLOATING);
+    gpio_set_direction((gpio_num_t) WALTER_MODEM_PIN_RESET, GPIO_MODE_OUTPUT);
+    gpio_set_pull_mode((gpio_num_t) WALTER_MODEM_PIN_RESET, GPIO_FLOATING);
     gpio_deep_sleep_hold_en();
 
 #ifdef ARDUINO
@@ -4052,51 +3654,46 @@ bool WalterModem::begin(uint8_t uartNo, uint8_t watchdogTimeout)
         .stop_bits = UART_STOP_BITS_1,
         .flow_ctrl = UART_HW_FLOWCTRL_CTS_RTS,
         .rx_flow_ctrl_thresh = 122,
-        .source_clk = UART_SCLK_DEFAULT};
+        .source_clk = UART_SCLK_DEFAULT
+    };
     _uartNo = uartNo;
     uart_driver_install((uart_port_t)uartNo, UART_BUF_SIZE * 2, 0, 0, NULL, 0);
     uart_param_config((uart_port_t)uartNo, &uart_config);
     uart_set_pin((uart_port_t)uartNo, WALTER_MODEM_PIN_TX, WALTER_MODEM_PIN_RX,
-                 (gpio_num_t)WALTER_MODEM_PIN_RTS, WALTER_MODEM_PIN_CTS);
-    // uart_set_rx_timeout(uartNo, 1);
+            (gpio_num_t)WALTER_MODEM_PIN_RTS, WALTER_MODEM_PIN_CTS);
+    //uart_set_rx_timeout(uartNo, 1);
     xTaskCreateStaticPinnedToCore(_handleRxData, "uart_rx_task",
-                                  WALTER_MODEM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY,
-                                  _rxTaskStack, &_rxTaskBuf, 0);
+            WALTER_MODEM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY,
+            _rxTaskStack, &_rxTaskBuf, 0);
 #endif
 
 #ifdef ARDUINO
     _queueTask = xTaskCreateStaticPinnedToCore(_queueProcessingTask,
-                                               "queueProcessingTask", WALTER_MODEM_TASK_STACK_SIZE, NULL,
-                                               tskIDLE_PRIORITY, _queueTaskStack, &_queueTaskBuf, 1);
+        "queueProcessingTask", WALTER_MODEM_TASK_STACK_SIZE, NULL,
+        tskIDLE_PRIORITY, _queueTaskStack, &_queueTaskBuf, 1);
 #else
     _queueTask = xTaskCreateStaticPinnedToCore(_queueProcessingTask,
-                                               "queueProcessingTask", WALTER_MODEM_TASK_STACK_SIZE, NULL,
-                                               tskIDLE_PRIORITY, _queueTaskStack, &_queueTaskBuf, 0);
+        "queueProcessingTask", WALTER_MODEM_TASK_STACK_SIZE, NULL,
+        tskIDLE_PRIORITY, _queueTaskStack, &_queueTaskBuf, 0);
 #endif
 
     esp_sleep_wakeup_cause_t wakeupReason;
     wakeupReason = esp_sleep_get_wakeup_cause();
 
-    if (wakeupReason == ESP_SLEEP_WAKEUP_UNDEFINED)
-    {
-        if (!reset())
-        {
+    if(wakeupReason == ESP_SLEEP_WAKEUP_UNDEFINED) {
+        if (!reset()) {
             return false;
         }
-    }
-    else
-    {
+    } else {
         _loadRTCPdpContextSet(_pdpCtxSetRTC);
     }
 
     /* Configure reports as we expect them in the library */
-    if (!configCMEErrorReports())
-    {
+    if(!configCMEErrorReports()) {
         return false;
     }
 
-    if (!configCEREGReports())
-    {
+    if(!configCEREGReports()) {
         return false;
     }
 
@@ -4106,14 +3703,13 @@ bool WalterModem::begin(uint8_t uartNo, uint8_t watchdogTimeout)
 
 void WalterModem::tickleWatchdog(void)
 {
-    if (_watchdogTimeout)
-    {
+    if(_watchdogTimeout) {
         esp_task_wdt_reset();
     }
 }
 
 void WalterModem::setATHandler(
-    void (*handler)(const uint8_t *, uint16_t, void *),
+    void (*handler)(const uint8_t*, uint16_t, void*),
     void *args)
 {
     _usrATHandler = handler;
@@ -4121,7 +3717,7 @@ void WalterModem::setATHandler(
 }
 
 void WalterModem::setGNSSfixHandler(
-    void (*handler)(const WalterModemGNSSFix *, void *),
+    void (*handler)(const WalterModemGNSSFix*, void*),
     void *args)
 {
     _usrGNSSfixHandler = handler;
@@ -4130,21 +3726,21 @@ void WalterModem::setGNSSfixHandler(
 
 bool WalterModem::sendCmd(const char *cmd)
 {
-    const char *_cmdArr[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] = {cmd};
+    const char *_cmdArr[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] = { cmd };
     return _addQueueCmd(_cmdArr, NULL, NULL, NULL, NULL, NULL, NULL,
-                        WALTER_MODEM_CMD_TYPE_TX) != NULL;
+        WALTER_MODEM_CMD_TYPE_TX) != NULL;
 }
 
 bool WalterModem::reset(WalterModemRsp *rsp, walterModemCb cb, void *args)
 {
     _runCmd({}, "+SYSSTART", rsp, cb, args, NULL, NULL,
-            WALTER_MODEM_CMD_TYPE_WAIT);
+        WALTER_MODEM_CMD_TYPE_WAIT);
 
-    gpio_hold_dis((gpio_num_t)WALTER_MODEM_PIN_RESET);
-    gpio_set_level((gpio_num_t)WALTER_MODEM_PIN_RESET, 0);
+    gpio_hold_dis((gpio_num_t) WALTER_MODEM_PIN_RESET);
+    gpio_set_level((gpio_num_t) WALTER_MODEM_PIN_RESET, 0);
     vTaskDelay(pdMS_TO_TICKS(10));
-    gpio_set_level((gpio_num_t)WALTER_MODEM_PIN_RESET, 1);
-    gpio_hold_en((gpio_num_t)WALTER_MODEM_PIN_RESET);
+    gpio_set_level((gpio_num_t) WALTER_MODEM_PIN_RESET, 1);
+    gpio_hold_en((gpio_num_t) WALTER_MODEM_PIN_RESET);
 
     /* Also (re)initialize internal modem related library state */
     _regState = WALTER_MODEM_NETWORK_REG_NOT_SEARCHING;
@@ -4154,24 +3750,19 @@ bool WalterModem::reset(WalterModemRsp *rsp, walterModemCb cb, void *args)
     _socket = NULL;
     _pdpCtx = NULL;
     _simPIN = NULL;
-    for (int i = 0; i < WALTER_MODEM_MAX_PDP_CTXTS; ++i)
-    {
-        _pdpCtxSet[i] = {};
+    for(int i = 0; i < WALTER_MODEM_MAX_PDP_CTXTS; ++i) {
+      _pdpCtxSet[i] = {};
     }
-    for (int i = 0; i < WALTER_MODEM_MAX_SOCKETS; ++i)
-    {
-        _socketSet[i] = {};
+    for(int i = 0; i < WALTER_MODEM_MAX_SOCKETS; ++i) {
+      _socketSet[i] = {};
     }
-    for (int i = 0; i < WALTER_MODEM_MAX_COAP_PROFILES; ++i)
-    {
-        _coapContextSet[i] = {};
+    for(int i = 0; i < WALTER_MODEM_MAX_COAP_PROFILES; ++i) {
+      _coapContextSet[i] = {};
     }
-    for (int i = 0; i < WALTER_MODEM_MAX_HTTP_PROFILES; ++i)
-    {
-        _httpContextSet[i] = {};
+    for(int i = 0; i < WALTER_MODEM_MAX_HTTP_PROFILES; ++i) {
+      _httpContextSet[i] = {};
     }
-    for (int i = 0; i < sizeof(_mqttRings) / sizeof(WalterModemMqttRing); i++)
-    {
+    for(int i = 0; i < sizeof(_mqttRings) / sizeof(WalterModemMqttRing); i++) {
         _mqttRings[i] = {};
     }
     _operator = {};
@@ -4181,8 +3772,7 @@ bool WalterModem::reset(WalterModemRsp *rsp, walterModemCb cb, void *args)
 
 void WalterModem::sleep(uint32_t sleepTime, bool lightSleep)
 {
-    if (lightSleep)
-    {
+    if(lightSleep) {
         /* Disable RTS (make it high) so the modem can go to sleep */
 #ifdef ARDUINO
         _uart->setHwFlowCtrlMode(UART_HW_FLOWCTRL_DISABLE);
@@ -4207,12 +3797,10 @@ void WalterModem::sleep(uint32_t sleepTime, bool lightSleep)
         _uart->setHwFlowCtrlMode();
 #else
         uart_set_pin((uart_port_t)_uartNo, WALTER_MODEM_PIN_TX, WALTER_MODEM_PIN_RX,
-                     WALTER_MODEM_PIN_RTS, WALTER_MODEM_PIN_CTS);
+            WALTER_MODEM_PIN_RTS, WALTER_MODEM_PIN_CTS);
         uart_set_hw_flow_ctrl((uart_port_t)_uartNo, UART_HW_FLOWCTRL_CTS_RTS, 122);
 #endif
-    }
-    else
-    {
+    } else {
         _saveRTCPdpContextSet(_pdpCtxSetRTC);
         vTaskDelay(pdMS_TO_TICKS(1000));
         esp_deep_sleep(sleepTime * 1000000);
@@ -4236,7 +3824,7 @@ bool WalterModem::configCMEErrorReports(
 }
 
 bool WalterModem::configCEREGReports(
-    WalterModemCEREGReportsType type,
+    WalterModemCEREGReportsType type, 
     WalterModemRsp *rsp,
     walterModemCb cb,
     void *args)
@@ -4277,35 +3865,29 @@ bool WalterModem::getIdentity(
 {
     _runCmd(arr("AT+CGSN=2"), "OK", rsp, cb, args);
     _returnAfterReply();
-}
+}   
 
 bool WalterModem::_mqttConfig(const char *clientId,
-                              const char *userName,
-                              const char *password,
-                              uint8_t tlsProfileId)
+    const char *userName,
+    const char *password,
+    uint8_t tlsProfileId)
 {
     WalterModemRsp *rsp = NULL;
     walterModemCb cb = NULL;
     void *args = NULL;
 
-    if (tlsProfileId)
-    {
+    if(tlsProfileId) {
         _runCmd(arr("AT+SQNSMQTTCFG=0,", _atStr(clientId), ",",
                     _atStr(userName), ",", _atStr(password), ",", _atNum(tlsProfileId)),
                 "OK", rsp, cb, args);
         _returnAfterReply();
-    }
-    else
-    {
-        if (userName && *userName)
-        {
+    } else {
+        if(userName && *userName) {
             _runCmd(arr("AT+SQNSMQTTCFG=0,", _atStr(clientId), ",",
                         _atStr(userName), ",", _atStr(password)),
                     "OK", rsp, cb, args);
             _returnAfterReply();
-        }
-        else
-        {
+        } else {
             _runCmd(arr("AT+SQNSMQTTCFG=0,", _atStr(clientId)),
                     "OK", rsp, cb, args);
             _returnAfterReply();
@@ -4314,8 +3896,8 @@ bool WalterModem::_mqttConfig(const char *clientId,
 }
 
 bool WalterModem::mqttDisconnect(WalterModemRsp *rsp,
-                                 walterModemCb cb,
-                                 void *args)
+        walterModemCb cb,
+        void *args)
 {
     _runCmd(arr("AT+SQNSMQTTDISCONNECT=0"),
             "+SQNSMQTTONDISCONNECT:0,", rsp, cb, args);
@@ -4323,17 +3905,16 @@ bool WalterModem::mqttDisconnect(WalterModemRsp *rsp,
 }
 
 bool WalterModem::mqttConnect(const char *serverName,
-                              uint16_t port,
-                              const char *clientId,
-                              const char *userName,
-                              const char *password,
-                              uint8_t tlsProfileId,
-                              WalterModemRsp *rsp,
-                              walterModemCb cb,
-                              void *args)
+        uint16_t port,
+        const char *clientId,
+        const char *userName,
+        const char *password,
+        uint8_t tlsProfileId,
+        WalterModemRsp *rsp,
+        walterModemCb cb,
+        void *args)
 {
-    if (!_mqttConfig(clientId, userName, password, tlsProfileId))
-    {
+    if(!_mqttConfig(clientId, userName, password, tlsProfileId)) {
         _returnState(WALTER_MODEM_STATE_ERROR);
     }
 
@@ -4343,12 +3924,12 @@ bool WalterModem::mqttConnect(const char *serverName,
 }
 
 bool WalterModem::mqttPublish(const char *topicString,
-                              uint8_t *data,
-                              uint16_t dataSize,
-                              uint8_t qos,
-                              WalterModemRsp *rsp,
-                              walterModemCb cb,
-                              void *args)
+        uint8_t *data,
+        uint16_t dataSize,
+        uint8_t qos,
+        WalterModemRsp *rsp,
+        walterModemCb cb,
+        void *args)
 {
     _runCmd(arr("AT+SQNSMQTTPUBLISH=0,", _atStr(topicString), ",", _atNum(qos),
                 ",", _atNum(dataSize)),
@@ -4358,10 +3939,10 @@ bool WalterModem::mqttPublish(const char *topicString,
 }
 
 bool WalterModem::mqttSubscribe(const char *topicString,
-                                uint8_t qos,
-                                WalterModemRsp *rsp,
-                                walterModemCb cb,
-                                void *args)
+        uint8_t qos,
+        WalterModemRsp *rsp,
+        walterModemCb cb,
+        void *args)
 {
     _runCmd(arr("AT+SQNSMQTTSUBSCRIBE=0,", _atStr(topicString),
                 ",", _atNum(qos)),
@@ -4380,42 +3961,38 @@ bool WalterModem::tlsConfigProfile(
     walterModemCb cb,
     void *args)
 {
-    if (profileId >= WALTER_MODEM_MAX_TLS_PROFILES)
-    {
+    if(profileId >= WALTER_MODEM_MAX_TLS_PROFILES) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_PROFILE);
     }
 
     WalterModemBuffer *stringsBuffer = _getFreeBuffer();
-    stringsBuffer->size += sprintf((char *)stringsBuffer->data,
-                                   "AT+SQNSPCFG=%u,%d,\"\",%d,",
-                                   profileId, tlsVersion, tlsValid);
-    if (caCertificateId != 0xff)
-    {
+    stringsBuffer->size += sprintf((char *) stringsBuffer->data,
+            "AT+SQNSPCFG=%u,%d,\"\",%d,",
+            profileId, tlsVersion, tlsValid);
+    if(caCertificateId != 0xff) {
         stringsBuffer->size += sprintf(
-            (char *)stringsBuffer->data + stringsBuffer->size,
-            "%d", caCertificateId);
+                (char *) stringsBuffer->data + stringsBuffer->size,
+                "%d", caCertificateId);
     }
     stringsBuffer->size += sprintf(
-        (char *)stringsBuffer->data + stringsBuffer->size, ",");
-    if (clientCertificateId != 0xff)
-    {
+            (char *) stringsBuffer->data + stringsBuffer->size, ",");
+    if(clientCertificateId != 0xff) {
         stringsBuffer->size += sprintf(
-            (char *)stringsBuffer->data + stringsBuffer->size,
-            "%d", clientCertificateId);
+                (char *) stringsBuffer->data + stringsBuffer->size,
+                "%d", clientCertificateId);
     }
     stringsBuffer->size += sprintf(
-        (char *)stringsBuffer->data + stringsBuffer->size, ",");
-    if (clientPrivKeyId != 0xff)
-    {
+            (char *) stringsBuffer->data + stringsBuffer->size, ",");
+    if(clientPrivKeyId != 0xff) {
         stringsBuffer->size += sprintf(
-            (char *)stringsBuffer->data + stringsBuffer->size,
-            "%d", clientPrivKeyId);
+                (char *) stringsBuffer->data + stringsBuffer->size,
+                "%d", clientPrivKeyId);
     }
     stringsBuffer->size += sprintf(
-        (char *)stringsBuffer->data + stringsBuffer->size,
-        ",\"\",\"\",0,0,0");
+            (char *) stringsBuffer->data + stringsBuffer->size, 
+            ",\"\",\"\",0,0,0");
 
-    _runCmd(arr((const char *)stringsBuffer->data), "OK", rsp, cb, args,
+    _runCmd(arr((const char *) stringsBuffer->data), "OK", rsp, cb, args,
             NULL, NULL, WALTER_MODEM_CMD_TYPE_TX_WAIT, NULL, 0,
             stringsBuffer);
 
@@ -4436,7 +4013,7 @@ bool WalterModem::_tlsUploadKey(
     _runCmd(arr("AT+SQNSNVW=", _atStr(keyType), ",",
                 _atNum(slotIdx), ",", _atNum(strlen(key))),
             "OK", rsp, cb, args, NULL, NULL,
-            WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT, (uint8_t *)key, strlen(key));
+            WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT, (uint8_t *) key, strlen(key));
 
     _returnAfterReply();
 }
@@ -4445,26 +4022,21 @@ char WalterModem::_getLuhnChecksum(const char *imei)
 {
     int sum = 0;
 
-    for (int i = 13; i >= 0; --i)
-    {
+    for(int i = 13; i >= 0; --i) {
         int digit = imei[i] - '0';
 
-        if ((13 - i) % 2 == 0)
-        {
+        if((13 - i) % 2 == 0) {
             int double_digit = digit * 2;
-            if (double_digit > 9)
-            {
+            if (double_digit > 9) {
                 double_digit -= 9;
             }
             sum += double_digit;
-        }
-        else
-        {
+        } else {
             sum += digit;
         }
     }
 
-    return (char)(((10 - (sum % 10)) % 10) + '0');
+    return (char) (((10 - (sum % 10)) % 10) + '0');
 }
 
 bool WalterModem::tlsProvisionKeys(
@@ -4477,26 +4049,20 @@ bool WalterModem::tlsProvisionKeys(
 {
     WalterModemState result = WALTER_MODEM_STATE_OK;
 
-    if (walterCertificate)
-    {
-        if (!_tlsUploadKey(false, 5, walterCertificate))
-        {
+    if(walterCertificate) {
+        if(!_tlsUploadKey(false, 5, walterCertificate)) {
             result = WALTER_MODEM_STATE_ERROR;
         }
     }
 
-    if (walterPrivateKey)
-    {
-        if (!_tlsUploadKey(true, 0, walterPrivateKey))
-        {
+    if(walterPrivateKey) {
+        if(!_tlsUploadKey(true, 0, walterPrivateKey)) {
             result = WALTER_MODEM_STATE_ERROR;
         }
     }
 
-    if (caCertificate)
-    {
-        if (!_tlsUploadKey(false, 6, caCertificate))
-        {
+    if(caCertificate) {
+        if(!_tlsUploadKey(false, 6, caCertificate)) {
             result = WALTER_MODEM_STATE_ERROR;
         }
     }
@@ -4516,28 +4082,25 @@ bool WalterModem::httpConfigProfile(
     walterModemCb cb,
     void *args)
 {
-    if (profileId >= WALTER_MODEM_MAX_HTTP_PROFILES)
-    {
+    if(profileId >= WALTER_MODEM_MAX_HTTP_PROFILES) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_PROFILE);
     }
 
-    if (tlsProfileId && port == 80)
-    {
+    if(tlsProfileId && port == 80) {
         port = 443;
     }
 
     WalterModemBuffer *stringsBuffer = _getFreeBuffer();
-    stringsBuffer->size += sprintf((char *)stringsBuffer->data,
-                                   "AT+SQNHTTPCFG=%d,\"%s\",%d,%d,\"%s\",\"%s\"",
-                                   profileId, serverName, port, useBasicAuth, authUser, authPass);
+    stringsBuffer->size += sprintf((char *) stringsBuffer->data,
+            "AT+SQNHTTPCFG=%d,\"%s\",%d,%d,\"%s\",\"%s\"",
+            profileId, serverName, port, useBasicAuth, authUser, authPass);
 
-    if (tlsProfileId)
-    {
-        stringsBuffer->size += sprintf(
-            (char *)stringsBuffer->data + stringsBuffer->size,
+    if(tlsProfileId) {
+            stringsBuffer->size += sprintf(
+            (char *) stringsBuffer->data + stringsBuffer->size, 
             ",1,,,%u", tlsProfileId);
     }
-    _runCmd(arr((const char *)stringsBuffer->data), "OK", rsp, cb, args,
+    _runCmd(arr((const char *) stringsBuffer->data), "OK", rsp, cb, args,
             NULL, NULL, WALTER_MODEM_CMD_TYPE_TX_WAIT, NULL, 0,
             stringsBuffer);
 
@@ -4550,18 +4113,16 @@ bool WalterModem::httpConnect(
     walterModemCb cb,
     void *args)
 {
-    if (profileId >= WALTER_MODEM_MAX_HTTP_PROFILES)
-    {
+    if(profileId >= WALTER_MODEM_MAX_HTTP_PROFILES) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_PROFILE);
     }
 
-    if (_httpContextSet[profileId].connected)
-    {
+    if(_httpContextSet[profileId].connected) {
         _returnState(WALTER_MODEM_STATE_OK);
     }
 
     _runCmd(arr("AT+SQNHTTPCONNECT=", _atNum(profileId)),
-            "+SQNHTTPCONNECT: ", rsp, cb, args);
+        "+SQNHTTPCONNECT: ", rsp, cb, args);
     _returnAfterReply();
 }
 
@@ -4571,20 +4132,18 @@ bool WalterModem::httpClose(
     walterModemCb cb,
     void *args)
 {
-    if (profileId >= WALTER_MODEM_MAX_HTTP_PROFILES)
-    {
+    if(profileId >= WALTER_MODEM_MAX_HTTP_PROFILES) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_PROFILE);
     }
 
     _runCmd(arr("AT+SQNHTTPDISCONNECT=", _atNum(profileId)),
-            "OK", rsp, cb, args);
+        "OK", rsp, cb, args);
     _returnAfterReply();
 }
 
 bool WalterModem::httpGetContextStatus(uint8_t profileId)
 {
-    if (profileId >= WALTER_MODEM_MAX_HTTP_PROFILES)
-    {
+    if(profileId >= WALTER_MODEM_MAX_HTTP_PROFILES) {
         return false;
     }
 
@@ -4612,14 +4171,12 @@ bool WalterModem::httpQuery(
     walterModemCb cb,
     void *args)
 {
-    if (profileId >= WALTER_MODEM_MAX_HTTP_PROFILES)
-    {
+    if(profileId >= WALTER_MODEM_MAX_HTTP_PROFILES) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_PROFILE);
     }
 
-    if (_httpContextSet[profileId].state !=
-        WALTER_MODEM_HTTP_CONTEXT_STATE_IDLE)
-    {
+    if(_httpContextSet[profileId].state !=
+            WALTER_MODEM_HTTP_CONTEXT_STATE_IDLE) {
         _returnState(WALTER_MODEM_STATE_BUSY);
     }
 
@@ -4629,21 +4186,20 @@ bool WalterModem::httpQuery(
     auto completeHandler = [](WalterModemCmd *cmd, WalterModemState result)
     {
         WalterModemHttpContext *ctx =
-            (WalterModemHttpContext *)cmd->completeHandlerArg;
+            (WalterModemHttpContext *) cmd->completeHandlerArg;
 
-        if (result == WALTER_MODEM_STATE_OK)
-        {
+        if(result == WALTER_MODEM_STATE_OK) {
             ctx->state = WALTER_MODEM_HTTP_CONTEXT_STATE_EXPECT_RING;
         }
     };
 
     WalterModemBuffer *stringsBuffer = _getFreeBuffer();
-    stringsBuffer->size += sprintf((char *)stringsBuffer->data,
-                                   "AT+SQNHTTPQRY=%d,%d,\"%s\"",
-                                   profileId, httpQueryCmd, uri);
+    stringsBuffer->size += sprintf((char *) stringsBuffer->data,
+            "AT+SQNHTTPQRY=%d,%d,\"%s\"",
+            profileId, httpQueryCmd, uri);
 
-    _runCmd(arr((const char *)stringsBuffer->data), "OK", rsp, cb, args,
-            completeHandler, (void *)(_httpContextSet + profileId),
+    _runCmd(arr((const char *) stringsBuffer->data), "OK", rsp, cb, args,
+            completeHandler, (void *) (_httpContextSet + profileId),
             WALTER_MODEM_CMD_TYPE_TX_WAIT, NULL, 0,
             stringsBuffer);
 
@@ -4663,14 +4219,12 @@ bool WalterModem::httpSend(
     walterModemCb cb,
     void *args)
 {
-    if (profileId >= WALTER_MODEM_MAX_HTTP_PROFILES)
-    {
+    if(profileId >= WALTER_MODEM_MAX_HTTP_PROFILES) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_PROFILE);
     }
 
-    if (_httpContextSet[profileId].state !=
-        WALTER_MODEM_HTTP_CONTEXT_STATE_IDLE)
-    {
+    if(_httpContextSet[profileId].state !=
+            WALTER_MODEM_HTTP_CONTEXT_STATE_IDLE) {
         _returnState(WALTER_MODEM_STATE_BUSY);
     }
 
@@ -4680,30 +4234,26 @@ bool WalterModem::httpSend(
     auto completeHandler = [](WalterModemCmd *cmd, WalterModemState result)
     {
         WalterModemHttpContext *ctx =
-            (WalterModemHttpContext *)cmd->completeHandlerArg;
+            (WalterModemHttpContext *) cmd->completeHandlerArg;
 
-        if (result == WALTER_MODEM_STATE_OK)
-        {
+        if(result == WALTER_MODEM_STATE_OK) {
             ctx->state = WALTER_MODEM_HTTP_CONTEXT_STATE_EXPECT_RING;
         }
     };
 
     WalterModemBuffer *stringsBuffer = _getFreeBuffer();
-    if (httpPostParam == WALTER_MODEM_HTTP_POST_PARAM_UNSPECIFIED)
-    {
-        stringsBuffer->size += sprintf((char *)stringsBuffer->data,
-                                       "AT+SQNHTTPSND=%d,%d,\"%s\",%d",
-                                       profileId, httpSendCmd, uri, dataSize);
-    }
-    else
-    {
-        stringsBuffer->size += sprintf((char *)stringsBuffer->data,
-                                       "AT+SQNHTTPSND=%d,%d,\"%s\",%d,\"%d\"",
-                                       profileId, httpSendCmd, uri, dataSize, httpPostParam);
+    if(httpPostParam == WALTER_MODEM_HTTP_POST_PARAM_UNSPECIFIED) {
+        stringsBuffer->size += sprintf((char *) stringsBuffer->data,
+                "AT+SQNHTTPSND=%d,%d,\"%s\",%d",
+                profileId, httpSendCmd, uri, dataSize);
+    } else {
+        stringsBuffer->size += sprintf((char *) stringsBuffer->data,
+                "AT+SQNHTTPSND=%d,%d,\"%s\",%d,\"%d\"",
+                profileId, httpSendCmd, uri, dataSize, httpPostParam);
     }
 
-    _runCmd(arr((const char *)stringsBuffer->data), "OK", rsp, cb, args,
-            completeHandler, (void *)(_httpContextSet + profileId),
+    _runCmd(arr((const char *) stringsBuffer->data), "OK", rsp, cb, args,
+            completeHandler, (void *) (_httpContextSet + profileId),
             WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT, data, dataSize,
             stringsBuffer);
 
@@ -4724,39 +4274,36 @@ bool WalterModem::coapDidRing(
     walterModemCb cb = NULL;
     void *args = NULL;
 
-    if (profileId == 0)
-    {
+    if(profileId == 0) {
         _returnState(WALTER_MODEM_STATE_ERROR);
     }
 
-    if (profileId >= WALTER_MODEM_MAX_COAP_PROFILES)
-    {
+    if(profileId >= WALTER_MODEM_MAX_COAP_PROFILES) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_PROFILE);
     }
 
     uint8_t ringIdx;
-    for (ringIdx = 0;
-         ringIdx < sizeof(_coapContextSet[profileId].rings) / sizeof(WalterModemCoapRing);
-         ringIdx++)
-    {
-        if (_coapContextSet[profileId].rings[ringIdx].messageId)
-        {
+    for(ringIdx = 0;
+            ringIdx < sizeof(_coapContextSet[profileId].rings)
+            / sizeof(WalterModemCoapRing);
+            ringIdx++) {
+        if(_coapContextSet[profileId].rings[ringIdx].messageId) {
             break;
         }
     }
 
-    if (ringIdx == sizeof(_coapContextSet[profileId].rings) / sizeof(WalterModemCoapRing))
-    {
+    if(ringIdx == sizeof(_coapContextSet[profileId].rings)
+            / sizeof(WalterModemCoapRing)) {
         _returnState(WALTER_MODEM_STATE_NO_DATA);
     }
 
     WalterModemBuffer *stringsBuffer = _getFreeBuffer();
-    stringsBuffer->size += sprintf((char *)stringsBuffer->data,
-                                   "AT+SQNCOAPRCV=%d,%u,%u", profileId,
-                                   _coapContextSet[profileId].rings[ringIdx].messageId,
-                                   _coapContextSet[profileId].rings[ringIdx].length);
+    stringsBuffer->size += sprintf((char *) stringsBuffer->data,
+            "AT+SQNCOAPRCV=%d,%u,%u", profileId,
+            _coapContextSet[profileId].rings[ringIdx].messageId,
+            _coapContextSet[profileId].rings[ringIdx].length);
 
-    _runCmd(arr((const char *)stringsBuffer->data), "+SQNCOAPRCV: ",
+    _runCmd(arr((const char *) stringsBuffer->data), "+SQNCOAPRCV: ",
             rsp, cb, args,
             NULL, NULL,
             WALTER_MODEM_CMD_TYPE_TX_WAIT, targetBuf, targetBufSize,
@@ -4779,49 +4326,42 @@ bool WalterModem::httpDidRing(
     void *args = NULL;
 
     /* XXX normally impossible ... assert? */
-    if (_httpCurrentProfile != 0xff)
-    {
+    if(_httpCurrentProfile != 0xff) {
         _returnState(WALTER_MODEM_STATE_ERROR);
     }
 
-    if (profileId >= WALTER_MODEM_MAX_HTTP_PROFILES)
-    {
+    if(profileId >= WALTER_MODEM_MAX_HTTP_PROFILES) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_PROFILE);
     }
 
-    if (_httpContextSet[profileId].state ==
-        WALTER_MODEM_HTTP_CONTEXT_STATE_IDLE)
-    {
+    if(_httpContextSet[profileId].state ==
+            WALTER_MODEM_HTTP_CONTEXT_STATE_IDLE) {
         _returnState(WALTER_MODEM_STATE_NOT_EXPECTING_RING);
     }
 
-    if (_httpContextSet[profileId].state ==
-        WALTER_MODEM_HTTP_CONTEXT_STATE_EXPECT_RING)
-    {
+    if(_httpContextSet[profileId].state ==
+            WALTER_MODEM_HTTP_CONTEXT_STATE_EXPECT_RING) {
         _returnState(WALTER_MODEM_STATE_AWAITING_RING);
     }
 
-    if (_httpContextSet[profileId].state !=
-        WALTER_MODEM_HTTP_CONTEXT_STATE_GOT_RING)
-    {
+    if(_httpContextSet[profileId].state !=
+            WALTER_MODEM_HTTP_CONTEXT_STATE_GOT_RING) {
         _returnState(WALTER_MODEM_STATE_ERROR);
     }
 
     /* ok, got ring. http context fields have been filled.
      * http status 0 means: timeout (or also disconnected apparently) */
-    if (_httpContextSet[profileId].httpStatus == 0)
-    {
+    if(_httpContextSet[profileId].httpStatus == 0) {
         _httpContextSet[profileId].state =
             WALTER_MODEM_HTTP_CONTEXT_STATE_IDLE;
         _returnState(WALTER_MODEM_STATE_ERROR);
     }
 
-    if (_httpContextSet[profileId].contentLength == 0)
-    {
-        _httpContextSet[profileId].state =
+    if(_httpContextSet[profileId].contentLength == 0) {
+        _httpContextSet[profileId].state = 
             WALTER_MODEM_HTTP_CONTEXT_STATE_IDLE;
         rsp->type = WALTER_MODEM_RSP_DATA_TYPE_HTTP_RESPONSE;
-        rsp->data.httpResponse.httpStatus =
+        rsp->data.httpResponse.httpStatus = 
             _httpContextSet[profileId].httpStatus;
         rsp->data.httpResponse.contentLength = 0;
         _returnState(WALTER_MODEM_STATE_NO_DATA);
@@ -4858,41 +4398,35 @@ bool WalterModem::mqttDidRing(
     void *args = NULL;
 
     uint8_t ringIdx;
-    for (ringIdx = 0;
-         ringIdx < sizeof(_mqttRings) / sizeof(WalterModemMqttRing);
-         ringIdx++)
-    {
-        if (!strncmp(topic, _mqttRings[ringIdx].topic, strlen(topic)) && _mqttRings[ringIdx].messageId)
-        {
+    for(ringIdx = 0;
+            ringIdx < sizeof(_mqttRings) / sizeof(WalterModemMqttRing);
+            ringIdx++) {
+        if(!strncmp(topic, _mqttRings[ringIdx].topic, strlen(topic))
+                && _mqttRings[ringIdx].messageId) {
             break;
         }
     }
 
-    if (ringIdx == sizeof(_mqttRings) / sizeof(WalterModemMqttRing))
-    {
+    if(ringIdx == sizeof(_mqttRings) / sizeof(WalterModemMqttRing)) {
         _returnState(WALTER_MODEM_STATE_NO_DATA);
     }
 
-    if (targetBufSize < _mqttRings[ringIdx].length)
-    {
+    if(targetBufSize < _mqttRings[ringIdx].length) {
         _returnState(WALTER_MODEM_STATE_NO_MEMORY);
     }
     targetBufSize = _mqttRings[ringIdx].length;
 
-    if (_mqttRings[ringIdx].messageId == 0xffff)
-    {
+    if(_mqttRings[ringIdx].messageId == 0xffff) {
         /* no msg id means qos 0 message */
         _runCmd(arr("AT+SQNSMQTTRCVMESSAGE=0,", _atStr(topic)),
-                "OK", rsp, cb, args, NULL, (void *)ringIdx,
+                "OK", rsp, cb, args, NULL, (void *) ringIdx,
                 WALTER_MODEM_CMD_TYPE_TX_WAIT, targetBuf, targetBufSize);
 
         _returnAfterReply();
-    }
-    else
-    {
+    } else {
         _runCmd(arr("AT+SQNSMQTTRCVMESSAGE=0,", _atStr(topic),
                     ",", _atNum(_mqttRings[ringIdx].messageId)),
-                "OK", rsp, cb, args, NULL, (void *)ringIdx,
+                "OK", rsp, cb, args, NULL, (void *) ringIdx,
                 WALTER_MODEM_CMD_TYPE_TX_WAIT, targetBuf, targetBufSize);
 
         _returnAfterReply();
@@ -4900,12 +4434,12 @@ bool WalterModem::mqttDidRing(
 }
 
 void WalterModem::initBlueCherry(uint8_t tlsProfileId,
-                                 const char *serverName, uint16_t port,
-                                 uint8_t *otaBuffer)
+        const char *serverName, uint16_t port,
+        uint8_t *otaBuffer)
 {
     blueCherry.port = port;
     strncpy(blueCherry.serverName, serverName == NULL ? "" : serverName,
-            WALTER_MODEM_HOSTNAME_MAX_SIZE);
+        WALTER_MODEM_HOSTNAME_MAX_SIZE);
 
     blueCherry.tlsProfileId = tlsProfileId;
 
@@ -4922,13 +4456,11 @@ void WalterModem::initBlueCherry(uint8_t tlsProfileId,
 
 bool WalterModem::blueCherryPublish(uint8_t topic, uint8_t len, uint8_t *data)
 {
-    if (blueCherry.status != WALTER_MODEM_BLUECHERRY_STATUS_IDLE)
-    {
+    if(blueCherry.status != WALTER_MODEM_BLUECHERRY_STATUS_IDLE) {
         return false;
     }
 
-    if (blueCherry.messageOutLen + len >= WALTER_MODEM_COAP_MAX_OUTGOING_MESSAGE_LEN)
-    {
+    if(blueCherry.messageOutLen + len >= WALTER_MODEM_COAP_MAX_OUTGOING_MESSAGE_LEN) {
         return false;
     }
 
@@ -4943,34 +4475,31 @@ bool WalterModem::blueCherryPublish(uint8_t topic, uint8_t len, uint8_t *data)
 
 bool WalterModem::blueCherrySynchronize(void)
 {
-    if (blueCherry.status != WALTER_MODEM_BLUECHERRY_STATUS_IDLE)
-    {
+    if(blueCherry.status != WALTER_MODEM_BLUECHERRY_STATUS_IDLE) {
         return false;
     }
 
-    if (!coapCreateContext(0, blueCherry.serverName, blueCherry.port,
-                           blueCherry.tlsProfileId))
-    {
+    if(!coapCreateContext(0, blueCherry.serverName, blueCherry.port,
+                blueCherry.tlsProfileId)) {
         return false;
     }
 
-    if (!coapSetHeader(0, blueCherry.curMessageId))
-    {
+    if(!coapSetHeader(0, blueCherry.curMessageId)) {
         return false;
     }
 
     /* determine nr of messages to recup if we missed any */
     int32_t lastAckedMessageId = blueCherry.lastAckedMessageId;
-    if (lastAckedMessageId > blueCherry.curMessageId)
-    {
+    if(lastAckedMessageId > blueCherry.curMessageId) {
         lastAckedMessageId -= 0xffff;
     }
-    uint8_t nrMissed = blueCherry.curMessageId - lastAckedMessageId - 1;
+    uint8_t nrMissed = blueCherry.curMessageId
+        - lastAckedMessageId
+        - 1;
 
-    if (!coapSendData(0, WALTER_MODEM_COAP_SEND_TYPE_CON,
-                      (WalterModemCoapSendMethodRsp)nrMissed, /* WALTER_MODEM_COAP_SEND_METHOD_NONE */
-                      blueCherry.messageOutLen, blueCherry.messageOut))
-    {
+    if(!coapSendData(0, WALTER_MODEM_COAP_SEND_TYPE_CON,
+        (WalterModemCoapSendMethodRsp) nrMissed, /* WALTER_MODEM_COAP_SEND_METHOD_NONE */
+        blueCherry.messageOutLen, blueCherry.messageOut)) {
         return false;
     }
 
@@ -4982,32 +4511,27 @@ bool WalterModem::blueCherrySynchronize(void)
 
 bool WalterModem::blueCherryDidRing(bool *moreDataAvailable, WalterModemRsp *rsp)
 {
-    walterModemCb cb = NULL; /* dummies so we can use _returnState */
+    walterModemCb cb = NULL;        /* dummies so we can use _returnState */
     void *args = NULL;
     uint16_t curOffset = 0;
 
     *moreDataAvailable = false;
 
-    if (rsp)
-    {
+    if(rsp) {
         rsp->type = WALTER_MODEM_RSP_DATA_TYPE_BLUECHERRY;
         rsp->data.blueCherry.nak = false;
         rsp->data.blueCherry.messageCount = 0;
     }
 
-    if (blueCherry.status == WALTER_MODEM_BLUECHERRY_STATUS_IDLE)
-    {
+    if(blueCherry.status == WALTER_MODEM_BLUECHERRY_STATUS_IDLE) {
         _returnState(WALTER_MODEM_STATE_NOT_EXPECTING_RING);
     }
 
-    if (blueCherry.status == WALTER_MODEM_BLUECHERRY_STATUS_AWAITING_RESPONSE)
-    {
-        if (time(NULL) - blueCherry.lastTransmissionTime > WALTER_MODEM_BLUECHERRY_COAP_TIMEOUT)
-        {
+    if(blueCherry.status == WALTER_MODEM_BLUECHERRY_STATUS_AWAITING_RESPONSE) {
+        if(time(NULL) - blueCherry.lastTransmissionTime
+                > WALTER_MODEM_BLUECHERRY_COAP_TIMEOUT) {
             blueCherry.status = WALTER_MODEM_BLUECHERRY_STATUS_TIMED_OUT;
-        }
-        else
-        {
+        } else {
             _returnState(WALTER_MODEM_STATE_AWAITING_RESPONSE);
         }
     }
@@ -5016,17 +4540,13 @@ bool WalterModem::blueCherryDidRing(bool *moreDataAvailable, WalterModemRsp *rsp
      * or WALTER_MODEM_BLUECHERRY_STATUS_TIMED_OUT
      */
 
-    if (blueCherry.status == WALTER_MODEM_BLUECHERRY_STATUS_TIMED_OUT)
-    {
+    if(blueCherry.status == WALTER_MODEM_BLUECHERRY_STATUS_TIMED_OUT) {
         /* indicate the error condition in the (optional) response object */
 
-        if (rsp)
-        {
+        if(rsp) {
             rsp->data.blueCherry.nak = true;
         }
-    }
-    else
-    {
+    } else {
         /* process response */
 
         /* copy more available flag */
@@ -5035,8 +4555,7 @@ bool WalterModem::blueCherryDidRing(bool *moreDataAvailable, WalterModemRsp *rsp
         /* BlueCherry cloud ack means our last error line can be cleared */
         blueCherry.emitErrorEvent = false;
 
-        while (curOffset < blueCherry.messageInLen)
-        {
+        while(curOffset < blueCherry.messageInLen) {
             uint8_t topic = blueCherry.messageIn[curOffset];
             curOffset++;
             uint8_t dataLen = blueCherry.messageIn[curOffset];
@@ -5045,22 +4564,19 @@ bool WalterModem::blueCherryDidRing(bool *moreDataAvailable, WalterModemRsp *rsp
             /* topic 0 is reserved for BlueCherry events, which are also visible
              * to walter as mqtt messages on topic id 0
              */
-            if (topic == 0)
-            {
+            if(topic == 0) {
                 /* by definition we want to urge the arduino sketch developer
                  * to soon again synchronize if there are BC OTA events
                  */
                 *moreDataAvailable = true;
 
-                if (_processBlueCherryEvent(blueCherry.messageIn + curOffset, dataLen))
-                {
+                if(_processBlueCherryEvent(blueCherry.messageIn + curOffset, dataLen)) {
                     blueCherry.emitErrorEvent = true;
                     blueCherry.otaSize = 0;
                 }
             }
 
-            if (rsp)
-            {
+            if(rsp) {
                 rsp->data.blueCherry.messages[rsp->data.blueCherry.messageCount].topic = topic;
                 rsp->data.blueCherry.messages[rsp->data.blueCherry.messageCount].dataSize = dataLen;
                 rsp->data.blueCherry.messages[rsp->data.blueCherry.messageCount].data =
@@ -5074,15 +4590,13 @@ bool WalterModem::blueCherryDidRing(bool *moreDataAvailable, WalterModemRsp *rsp
 
     blueCherry.status = WALTER_MODEM_BLUECHERRY_STATUS_IDLE;
     blueCherry.curMessageId++;
-    if (blueCherry.curMessageId == 0)
-    {
+    if(blueCherry.curMessageId == 0) {
         /* on wrap around, skip msg id 0 which we use as a special/error value */
         blueCherry.curMessageId++;
     }
     blueCherry.messageOutLen = 0;
 
-    if (blueCherry.emitErrorEvent)
-    {
+    if(blueCherry.emitErrorEvent) {
         uint8_t blueCherryErrorEventCode =
             WALTER_MODEM_BLUECHERRY_EVENT_TYPE_OTA_ERROR;
 
@@ -5102,30 +4616,27 @@ bool WalterModem::coapCreateContext(
     walterModemCb cb,
     void *args)
 {
-    if (profileId >= WALTER_MODEM_MAX_COAP_PROFILES)
-    {
+    if(profileId >= WALTER_MODEM_MAX_COAP_PROFILES) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_PROFILE);
     }
 
-    if (_coapContextSet[profileId].connected)
-    {
+    if(_coapContextSet[profileId].connected) {
         _returnState(WALTER_MODEM_STATE_OK);
     }
 
     WalterModemBuffer *stringsBuffer = _getFreeBuffer();
-    stringsBuffer->size += sprintf((char *)stringsBuffer->data,
-                                   "AT+SQNCOAPCREATE=%d,\"%s\",%d,%d,%d,10",
-                                   profileId, serverName, port, localPort,
-                                   tlsProfileId != 0);
+    stringsBuffer->size += sprintf((char *) stringsBuffer->data,
+            "AT+SQNCOAPCREATE=%d,\"%s\",%d,%d,%d,10",
+            profileId, serverName, port, localPort,
+            tlsProfileId != 0);
 
-    if (tlsProfileId)
-    {
+    if(tlsProfileId) {
         stringsBuffer->size += sprintf(
-            (char *)stringsBuffer->data + stringsBuffer->size,
-            ",,%d", tlsProfileId);
+                (char *) stringsBuffer->data + stringsBuffer->size,
+                ",,%d", tlsProfileId);
     }
 
-    _runCmd(arr((const char *)stringsBuffer->data),
+    _runCmd(arr((const char *) stringsBuffer->data),
             "+SQNCOAPCONNECTED: ", rsp, cb, args,
             NULL, NULL, WALTER_MODEM_CMD_TYPE_TX_WAIT, NULL, 0,
             stringsBuffer);
@@ -5139,25 +4650,22 @@ bool WalterModem::coapClose(
     walterModemCb cb,
     void *args)
 {
-    if (profileId == 0)
-    {
+    if(profileId == 0) {
         _returnState(WALTER_MODEM_STATE_ERROR);
     }
 
-    if (profileId >= WALTER_MODEM_MAX_COAP_PROFILES)
-    {
+    if(profileId >= WALTER_MODEM_MAX_COAP_PROFILES) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_PROFILE);
     }
 
     _runCmd(arr("AT+SQNCOAPCLOSE=", _atNum(profileId)),
-            "OK", rsp, cb, args);
+        "OK", rsp, cb, args);
     _returnAfterReply();
 }
 
 bool WalterModem::coapGetContextStatus(uint8_t profileId)
 {
-    if (profileId >= WALTER_MODEM_MAX_COAP_PROFILES)
-    {
+    if(profileId >= WALTER_MODEM_MAX_COAP_PROFILES) {
         return false;
     }
 
@@ -5168,13 +4676,12 @@ bool WalterModem::coapSetHeader(
     uint8_t profileId,
     int messageId,
     const char *token,
-    WalterModemRsp *rsp,
+    WalterModemRsp *rsp ,
     walterModemCb cb,
     void *args)
 {
     _runCmd(arr("AT+SQNCOAPHDR=", _atNum(profileId), ",", _atNum(messageId),
-                ",\"", token, "\""),
-            "OK", rsp, cb, args);
+        ",\"", token, "\""), "OK", rsp, cb, args);
     _returnAfterReply();
 }
 
@@ -5187,51 +4694,41 @@ bool WalterModem::coapSetOptions(
     walterModemCb cb,
     void *args)
 {
-    if (profileId == 0)
-    {
+    if(profileId == 0) {
         _returnState(WALTER_MODEM_STATE_ERROR);
     }
 
-    if (action == WALTER_MODEM_COAP_OPT_READ)
-    {
-        /* not yet supported - add together with incoming socket con/coap response */
+    if(action == WALTER_MODEM_COAP_OPT_READ) {
+         /* not yet supported - add together with incoming socket con/coap response */
         _returnState(WALTER_MODEM_STATE_ERROR);
     }
 
     WalterModemBuffer *stringsBuffer = _getFreeBuffer();
 
-    if (action == WALTER_MODEM_COAP_OPT_SET ||
-        action == WALTER_MODEM_COAP_OPT_EXTEND)
-    {
-        if (values && *values)
-        {
-            stringsBuffer->size += sprintf((char *)stringsBuffer->data,
-                                           "AT+SQNCOAPOPT=%d,%d,%d,%s",
-                                           profileId, action, code, values);
-        }
-        else
-        {
-            stringsBuffer->size += sprintf((char *)stringsBuffer->data,
-                                           "AT+SQNCOAPOPT=%d,%d,%d",
-                                           profileId, action, code);
-        }
-    }
-    else if (action == WALTER_MODEM_COAP_OPT_DELETE)
-    {
-        stringsBuffer->size += sprintf((char *)stringsBuffer->data,
-                                       "AT+SQNCOAPOPT=%d,%d,%d",
-                                       profileId, action, code);
-    }
-    else
-    {
-        /* make sure something sane is in the buffer if wrong action */
-        stringsBuffer->size += sprintf((char *)stringsBuffer->data, "AT");
-    }
+     if(action == WALTER_MODEM_COAP_OPT_SET ||
+        action == WALTER_MODEM_COAP_OPT_EXTEND) {
+         if(values && *values) {
+            stringsBuffer->size += sprintf((char *) stringsBuffer->data,
+                    "AT+SQNCOAPOPT=%d,%d,%d,%s",
+                    profileId, action, code, values);
+         } else {
+            stringsBuffer->size += sprintf((char *) stringsBuffer->data,
+                    "AT+SQNCOAPOPT=%d,%d,%d",
+                    profileId, action, code);
+         }
+     } else if(action == WALTER_MODEM_COAP_OPT_DELETE) {
+        stringsBuffer->size += sprintf((char *) stringsBuffer->data,
+                "AT+SQNCOAPOPT=%d,%d,%d",
+                profileId, action, code);
+     } else {
+         /* make sure something sane is in the buffer if wrong action */
+         stringsBuffer->size += sprintf((char *) stringsBuffer->data, "AT");
+     }
 
-    _runCmd(arr((const char *)stringsBuffer->data), "OK", rsp, cb, args,
+    _runCmd(arr((const char *) stringsBuffer->data), "OK", rsp, cb, args,
             NULL, NULL, WALTER_MODEM_CMD_TYPE_TX_WAIT, NULL, 0,
             stringsBuffer);
-    _returnAfterReply();
+     _returnAfterReply();
 }
 
 bool WalterModem::coapSendData(
@@ -5245,9 +4742,9 @@ bool WalterModem::coapSendData(
     void *args)
 {
     _runCmd(arr("AT+SQNCOAPSEND=", _atNum(profileId), ",", _atNum(type), ",",
-                _atNum(methodRsp), ",", _atNum(length)),
-            "OK", rsp, cb, args, NULL, NULL, WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT,
-            payload, length);
+        _atNum(methodRsp), ",", _atNum(length)),
+        "OK", rsp, cb, args, NULL, NULL, WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT,
+        payload, length);
     _returnAfterReply();
 }
 
@@ -5274,10 +4771,8 @@ bool WalterModem::setOpState(
 
 bool WalterModem::getRAT(WalterModemRsp *rsp, walterModemCb cb, void *args)
 {
-    if (_ratType != WALTER_MODEM_RAT_UNKNOWN)
-    {
-        if (rsp)
-        {
+    if(_ratType != WALTER_MODEM_RAT_UNKNOWN) {
+        if(rsp) {
             rsp->type = WALTER_MODEM_RSP_DATA_TYPE_RAT;
             rsp->data.rat = _ratType;
         }
@@ -5316,97 +4811,75 @@ bool WalterModem::setRadioBands(
     void *args)
 {
     WalterModemBuffer *stringsbuffer = _getFreeBuffer();
-    stringsbuffer->size += sprintf((char *)stringsbuffer->data,
-                                   "AT+SQNBANDSEL=%d,\"standard\",\"",
-                                   rat);
+    stringsbuffer->size += sprintf((char *) stringsbuffer->data,
+            "AT+SQNBANDSEL=%d,\"standard\",\"",
+            rat);
 
-    if (bands & WALTER_MODEM_BAND_B1)
-    {
-        stringsbuffer->size += sprintf((char *)stringsbuffer->data + stringsbuffer->size, "1,");
+    if(bands & WALTER_MODEM_BAND_B1) {
+        stringsbuffer->size += sprintf((char *) stringsbuffer->data + stringsbuffer->size, "1,");
     }
-    if (bands & WALTER_MODEM_BAND_B2)
-    {
-        stringsbuffer->size += sprintf((char *)stringsbuffer->data + stringsbuffer->size, "2,");
+    if(bands & WALTER_MODEM_BAND_B2) {
+        stringsbuffer->size += sprintf((char *) stringsbuffer->data + stringsbuffer->size, "2,");
     }
-    if (bands & WALTER_MODEM_BAND_B3)
-    {
-        stringsbuffer->size += sprintf((char *)stringsbuffer->data + stringsbuffer->size, "3,");
+    if(bands & WALTER_MODEM_BAND_B3) {
+        stringsbuffer->size += sprintf((char *) stringsbuffer->data + stringsbuffer->size, "3,");
     }
-    if (bands & WALTER_MODEM_BAND_B4)
-    {
-        stringsbuffer->size += sprintf((char *)stringsbuffer->data + stringsbuffer->size, "4,");
+    if(bands & WALTER_MODEM_BAND_B4) {
+        stringsbuffer->size += sprintf((char *) stringsbuffer->data + stringsbuffer->size, "4,");
     }
-    if (bands & WALTER_MODEM_BAND_B5)
-    {
-        stringsbuffer->size += sprintf((char *)stringsbuffer->data + stringsbuffer->size, "5,");
+    if(bands & WALTER_MODEM_BAND_B5) {
+        stringsbuffer->size += sprintf((char *) stringsbuffer->data + stringsbuffer->size, "5,");
     }
-    if (bands & WALTER_MODEM_BAND_B8)
-    {
-        stringsbuffer->size += sprintf((char *)stringsbuffer->data + stringsbuffer->size, "8,");
+    if(bands & WALTER_MODEM_BAND_B8) {
+        stringsbuffer->size += sprintf((char *) stringsbuffer->data + stringsbuffer->size, "8,");
     }
-    if (bands & WALTER_MODEM_BAND_B12)
-    {
-        stringsbuffer->size += sprintf((char *)stringsbuffer->data + stringsbuffer->size, "12,");
+    if(bands & WALTER_MODEM_BAND_B12) {
+        stringsbuffer->size += sprintf((char *) stringsbuffer->data + stringsbuffer->size, "12,");
     }
-    if (bands & WALTER_MODEM_BAND_B13)
-    {
-        stringsbuffer->size += sprintf((char *)stringsbuffer->data + stringsbuffer->size, "13,");
+    if(bands & WALTER_MODEM_BAND_B13) {
+        stringsbuffer->size += sprintf((char *) stringsbuffer->data + stringsbuffer->size, "13,");
     }
-    if (bands & WALTER_MODEM_BAND_B14)
-    {
-        stringsbuffer->size += sprintf((char *)stringsbuffer->data + stringsbuffer->size, "14,");
+    if(bands & WALTER_MODEM_BAND_B14) {
+        stringsbuffer->size += sprintf((char *) stringsbuffer->data + stringsbuffer->size, "14,");
     }
-    if (bands & WALTER_MODEM_BAND_B17)
-    {
-        stringsbuffer->size += sprintf((char *)stringsbuffer->data + stringsbuffer->size, "17,");
+    if(bands & WALTER_MODEM_BAND_B17) {
+        stringsbuffer->size += sprintf((char *) stringsbuffer->data + stringsbuffer->size, "17,");
     }
-    if (bands & WALTER_MODEM_BAND_B18)
-    {
-        stringsbuffer->size += sprintf((char *)stringsbuffer->data + stringsbuffer->size, "18,");
+    if(bands & WALTER_MODEM_BAND_B18) {
+        stringsbuffer->size += sprintf((char *) stringsbuffer->data + stringsbuffer->size, "18,");
     }
-    if (bands & WALTER_MODEM_BAND_B19)
-    {
-        stringsbuffer->size += sprintf((char *)stringsbuffer->data + stringsbuffer->size, "19,");
+    if(bands & WALTER_MODEM_BAND_B19) {
+        stringsbuffer->size += sprintf((char *) stringsbuffer->data + stringsbuffer->size, "19,");
     }
-    if (bands & WALTER_MODEM_BAND_B20)
-    {
-        stringsbuffer->size += sprintf((char *)stringsbuffer->data + stringsbuffer->size, "20,");
+    if(bands & WALTER_MODEM_BAND_B20) {
+        stringsbuffer->size += sprintf((char *) stringsbuffer->data + stringsbuffer->size, "20,");
     }
-    if (bands & WALTER_MODEM_BAND_B25)
-    {
-        stringsbuffer->size += sprintf((char *)stringsbuffer->data + stringsbuffer->size, "25,");
+    if(bands & WALTER_MODEM_BAND_B25) {
+        stringsbuffer->size += sprintf((char *) stringsbuffer->data + stringsbuffer->size, "25,");
     }
-    if (bands & WALTER_MODEM_BAND_B26)
-    {
-        stringsbuffer->size += sprintf((char *)stringsbuffer->data + stringsbuffer->size, "26,");
+    if(bands & WALTER_MODEM_BAND_B26) {
+        stringsbuffer->size += sprintf((char *) stringsbuffer->data + stringsbuffer->size, "26,");
     }
-    if (bands & WALTER_MODEM_BAND_B28)
-    {
-        stringsbuffer->size += sprintf((char *)stringsbuffer->data + stringsbuffer->size, "28,");
+    if(bands & WALTER_MODEM_BAND_B28) {
+        stringsbuffer->size += sprintf((char *) stringsbuffer->data + stringsbuffer->size, "28,");
     }
-    if (bands & WALTER_MODEM_BAND_B66)
-    {
-        stringsbuffer->size += sprintf((char *)stringsbuffer->data + stringsbuffer->size, "66,");
+    if(bands & WALTER_MODEM_BAND_B66) {
+        stringsbuffer->size += sprintf((char *) stringsbuffer->data + stringsbuffer->size, "66,");
     }
-    if (bands & WALTER_MODEM_BAND_B71)
-    {
-        stringsbuffer->size += sprintf((char *)stringsbuffer->data + stringsbuffer->size, "71,");
+    if(bands & WALTER_MODEM_BAND_B71) {
+        stringsbuffer->size += sprintf((char *) stringsbuffer->data + stringsbuffer->size, "71,");
     }
-    if (bands & WALTER_MODEM_BAND_B85)
-    {
-        stringsbuffer->size += sprintf((char *)stringsbuffer->data + stringsbuffer->size, "85,");
+    if(bands & WALTER_MODEM_BAND_B85) {
+        stringsbuffer->size += sprintf((char *) stringsbuffer->data + stringsbuffer->size, "85,");
     }
 
-    if (stringsbuffer->data[stringsbuffer->size - 1] == ',')
-    {
+    if(stringsbuffer->data[stringsbuffer->size - 1] == ',') {
         stringsbuffer->data[stringsbuffer->size - 1] = '"';
-    }
-    else
-    {
-        stringsbuffer->size += sprintf((char *)stringsbuffer->data + stringsbuffer->size, "\"");
+    } else {
+        stringsbuffer->size += sprintf((char *) stringsbuffer->data + stringsbuffer->size, "\"");
     }
 
-    _runCmd(arr((const char *)stringsbuffer->data), "OK", rsp, cb, args);
+    _runCmd(arr((const char *) stringsbuffer->data), "OK", rsp, cb, args);
     _returnAfterReply();
 }
 
@@ -5418,7 +4891,7 @@ bool WalterModem::getSIMState(WalterModemRsp *rsp, walterModemCb cb, void *args)
 
 bool WalterModem::getSIMCardID(
     WalterModemRsp *rsp,
-    walterModemCb cb,
+    walterModemCb cb, 
     void *args)
 {
     _runCmd({"AT+SQNCCID"}, "OK", rsp, cb, args);
@@ -5427,7 +4900,7 @@ bool WalterModem::getSIMCardID(
 
 bool WalterModem::getSIMCardIMSI(
     WalterModemRsp *rsp,
-    walterModemCb cb,
+    walterModemCb cb, 
     void *args)
 {
     _runCmd({"AT+CIMI"}, "OK", rsp, cb, args);
@@ -5435,18 +4908,17 @@ bool WalterModem::getSIMCardIMSI(
 }
 
 bool WalterModem::unlockSIM(
-    WalterModemRsp *rsp,
+    WalterModemRsp *rsp, 
     walterModemCb cb,
     void *args,
     const char *pin)
 {
     _simPIN = pin;
 
-    if (_simPIN == NULL)
-    {
+    if(_simPIN == NULL) {
         return getSIMState(rsp, cb, args);
     }
-
+    
     _runCmd(arr("AT+CPIN=", _simPIN), "OK", rsp, cb, args);
     _returnAfterReply();
 }
@@ -5456,27 +4928,24 @@ bool WalterModem::setNetworkSelectionMode(
     const char *operatorName,
     WalterModemOperatorFormat format,
     WalterModemRsp *rsp,
-    walterModemCb cb,
+    walterModemCb cb, 
     void *args)
 {
     _networkSelMode = mode;
     _operator.format = format;
     _strncpy_s(_operator.name, operatorName, WALTER_MODEM_OPERATOR_MAX_SIZE);
 
-    if (mode == WALTER_MODEM_NETWORK_SEL_MODE_AUTOMATIC ||
-        mode == WALTER_MODEM_NETWORK_SEL_MODE_UNREGISTER)
-    {
+    if(mode == WALTER_MODEM_NETWORK_SEL_MODE_AUTOMATIC ||
+            mode == WALTER_MODEM_NETWORK_SEL_MODE_UNREGISTER) {
         _runCmd(arr("AT+COPS=", _digitStr(mode)), "OK", rsp, cb, args);
         _returnAfterReply();
-    }
-    else
-    {
+    } else {
         _runCmd(arr(
-                    "AT+COPS=",
-                    _digitStr(_networkSelMode), ",",
-                    _digitStr(_operator.format), ",",
-                    _atStr(_operator.name)),
-                "OK", rsp, cb, args);
+            "AT+COPS=",
+            _digitStr(_networkSelMode),",",
+            _digitStr(_operator.format),",",
+            _atStr(_operator.name)
+        ), "OK", rsp, cb, args);
         _returnAfterReply();
     }
 }
@@ -5489,18 +4958,15 @@ bool WalterModem::configPSM(
     walterModemCb cb,
     void *args)
 {
-    if (mode == WALTER_MODEM_PSM_ENABLE)
-    {
+    if(mode == WALTER_MODEM_PSM_ENABLE) {
         WalterModemBuffer *stringsbuffer = _getFreeBuffer();
-        stringsbuffer->size += sprintf((char *)stringsbuffer->data,
-                                       "AT+CPSMS=1,,,\"%s\",\"%s\"", reqTAU, reqActive);
+        stringsbuffer->size += sprintf((char *) stringsbuffer->data,
+                "AT+CPSMS=1,,,\"%s\",\"%s\"", reqTAU, reqActive);
 
-        _runCmd(arr((const char *)stringsbuffer->data), "OK", rsp, cb, args,
-                NULL, NULL, WALTER_MODEM_CMD_TYPE_TX_WAIT, NULL, 0, stringsbuffer);
+        _runCmd(arr((const char *) stringsbuffer->data), "OK", rsp, cb, args,
+            NULL, NULL, WALTER_MODEM_CMD_TYPE_TX_WAIT, NULL, 0, stringsbuffer);
         _returnAfterReply();
-    }
-    else
-    {
+    } else {
         _runCmd(arr("AT+CPSMS=", _digitStr(mode)), "OK", rsp, cb, args);
         _returnAfterReply();
     }
@@ -5514,20 +4980,17 @@ bool WalterModem::configEDRX(
     walterModemCb cb,
     void *args)
 {
-    if (mode == WALTER_MODEM_EDRX_ENABLE || mode == WALTER_MODEM_EDRX_ENABLE_WITH_RESULT)
-    {
+    if(mode == WALTER_MODEM_EDRX_ENABLE || mode == WALTER_MODEM_EDRX_ENABLE_WITH_RESULT) {
         getRAT(rsp, cb, args);
 
         WalterModemBuffer *stringsbuffer = _getFreeBuffer();
-        stringsbuffer->size += sprintf((char *)stringsbuffer->data,
-                                       "AT+SQNEDRX=%d,%d,\"%s\",\"%s\"", mode, _ratType + 4, reqEDRXVal, reqPtw);
+        stringsbuffer->size += sprintf((char *) stringsbuffer->data,
+                "AT+SQNEDRX=%d,%d,\"%s\",\"%s\"", mode, _ratType+4, reqEDRXVal, reqPtw);
 
-        _runCmd(arr((const char *)stringsbuffer->data), "OK", rsp, cb, args,
-                NULL, NULL, WALTER_MODEM_CMD_TYPE_TX_WAIT, NULL, 0, stringsbuffer);
+        _runCmd(arr((const char *) stringsbuffer->data), "OK", rsp, cb, args,
+            NULL, NULL, WALTER_MODEM_CMD_TYPE_TX_WAIT, NULL, 0, stringsbuffer);
         _returnAfterReply();
-    }
-    else
-    {
+    } else {
         _runCmd(arr("AT+SQNEDRX=", _digitStr(mode)), "OK", rsp, cb, args);
         _returnAfterReply();
     }
@@ -5542,8 +5005,8 @@ bool WalterModem::createPDPContext(
     walterModemCb cb,
     void *args,
     WalterModemPDPType type,
-    const char *pdpAddress,
-    WalterModemPDPHeaderCompression headerComp,
+    const char *pdpAddress, 
+    WalterModemPDPHeaderCompression headerComp, 
     WalterModemPDPDataCompression dataComp,
     WalterModemPDPIPv4AddrAllocMethod ipv4AllocMethod,
     WalterModemPDPRequestType requestType,
@@ -5556,8 +5019,7 @@ bool WalterModem::createPDPContext(
     bool useNASNonIPMTUDiscovery)
 {
     WalterModemPDPContext *ctx = _pdpContextReserve();
-    if (ctx == NULL)
-    {
+    if(ctx == NULL) {
         _returnState(WALTER_MODEM_STATE_NO_FREE_PDP_CONTEXT);
     }
 
@@ -5582,35 +5044,34 @@ bool WalterModem::createPDPContext(
     auto completeHandler = [](WalterModemCmd *cmd, WalterModemState result)
     {
         WalterModemPDPContext *ctx =
-            (WalterModemPDPContext *)cmd->completeHandlerArg;
+            (WalterModemPDPContext*) cmd->completeHandlerArg;
 
         cmd->rsp->type = WALTER_MODEM_RSP_DATA_TYPE_PDP_CTX_ID;
         cmd->rsp->data.pdpCtxId = ctx->id;
 
-        if (result == WALTER_MODEM_STATE_OK)
-        {
+        if(result == WALTER_MODEM_STATE_OK) {
             ctx->state = WALTER_MODEM_PDP_CONTEXT_STATE_INACTIVE;
         }
     };
 
     _runCmd(arr(
-                "AT+CGDCONT=",
-                _digitStr(ctx->id), ",",
-                _atStr(_pdpTypeStr(ctx->type)), ",",
-                _atStr(ctx->apn), ",",
-                _atStr(ctx->pdpAddress), ",",
-                _digitStr(ctx->dataComp), ",",
-                _digitStr(ctx->headerComp), ",",
-                _digitStr(ctx->ipv4AllocMethod), ",",
-                _digitStr(ctx->requestType), ",",
-                _digitStr(ctx->pcscfMethod), ",",
-                _atBool(ctx->forIMCN), ",",
-                _atBool(ctx->useNSLPI), ",",
-                _atBool(ctx->useSecurePCO), ",",
-                _atBool(ctx->useNASIPv4MTUDiscovery), ",",
-                _atBool(ctx->useLocalAddrInd), ",",
-                _atBool(ctx->useNASNonIPMTUDiscovery)),
-            "OK", rsp, cb, args, completeHandler, ctx);
+        "AT+CGDCONT=",
+        _digitStr(ctx->id),",",
+        _atStr(_pdpTypeStr(ctx->type)),",",
+        _atStr(ctx->apn),",",
+        _atStr(ctx->pdpAddress),",",
+        _digitStr(ctx->dataComp),",",
+        _digitStr(ctx->headerComp),",",
+        _digitStr(ctx->ipv4AllocMethod),",",
+        _digitStr(ctx->requestType),",",
+        _digitStr(ctx->pcscfMethod),",",
+        _atBool(ctx->forIMCN),",",
+        _atBool(ctx->useNSLPI),",",
+        _atBool(ctx->useSecurePCO),",",
+        _atBool(ctx->useNASIPv4MTUDiscovery),",",
+        _atBool(ctx->useLocalAddrInd),",",
+        _atBool(ctx->useNASNonIPMTUDiscovery)),
+        "OK", rsp, cb, args, completeHandler, ctx);
     _returnAfterReply();
 }
 
@@ -5621,23 +5082,21 @@ bool WalterModem::authenticatePDPContext(
     void *args)
 {
     WalterModemPDPContext *ctx = _pdpContextGet(pdpCtxId);
-    if (ctx == NULL)
-    {
+    if(ctx == NULL) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_PDP_CONTEXT);
     }
 
-    if (ctx->authProto == WALTER_MODEM_PDP_AUTH_PROTO_NONE)
-    {
+    if(ctx->authProto == WALTER_MODEM_PDP_AUTH_PROTO_NONE) {
         _returnState(WALTER_MODEM_STATE_OK);
     }
 
     _runCmd(arr(
-                "AT+CGAUTH=",
-                _digitStr(ctx->id), ",",
-                _digitStr(ctx->authProto), ",",
-                _atStr(ctx->authUser), ",",
-                _atStr(ctx->authPass)),
-            "OK", rsp, cb, args);
+        "AT+CGAUTH=",
+        _digitStr(ctx->id),",",
+        _digitStr(ctx->authProto),",",
+        _atStr(ctx->authUser),",",
+        _atStr(ctx->authPass)),
+        "OK", rsp, cb, args);
     _returnAfterReply();
 }
 
@@ -5649,28 +5108,26 @@ bool WalterModem::setPDPContextActive(
     void *args)
 {
     WalterModemPDPContext *ctx = _pdpContextGet(pdpCtxId);
-    if (ctx == NULL)
-    {
+    if(ctx == NULL) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_PDP_CONTEXT);
     }
 
-    auto completeHandler = [](WalterModemCmd *cmd, WalterModemState result)
+    auto completeHandler = [](WalterModemCmd *cmd, WalterModemState result) 
     {
         WalterModemPDPContext *ctx =
-            (WalterModemPDPContext *)cmd->completeHandlerArg;
-
-        if (result == WALTER_MODEM_STATE_OK)
-        {
+            (WalterModemPDPContext*) cmd->completeHandlerArg;
+        
+        if(result == WALTER_MODEM_STATE_OK) {
             ctx->state = WALTER_MODEM_PDP_CONTEXT_STATE_ACTIVE;
-            // TODO: set all other PDP contexts to inactive.
+            //TODO: set all other PDP contexts to inactive.
         }
     };
 
     _runCmd(arr(
-                "AT+CGACT=",
-                _digitStr(ctx->id), ",",
-                _atBool(active)),
-            "OK", rsp, cb, args, completeHandler, ctx);
+        "AT+CGACT=",
+        _digitStr(ctx->id),",",
+        _atBool(active)),
+        "OK", rsp, cb, args, completeHandler, ctx);
     _returnAfterReply();
 }
 
@@ -5680,16 +5137,15 @@ bool WalterModem::attachPDPContext(
     walterModemCb cb,
     void *args)
 {
-    auto completeHandler = [](WalterModemCmd *cmd, WalterModemState result)
+    auto completeHandler = [](WalterModemCmd *cmd, WalterModemState result) 
     {
-        if (result == WALTER_MODEM_STATE_OK)
-        {
-            // TODO: set active PDP context to ATTACHED.
+        if(result == WALTER_MODEM_STATE_OK) {
+            //TODO: set active PDP context to ATTACHED.
         }
     };
 
     _runCmd(arr("AT+CGATT=", _atBool(attach)), "OK", rsp, cb, args,
-            completeHandler);
+        completeHandler);
     _returnAfterReply();
 }
 
@@ -5700,8 +5156,7 @@ bool WalterModem::getPDPAddress(
     int pdpCtxId)
 {
     WalterModemPDPContext *ctx = _pdpContextGet(pdpCtxId);
-    if (ctx == NULL)
-    {
+    if(ctx == NULL) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_PDP_CONTEXT);
     }
 
@@ -5720,14 +5175,12 @@ bool WalterModem::createSocket(
     uint16_t sendDelayMs)
 {
     WalterModemPDPContext *ctx = _pdpContextGet(pdpCtxId);
-    if (ctx == NULL)
-    {
+    if(ctx == NULL) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_PDP_CONTEXT);
     }
 
     WalterModemSocket *sock = _socketReserve();
-    if (sock == NULL)
-    {
+    if(sock == NULL) {
         _returnState(WALTER_MODEM_STATE_NO_FREE_SOCKET);
     }
 
@@ -5737,28 +5190,27 @@ bool WalterModem::createSocket(
     sock->connTimeout = connTimeout;
     sock->sendDelayMs = sendDelayMs;
 
-    auto completeHandler = [](WalterModemCmd *cmd, WalterModemState result)
-    {
-        WalterModemSocket *sock = (WalterModemSocket *)cmd->completeHandlerArg;
-
+    auto completeHandler = [](WalterModemCmd *cmd, WalterModemState result) 
+    { 
+        WalterModemSocket *sock = (WalterModemSocket*) cmd->completeHandlerArg;
+        
         cmd->rsp->type = WALTER_MODEM_RSP_DATA_TYPE_SOCKET_ID;
         cmd->rsp->data.socketId = sock->id;
 
-        if (result == WALTER_MODEM_STATE_OK)
-        {
+        if(result == WALTER_MODEM_STATE_OK) {
             sock->state = WALTER_MODEM_SOCKET_STATE_CREATED;
         }
     };
 
     _runCmd(arr(
-                "AT+SQNSCFG=",
-                _digitStr(sock->id), ",",
-                _digitStr(sock->pdpContextId), ",",
-                _atNum(sock->mtu), ",",
-                _atNum(sock->exchangeTimeout), ",",
-                _atNum(sock->connTimeout * 10), ",",
-                _atNum(sock->sendDelayMs / 100)),
-            "OK", rsp, cb, args, completeHandler, sock);
+        "AT+SQNSCFG=",
+        _digitStr(sock->id),",",
+        _digitStr(sock->pdpContextId),",",
+        _atNum(sock->mtu),",",
+        _atNum(sock->exchangeTimeout),",",
+        _atNum(sock->connTimeout * 10),",",
+        _atNum(sock->sendDelayMs / 100)),
+        "OK", rsp, cb, args, completeHandler, sock);
     _returnAfterReply();
 }
 
@@ -5769,25 +5221,23 @@ bool WalterModem::configSocket(
     int socketId)
 {
     WalterModemSocket *sock = _socketGet(socketId);
-    if (sock == NULL)
-    {
+    if(sock == NULL) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_SOCKET);
     }
 
-    auto completeHandler = [](WalterModemCmd *cmd, WalterModemState result)
-    {
-        WalterModemSocket *sock = (WalterModemSocket *)cmd->completeHandlerArg;
-
-        if (result == WALTER_MODEM_STATE_OK)
-        {
+    auto completeHandler = [](WalterModemCmd *cmd, WalterModemState result) 
+    { 
+        WalterModemSocket *sock = (WalterModemSocket*) cmd->completeHandlerArg;
+        
+        if(result == WALTER_MODEM_STATE_OK) {
             sock->state = WALTER_MODEM_SOCKET_STATE_CONFIGURED;
         }
     };
 
     _runCmd(arr(
-                "AT+SQNSCFGEXT=",
-                _digitStr(sock->id), ",2,0,0,0,0,0"),
-            "OK", rsp, cb, args, completeHandler, sock);
+        "AT+SQNSCFGEXT=",
+        _digitStr(sock->id),",2,0,0,0,0,0"),
+        "OK", rsp, cb, args, completeHandler, sock);
     _returnAfterReply();
 }
 
@@ -5803,8 +5253,7 @@ bool WalterModem::connectSocket(
     int socketId)
 {
     WalterModemSocket *sock = _socketGet(socketId);
-    if (sock == NULL)
-    {
+    if(sock == NULL) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_SOCKET);
     }
 
@@ -5812,27 +5261,26 @@ bool WalterModem::connectSocket(
     sock->acceptAnyRemote = acceptAnyRemote;
     _strncpy_s(sock->remoteHost, remoteHost, WALTER_MODEM_HOSTNAME_MAX_SIZE);
     sock->remotePort = remotePort;
-    sock->localPort = localPort;
+    sock->localPort = localPort; 
 
-    auto completeHandler = [](WalterModemCmd *cmd, WalterModemState result)
-    {
-        WalterModemSocket *sock = (WalterModemSocket *)cmd->completeHandlerArg;
-
-        if (result == WALTER_MODEM_STATE_OK)
-        {
+    auto completeHandler = [](WalterModemCmd *cmd, WalterModemState result) 
+    { 
+        WalterModemSocket *sock = (WalterModemSocket*) cmd->completeHandlerArg;
+        
+        if(result == WALTER_MODEM_STATE_OK) {
             sock->state = WALTER_MODEM_SOCKET_STATE_OPENED;
         }
     };
 
     _runCmd(arr(
-                "AT+SQNSD=",
-                _digitStr(sock->id), ",",
-                _digitStr(sock->protocol), ",",
-                _atNum(sock->remotePort), ",",
-                _atStr(sock->remoteHost), ",0,",
-                _atNum(sock->localPort), ",1,",
-                _digitStr(sock->acceptAnyRemote), ",0"),
-            "OK", rsp, cb, args, completeHandler, sock);
+        "AT+SQNSD=",
+        _digitStr(sock->id),",",
+        _digitStr(sock->protocol),",",
+        _atNum(sock->remotePort),",",
+        _atStr(sock->remoteHost),",0,",
+        _atNum(sock->localPort),",1,",
+        _digitStr(sock->acceptAnyRemote),",0"),
+        "OK", rsp, cb, args, completeHandler, sock);
     _returnAfterReply();
 }
 
@@ -5843,25 +5291,23 @@ bool WalterModem::closeSocket(
     int socketId)
 {
     WalterModemSocket *sock = _socketGet(socketId);
-    if (sock == NULL)
-    {
+    if(sock == NULL) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_SOCKET);
     }
 
-    auto completeHandler = [](WalterModemCmd *cmd, WalterModemState result)
-    {
-        WalterModemSocket *sock = (WalterModemSocket *)cmd->completeHandlerArg;
-
-        if (result == WALTER_MODEM_STATE_OK)
-        {
+    auto completeHandler = [](WalterModemCmd *cmd, WalterModemState result) 
+    { 
+        WalterModemSocket *sock = (WalterModemSocket*) cmd->completeHandlerArg;
+        
+        if(result == WALTER_MODEM_STATE_OK) {
             _socketRelease(sock);
         }
     };
 
     _runCmd(arr(
-                "AT+SQNSH=",
-                _digitStr(sock->id)),
-            "OK", rsp, cb, args, completeHandler, sock);
+        "AT+SQNSH=",
+        _digitStr(sock->id)),
+        "OK", rsp, cb, args, completeHandler, sock);
     _returnAfterReply();
 }
 
@@ -5875,17 +5321,16 @@ bool WalterModem::socketSend(
     int socketId)
 {
     WalterModemSocket *sock = _socketGet(socketId);
-    if (sock == NULL)
-    {
+    if(sock == NULL) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_SOCKET);
     }
 
     _runCmd(arr(
-                "AT+SQNSSENDEXT=",
-                _digitStr(sock->id), ",",
-                _atNum(dataSize), ",",
-                _digitStr(rai)),
-            "OK", rsp, cb, args, NULL, NULL, WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT,
+        "AT+SQNSSENDEXT=",
+        _digitStr(sock->id),",",
+        _atNum(dataSize),",",
+        _digitStr(rai)),
+        "OK", rsp, cb, args, NULL, NULL, WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT, 
             data, dataSize);
     _returnAfterReply();
 }
@@ -5904,9 +5349,10 @@ bool WalterModem::socketSend(
     WalterModemRAI rai,
     int socketId)
 {
-    return socketSend((uint8_t *)str, strlen(str), rsp, cb, args, rai,
-                      socketId);
+    return socketSend((uint8_t*) str, strlen(str), rsp, cb, args, rai, 
+        socketId);
 }
+
 
 bool WalterModem::configGNSS(
     WalterModemGNSSSensMode sensMode,
@@ -5917,12 +5363,11 @@ bool WalterModem::configGNSS(
     void *args)
 {
     _runCmd(arr(
-                "AT+LPGNSSCFG=",
-                _digitStr(locMode), ",",
-                _digitStr(sensMode),
-                ",2,,1,",
-                _digitStr(acqMode)),
-            "OK", rsp, cb, args);
+        "AT+LPGNSSCFG=",
+        _digitStr(locMode),",",
+        _digitStr(sensMode),
+        ",2,,1,",
+        _digitStr(acqMode)), "OK", rsp, cb, args);
     _returnAfterReply();
 }
 
@@ -5952,22 +5397,20 @@ bool WalterModem::performGNSSAction(
     walterModemCb cb,
     void *args)
 {
-    auto gnssActionStr = [](WalterModemGNSSAction action)
+    auto gnssActionStr = [](WalterModemGNSSAction action) 
     {
-        switch (action)
-        {
-        case WALTER_MODEM_GNSS_ACTION_GET_SINGLE_FIX:
-            return "single";
+        switch(action) {
+            case WALTER_MODEM_GNSS_ACTION_GET_SINGLE_FIX:
+                return "single";
 
-        case WALTER_MODEM_GNSS_ACTION_CANCEL:
-            return "stop";
+            case WALTER_MODEM_GNSS_ACTION_CANCEL:
+                return "stop";
         }
         return "";
     };
 
     _runCmd(arr(
-                "AT+LPGNSSFIXPROG=\"",
-                gnssActionStr(action), "\""),
-            "OK", rsp, cb, args);
+        "AT+LPGNSSFIXPROG=\"",
+        gnssActionStr(action),"\""), "OK", rsp, cb, args);
     _returnAfterReply();
 }
