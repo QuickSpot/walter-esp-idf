@@ -2963,9 +2963,9 @@ class WalterModem
         static bool sendCmd(const char *cmd);
         
         /**
-         * @brief Software reset the modem and wait for it to reset. All
-         * connections will not be lost. (required when switching RAT) The function
-         * will fail when the modem doesn't reset.
+         * @brief Software reset the modem and wait for it to reset. 
+         * (required when switching RAT) 
+         * The function will fail when the modem doesn't reset.
          *
          * @param rsp Pointer to a modem response structure to save the result
          * of the command in. When NULL is given the result is ignored.
