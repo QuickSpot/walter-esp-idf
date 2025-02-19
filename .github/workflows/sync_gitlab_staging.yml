@@ -43,7 +43,9 @@ jobs:
 
       - name: Copy files
         run: |
-          mkdir -p target-repo/walter-modem/esp-idf/examples/ || true
+          rm -rf target-repo/esp-idf/examples/ 
+          rm -rf target-repo/walter-modem/
+          mkdir -p target-repo/walter-modem/ || true
           mkdir -p target-repo/esp-idf/examples/ || true
           cp -R walter-modem/src/* target-repo/walter-modem/
           cp -R walter-modem/examples/* target-repo/esp-idf/examples/ 
