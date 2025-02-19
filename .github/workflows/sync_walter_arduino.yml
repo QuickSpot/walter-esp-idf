@@ -29,13 +29,15 @@ jobs:
           commit_author=$(curl -s https://api.github.com/repos/${{ github.repository }}/commits/$commit_sha | jq -r '.commit.author.name')
           echo "commit_author=$commit_author" >> $GITHUB_ENV
 
-      - name: Clone target repository
-        run: |
-          git clone -b main https://github.com/QuickSpot/walter-arduino target-repo
-
+      - name: Checkout target repository
+        uses: actions/checkout@v4
+        with:
+          repository: QuickSpot/walter-arduino
+          ref: main
+          path: walter-arduino
       - name: Copy files
         run: |
-          cp -R walter-modem/walter-modem/src/* target-repo/src/
+          cp -R walter-modem/walter-modem/src/* walter-arduino/src/
 
       - name: Commit and push changes
         continue-on-error: true
