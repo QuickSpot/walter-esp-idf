@@ -17,8 +17,7 @@ jobs:
           ref: ${{ github.head_ref }}
           path: walter-modem
           
-      - name: Set Git User
-        uses: fregante/setup-git-user@v2
+
 
       - name: Install jq
         run: sudo apt-get install -y jq
@@ -40,8 +39,11 @@ jobs:
 
       - name: Commit and push changes
         continue-on-error: true
+        shell: bash
         run: |
           cd target-repo
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add .
           git commit -m "Sync from walter-modem-esp-idf on PR merge by ${{ env.commit_author }}"
           git push --force
