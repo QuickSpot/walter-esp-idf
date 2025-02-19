@@ -12,9 +12,9 @@ jobs:
 
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: ${{ github.head_ref }}
           path: walter-modem
 
       - name: Setup Git
