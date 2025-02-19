@@ -13,6 +13,5 @@ jobs:
       - name: Upload components
         uses: espressif/upload-components-ci-action@v1.0.5
         with:
-          directories: "walter-modem"
           namespace: "dptechnics"
           api_token: ${{ secrets.IDF_COMPONENT_API_TOKEN }}

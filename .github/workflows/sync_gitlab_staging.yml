@@ -40,7 +40,8 @@ jobs:
 
       - name: Copy files
         run: |
-          cp -R walter-modem/walter-modem/src/* target-repo/walter-modem/
+          cp -R walter-modem/src/* target-repo/walter-modem/
+          cp -R walter-modem/examples/* target-repo/walter-modem/esp-idf/examples/ 
 
       - name: Commit and push changes
         continue-on-error: true
