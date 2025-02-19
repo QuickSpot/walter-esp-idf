@@ -52,5 +52,12 @@ jobs:
         run: |
           cd walter-arduino
           git add .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "Sync from walter-modem-esp-idf on PR merge by ${{ env.commit_author }}"
-          git push --force
+
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref }}
