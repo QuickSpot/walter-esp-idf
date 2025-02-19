@@ -4,7 +4,10 @@ on:
   pull_request:
     types: [closed]
   workflow_dispatch:
-
+  
+permissions:
+    contents: write-all
+    
 jobs:
   sync:
     if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'    
