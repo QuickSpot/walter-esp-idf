@@ -9,6 +9,7 @@ be integrated in a cellular IoT product. Walter combines LTE-M, NB-IoT, WiFi,
 BLE and GNSS in a single module and runs on  the ESP32-S3 MCU with 2MB of PSRAM
 and 16MB of flash memory.
 
+
 ## How to use
 This is the easiest way to use Walter Modem component.
 
