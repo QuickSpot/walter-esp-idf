@@ -35,6 +35,8 @@ jobs:
           repository: QuickSpot/walter-arduino
           ref: main
           path: walter-arduino
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
       - name: Copy files
         run: |
           cp -R walter-modem/walter-modem/src/* walter-arduino/src/
