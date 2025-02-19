@@ -19,7 +19,7 @@ jobs:
       - name: Checkout the repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }}
+          ref: main
           path: walter-modem
           
 
@@ -38,7 +38,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: QuickSpot/walter-arduino
-          ref: ${{ github.head_ref }}
+          ref: main
           path: walter-arduino
           token: ${{ secrets.GITHUB_TOKEN }}
           
