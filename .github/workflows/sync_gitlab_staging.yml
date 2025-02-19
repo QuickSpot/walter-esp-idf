@@ -1,5 +1,8 @@
 name: PR Merge Sync
 
+permissions:
+  contents: write
+  pull-requests: write
 on:
   pull_request:
     types: [closed]
@@ -19,8 +22,8 @@ jobs:
 
       - name: Setup Git
         run: |
-          git config --global user.name "GitHub Action"
-          git config --global user.email "action@github.com"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Install jq
         run: sudo apt-get install -y jq
