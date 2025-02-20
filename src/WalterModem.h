@@ -4567,11 +4567,18 @@ class WalterModem
          * expected to be at least SPI_FLASH_SEC_SIZE = 4K
          */
         static void offlineMotaUpgrade(uint8_t *otaBuffer);
+
         /**
          * @brief registers a connection event handler
          * @param handler walterModemConnectionEventHandler
          */
         static bool registerConnectionEventHandler(walterModemConnectionEventHandler handler);
+        
+        /**
+         * @brief deregisters a connection event handler
+         * @param handler walterModemConnectionEventHandler
+         */
+        static void unregisterConnectionEventHandler(walterModemConnectionEventHandler handler);
     };
 
 #endif
