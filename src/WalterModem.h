@@ -2894,6 +2894,13 @@ class WalterModem
          */
         static char _getLuhnChecksum(const char *imei);
 
+        /**
+         * @brief this function calls all the registerd eventHandler functions.
+         *
+         * @param connectionEventType the eventType to pass down tot the eventHandlers
+         */
+        static void _callConnectionEventHandlers(WalterModemConnectionEventType connectionEventType);
+        
     public:
         /**
          * @brief Initialize the modem.
@@ -4580,7 +4587,6 @@ class WalterModem
          */
         static void unregisterConnectionEventHandler(walterModemConnectionEventHandler handler);
 
-        
     };
 
 #endif
