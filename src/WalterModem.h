@@ -4565,29 +4565,27 @@ class WalterModem
         static void offlineMotaUpgrade(uint8_t *otaBuffer);
 
         /**
-         * @brief converts a given combination of sconds,minutes, hours to a TAU approximation
+         * @brief Converts a given combination of sconds,minutes, hours to a TAU approximation
+         * @warning This function is an approximation because it uses a multiplier internally.
          *
-         * this function is an approximation because it uses a multiplier internally.
-         * 
-         * 
-         * @param seconds uint32_t
-         * @param minutes uint32_t
-         * @param hours uint32_t
-         * @param uint32_t uint32_t* pointer to get the total amount of seconds
-         * 
-         * @return a c-string with a lenght of 9
+         * @param seconds Duration in seconds
+         * @param minutes Duration in minutes
+         * @param hours  Duration in hours
+         * @param actual_duration_seconds Pointer to write the calulated total amount of seconds to
+         *
+         * @return A c-string with a lenght of 9
          */
         static const char* durationToTAU(uint32_t seconds = 0, uint32_t minutes = 0, uint32_t hours = 0, uint32_t *actual_duration_seconds = nullptr);
-        
+
         /**
-         * @brief converts a given duration of seconds, minutes to a reqActive approximation
-         * this function is an approximation because it uses a multiplier internally.
-         * 
-         * @param seconds uint32_t
-         * @param minutes uint32_t
-         * @param uint32_t uint32_t* pointer to get the total amount of seconds
-         * 
-         * @return a c-string with a lenght of 9
+         * @brief Converts a given duration of seconds, minutes to a reqActive approximation
+         * @warning This function is an approximation because it uses a multiplier internally.
+         *
+         * @param seconds Duration in seconds
+         * @param minutes Duration in minutes
+         * @param actual_duration_seconds Pointer to write the calulated total amount of seconds to
+         *
+         * @return A c-string with a lenght of 9
          */
         static const char* durationToActiveTime(uint32_t seconds = 0, uint32_t minutes = 0, uint32_t *actual_duration_seconds = nullptr);
 };
