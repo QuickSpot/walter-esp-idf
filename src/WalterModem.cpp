@@ -4045,6 +4045,15 @@ char WalterModem::_getLuhnChecksum(const char *imei)
     return (char) (((10 - (sum % 10)) % 10) + '0');
 }
 
+void WalterModem::_callConnectionEventHandlers(WalterModemConnectionEventType connectionEventType){
+    for (size_t i = 0; i < WALTER_MODEM_MAX_CONNECTION_EVENT_HANDLERS; i++) {
+        if(_connection_event_handlers[i]) {
+            _connection_event_handlers[i](connectionEventType);
+        }
+    }
+    
+}
+
 bool WalterModem::tlsProvisionKeys(
     const char *walterCertificate,
     const char *walterPrivateKey,
