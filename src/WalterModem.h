@@ -229,7 +229,7 @@
  */
 #define SPI_FLASH_BLOCK_SIZE    (SPI_SECTORS_PER_BLOCK*SPI_FLASH_SEC_SIZE)
 
-#define WALTER_MODEM_MAX_CONNECTION_EVENT_HANDLERS 6
+#define WALTER_MODEM_MAX_EVENT_HANDLERS 12
 /**
  * @brief This enum groups status codes of functions and operational components
  * of the modem.
@@ -919,13 +919,22 @@ typedef enum {
 } WalterModemBlueCherryEventType;
 
 /**
- * @brief the possible connection event types
+ * @brief The possible connection event types
+ * 
+ * @warning The uint8_t is used so we can store multiple event groups in a single uint8_t 
  */
-typedef enum {
+typedef enum : uint8_t {
     WALTER_MODEM_CONNECTED,
     WALTER_MODEM_LOST_CONNECTION,
-} WalterModemConnectionEventType
+} WalterModemConnectionEventType;
 
+/**
+ * @brief The posible event groups
+ */
+typedef enum {
+    WALTER_MODEM_EVENT_GROUP_CONNECTION,
+    WALTER_MODEM_EVENT_GROUP_AT,
+} WalterModemEventGroup;
 /**
  * @brief This structure represents the 
  */
@@ -2219,7 +2228,13 @@ struct WalterModemStpResponseTransferBlock
  * @brief callback used for modem connection events
  */
 typedef void (*walterModemConnectionEventHandler)(const WalterModemConnectionEventType connectionEventType);
-
+/**
+ * @brief this a representation for a modem even handler
+ */
+typedef struct {
+    WalterModemEventGroup group;
+    void *handler;
+} WalterModemEventHandler;
 /**
  * @brief The WalterModem class allows you to use the Sequans Monarch 2 modem
  * and positioning functionality.
@@ -2440,10 +2455,25 @@ class WalterModem
         static inline bool _rxHandlerInterrupted = false;
 
         /**
-         * @brief array that holds all the connection event handlers.
+         * @brief array that holds all the event handlers.
          */
-        static inline walterModemConnectionEventHandler _connection_event_handlers[WALTER_MODEM_MAX_CONNECTION_EVENT_HANDLERS]
-        
+        static inline WalterModemEventHandler _eventHandlers[WALTER_MODEM_MAX_EVENT_HANDLERS];
+
+        /**
+         * @brief the current event type that is being handled
+         */
+        static inline uint8_t _currentEventType = 0;
+
+        /**
+         * @brief the current event type that is being handled
+         */
+        static inline WalterModemEventGroup _currentEventGroup;
+
+        /**
+         * @brief A lock and condition variable used to implement the blocking event API.
+         */
+        static inline WalterModemCmdLock _eventLock = {};
+
         /*
          * @brief Helper to boot modem to recovery modem and start upgrade
          */
@@ -2895,12 +2925,30 @@ class WalterModem
         static char _getLuhnChecksum(const char *imei);
 
         /**
-         * @brief this function calls all the registerd eventHandler functions.
+         * @brief This function calls all the registerd eventHandler functions.
          *
+         * @warning This function also sets the current group and type and notifies the condition variable.
+         * 
          * @param connectionEventType the eventType to pass down tot the eventHandlers
          */
         static void _callConnectionEventHandlers(WalterModemConnectionEventType connectionEventType);
         
+        /**
+         * @brief This function waits for a certain event to fire before returning
+         * 
+         * @param group The group in wich the event is fired.
+         * @param eventType The type of the event that is being fired
+         */
+        static void _waitForEvent(WalterModemEventGroup group, uint8_t type);
+
+        /**
+         * @brief This function registers a generic event handler.
+         * 
+         * @warning This function will also return true when the event handler function has already been registered.
+         * @param eventHandler struct containing the eventGroup and the pointer to the eventHandler function itself.
+         * @return True if the event has bee registered succesfully.
+         */
+        static bool _registerEventHandler(WalterModemEventHandler eventHandler);
     public:
         /**
          * @brief Initialize the modem.
@@ -4576,17 +4624,24 @@ class WalterModem
         static void offlineMotaUpgrade(uint8_t *otaBuffer);
 
         /**
+         * @brief This function will unregister a event handler
+         *
+         * @param eventHandler function pointer of the event handler
+         */
+        static void unregisterEventHandler(void *eventHandler);
+
+        /**
          * @brief registers a connection event handler
          * @param handler walterModemConnectionEventHandler
          */
         static bool registerConnectionEventHandler(walterModemConnectionEventHandler handler);
-        
-        /**
-         * @brief deregisters a connection event handler
-         * @param handler walterModemConnectionEventHandler
-         */
-        static void unregisterConnectionEventHandler(walterModemConnectionEventHandler handler);
 
+        /**
+         * @brief This function will wait for a connection event to fire of the specified type.
+         * 
+         * @param eventType The type of connection event you want to wait for.
+         */
+        static void waitForConnectionEvent(WalterModemConnectionEventType eventType);
     };
 
 #endif

@@ -180,13 +180,7 @@ extern "C" void app_main(void)
   }
 
   /* Wait for the network to become available */
-  WalterModemNetworkRegState regState = modem.getNetworkRegState();
-  while(!(regState == WALTER_MODEM_NETWORK_REG_REGISTERED_HOME ||
-          regState == WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING))
-  {
-    vTaskDelay(pdMS_TO_TICKS(100));
-    regState = modem.getNetworkRegState();
-  }
+  modem.waitForConnectionEvent(WALTER_MODEM_CONNECTED);
   ESP_LOGI("socket_test", "Connected to the network");
 
   /* Activate the PDP context */
