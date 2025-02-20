@@ -4045,7 +4045,7 @@ char WalterModem::_getLuhnChecksum(const char *imei)
     return (char) (((10 - (sum % 10)) % 10) + '0');
 }
 
-uint8_t WalterModem::_convertDuration(const uint32_t *base_times, size_t base_times_len, uint32_t duration_seconds, uint32_t *actual_duration_seconds)
+const uint8_t WalterModem::_convertDuration(const uint32_t *base_times, size_t base_times_len, uint32_t duration_seconds, uint32_t *actual_duration_seconds)
 {
     uint32_t smallest_modulo = UINT32_MAX;
     uint8_t final_base = 0;
@@ -5446,7 +5446,7 @@ bool WalterModem::performGNSSAction(
     _returnAfterReply();
 }
 
-const char* WalterModem::durationToTAU(
+const uint8_t WalterModem::durationToTAU(
     uint32_t seconds,
     uint32_t minutes,
     uint32_t hours,
@@ -5457,18 +5457,10 @@ const char* WalterModem::durationToTAU(
     uint32_t duration_seconds = seconds + (60 * minutes) + (60 * 60 * hours);
 
 
-    uint8_t result = _convertDuration(base_times,7,duration_seconds,actual_duration_seconds);
-
-    char byteString[9]; // 8 bits + null terminator
-    for (int i = 7; i >= 0; --i) {
-        byteString[7 - i] = (result & (1 << i)) ? '1' : '0';
-    }
-    byteString[8] = '\0'; // Null terminator
-
-    return byteString;
+    return _convertDuration(base_times,7,duration_seconds,actual_duration_seconds);
 }
 
-const char* WalterModem::durationToActiveTime(
+const uint8_t WalterModem::durationToActiveTime(
     uint32_t seconds,
     uint32_t minutes,
     uint32_t *actual_duration_seconds) 
@@ -5476,13 +5468,5 @@ const char* WalterModem::durationToActiveTime(
     static const uint32_t base_times[] = {2,60,360};
 
     uint32_t duration_seconds = seconds + (60 * minutes);
-    uint8_t result = _convertDuration(base_times,3, duration_seconds,actual_duration_seconds);
-
-    char byteString[9]; // 8 bits + null terminator
-    for (int i = 7; i >= 0; --i) {
-        byteString[7 - i] = (result & (1 << i)) ? '1' : '0';
-    }
-    byteString[8] = '\0'; // Null terminator
-
-    return byteString;
+    return _convertDuration(base_times,3, duration_seconds,actual_duration_seconds);
 }
