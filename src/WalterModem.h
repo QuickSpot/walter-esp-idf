@@ -2885,19 +2885,19 @@ class WalterModem
          * @return The Luhn checksum as an ASCII character.
          */
         static char _getLuhnChecksum(const char *imei);
-        
+
         /**
-         * @brief converts a given duration to encoded uint8_t according to the base_times.
-         * 
-         * this function will encode a the given duration according to the base_times / mulipliers for use in PSM.
-         * @warning this is an approximation based on the base_times array.
-         * 
-         * @param base_times pointer to an array containing the base times
-         * @param base_times_len lenght of the base_times array
-         * @param duration_seconds the duration in seconds
-         * @param actual_duration_seconds pointer to where the actual duration in seconds should be filled in 
-         * 
-         * @returns uint8_t converted duration_seconds
+         * @brief Converts a given duration to encoded uint8_t according to the base_times.
+         *
+         * This function will encode a the given duration according to the base_times / mulipliers for use in PSM.
+         * @warning This is an approximation based on the base_times array.
+         *
+         * @param base_times Pointer to an array containing the base times
+         * @param base_times_len Lenght of the base_times array
+         * @param duration_seconds The duration in seconds
+         * @param actual_duration_seconds Pointer to where the actual duration in seconds should be filled in
+         *
+         * @return The duration encoded into the 3GPP standard format.
          */
         static const uint8_t _convertDuration(const uint32_t *base_times, size_t base_times_len, uint32_t duration_seconds, uint32_t *actual_duration_seconds);
 
@@ -4584,7 +4584,7 @@ class WalterModem
          * @param hours  Duration in hours
          * @param actual_duration_seconds Pointer to write the calulated total amount of seconds to
          *
-         * @return The converted duration as a byte
+         * @return The duration encoded into the 3GPP standard format.
          */
         static const uint8_t durationToTAU(uint32_t seconds = 0, uint32_t minutes = 0, uint32_t hours = 0, uint32_t *actual_duration_seconds = nullptr);
 
@@ -4596,7 +4596,7 @@ class WalterModem
          * @param minutes Duration in minutes
          * @param actual_duration_seconds Pointer to write the calulated total amount of seconds to
          *
-         * @return The converted duration as a byte
+         * @return The duration encoded into the 3GPP standard format.
          */
         static const uint8_t durationToActiveTime(uint32_t seconds = 0, uint32_t minutes = 0, uint32_t *actual_duration_seconds = nullptr);
 };
