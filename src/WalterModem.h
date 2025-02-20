@@ -229,6 +229,7 @@
  */
 #define SPI_FLASH_BLOCK_SIZE    (SPI_SECTORS_PER_BLOCK*SPI_FLASH_SEC_SIZE)
 
+#define WALTER_MODEM_MAX_CONNECTION_EVENT_HANDLERS 6
 /**
  * @brief This enum groups status codes of functions and operational components
  * of the modem.
@@ -916,6 +917,14 @@ typedef enum {
     WALTER_MODEM_BLUECHERRY_EVENT_TYPE_MOTA_FINISH = 7,
     WALTER_MODEM_BLUECHERRY_EVENT_TYPE_MOTA_ERROR = 8
 } WalterModemBlueCherryEventType;
+
+/**
+ * @brief the possible connection event types
+ */
+typedef enum {
+    WALTER_MODEM_CONNECTED,
+    WALTER_MODEM_LOST_CONNECTION,
+} WalterModemConnectionEventType
 
 /**
  * @brief This structure represents the 
@@ -2207,6 +2216,11 @@ struct WalterModemStpResponseTransferBlock
 };
 
 /**
+ * @brief callback used for modem connection events
+ */
+typedef void (*walterModemConnectionEventHandler)(const WalterModemConnectionEventType connectionEventType);
+
+/**
  * @brief The WalterModem class allows you to use the Sequans Monarch 2 modem
  * and positioning functionality.
  */
@@ -2425,6 +2439,11 @@ class WalterModem
          */
         static inline bool _rxHandlerInterrupted = false;
 
+        /**
+         * @brief array that holds all the connection event handlers.
+         */
+        static inline walterModemConnectionEventHandler _connection_event_handlers[WALTER_MODEM_MAX_CONNECTION_EVENT_HANDLERS]
+        
         /*
          * @brief Helper to boot modem to recovery modem and start upgrade
          */
@@ -2979,7 +2998,7 @@ class WalterModem
             WalterModemRsp *rsp = NULL,
             walterModemCb cb = NULL,
             void *args = NULL);
-        
+
         /**
          * @brief Physically reset the modem and wait for it to start. All 
          * connections will be lost when this function is called. The function
@@ -4548,6 +4567,11 @@ class WalterModem
          * expected to be at least SPI_FLASH_SEC_SIZE = 4K
          */
         static void offlineMotaUpgrade(uint8_t *otaBuffer);
-};
+        /**
+         * @brief registers a connection event handler
+         * @param handler walterModemConnectionEventHandler
+         */
+        static bool registerConnectionEventHandler(walterModemConnectionEventHandler handler);
+    };
 
 #endif
