@@ -5420,3 +5420,27 @@ bool WalterModem::performGNSSAction(
         gnssActionStr(action),"\""), "OK", rsp, cb, args);
     _returnAfterReply();
 }
+
+bool WalterModem::registerConnectionEventHandler(walterModemConnectionEventHandler handler) {
+    for (size_t i = 0; i < WALTER_MODEM_MAX_CONNECTION_EVENT_HANDLERS; i++) {
+        // handlers cannot be registered multiple times otherwise the same event handler function would be called multiple times.
+        if (_connection_event_handlers[i] == handler) {
+            return true
+        }
+        //check for empty index to store the eventHandler function into.
+        if (!_connection_event_handlers[i]) {
+            _connection_event_handlers[i] = handler;
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+void WalterModem::unregisterConnectionEventHandler(walterModemConnectionEventHandler handler) {
+    for (size_t i = 0; i < WALTER_MODEM_MAX_CONNECTION_EVENT_HANDLERS; i++) {
+        if (_connection_event_handlers[i] ==  handler) {
+            _connection_event_handlers[i] = nullptr;
+        }
+    }
+}

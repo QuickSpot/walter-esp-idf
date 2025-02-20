@@ -4579,6 +4579,8 @@ class WalterModem
          * @param handler walterModemConnectionEventHandler
          */
         static void unregisterConnectionEventHandler(walterModemConnectionEventHandler handler);
+
+        
     };
 
 #endif
