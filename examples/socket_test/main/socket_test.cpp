@@ -52,6 +52,10 @@
 #include <driver/uart.h>
 #include "WalterModem.h"
 
+void connected(WalterModemConnectionEventType event) {
+  ESP_LOGE("event", "connection event: %i",event);
+}
+
 /**
  * @brief The address of the server to upload the data to. 
  */
@@ -97,6 +101,12 @@ extern "C" void app_main(void)
   } else {
     ESP_LOGI("socket_test", "Modem initialization ERROR");
     return;
+  }
+  
+  if(modem.registerConnectionEventHandler(connected)){
+    ESP_LOGI("event", "succesfully registered handler");
+  } else {
+    ESP_LOGD("event", "could not register connection handler");
   }
 
   if(modem.checkComm()) {
