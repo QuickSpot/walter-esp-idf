@@ -230,6 +230,17 @@
 #define SPI_FLASH_BLOCK_SIZE    (SPI_SECTORS_PER_BLOCK*SPI_FLASH_SEC_SIZE)
 
 /**
+ * @brief Get the character '0' or '1' at offset n in a byte.
+ */
+#define BITCHAR(x, n) (((x) >> (n)) & 1 ? '1' : '0')
+
+/**
+ * @brief Create a string on the heap that is a 0-terminated binary representation of a byte.
+ */
+#define BINBYTESTR(x) (char[]){BITCHAR(x, 7), BITCHAR(x, 6), BITCHAR(x, 5), BITCHAR(x, 4), \
+                               BITCHAR(x, 3), BITCHAR(x, 2), BITCHAR(x, 1), BITCHAR(x, 0), '\0'}
+
+/**
  * @brief This enum groups status codes of functions and operational components
  * of the modem.
  */
@@ -2875,7 +2886,22 @@ class WalterModem
          */
         static char _getLuhnChecksum(const char *imei);
 
-    public:
+        /**
+         * @brief Converts a given duration to encoded uint8_t according to the base_times.
+         *
+         * This function will encode a the given duration according to the base_times / mulipliers for use in PSM.
+         * @warning This is an approximation based on the base_times array.
+         *
+         * @param base_times Pointer to an array containing the base times
+         * @param base_times_len Lenght of the base_times array
+         * @param duration_seconds The duration in seconds
+         * @param actual_duration_seconds Pointer to where the actual duration in seconds should be filled in
+         *
+         * @return The duration encoded into the 3GPP standard format.
+         */
+        static const uint8_t _convertDuration(const uint32_t *base_times, size_t base_times_len, uint32_t duration_seconds, uint32_t *actual_duration_seconds);
+
+    public :
         /**
          * @brief Initialize the modem.
          * 
@@ -4548,6 +4574,31 @@ class WalterModem
          * expected to be at least SPI_FLASH_SEC_SIZE = 4K
          */
         static void offlineMotaUpgrade(uint8_t *otaBuffer);
+
+        /**
+         * @brief Converts a given combination of sconds,minutes, hours to a TAU approximation
+         * @warning This function is an approximation because it uses a multiplier internally.
+         *
+         * @param seconds Duration in seconds
+         * @param minutes Duration in minutes
+         * @param hours  Duration in hours
+         * @param actual_duration_seconds Pointer to write the calulated total amount of seconds to
+         *
+         * @return The duration encoded into the 3GPP standard format.
+         */
+        static const uint8_t durationToTAU(uint32_t seconds = 0, uint32_t minutes = 0, uint32_t hours = 0, uint32_t *actual_duration_seconds = nullptr);
+
+        /**
+         * @brief Converts a given duration of seconds, minutes to a reqActive approximation
+         * @warning This function is an approximation because it uses a multiplier internally.
+         *
+         * @param seconds Duration in seconds
+         * @param minutes Duration in minutes
+         * @param actual_duration_seconds Pointer to write the calulated total amount of seconds to
+         *
+         * @return The duration encoded into the 3GPP standard format.
+         */
+        static const uint8_t durationToActiveTime(uint32_t seconds = 0, uint32_t minutes = 0, uint32_t *actual_duration_seconds = nullptr);
 };
 
 #endif
