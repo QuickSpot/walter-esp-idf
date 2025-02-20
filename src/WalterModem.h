@@ -2874,8 +2874,23 @@ class WalterModem
          * @return The Luhn checksum as an ASCII character.
          */
         static char _getLuhnChecksum(const char *imei);
+        
+        /**
+         * @brief converts a given duration to encoded uint8_t according to the base_times.
+         * 
+         * this function will encode a the given duration according to the base_times / mulipliers for use in PSM.
+         * @warning this is an approximation based on the base_times array.
+         * 
+         * @param base_times pointer to an array containing the base times
+         * @param base_times_len lenght of the base_times array
+         * @param duration_seconds the duration in seconds
+         * @param actual_duration_seconds pointer to where the actual duration in seconds should be filled in 
+         * 
+         * @returns uint8_t converted duration_seconds
+         */
+        static uint8_t _convertDuration(const uint32_t *base_times, size_t base_times_len, uint32_t duration_seconds, uint32_t *actual_duration_seconds);
 
-    public:
+    public :
         /**
          * @brief Initialize the modem.
          * 
@@ -4551,22 +4566,28 @@ class WalterModem
 
         /**
          * @brief converts a given combination of sconds,minutes, hours to a TAU approximation
-         * 
+         *
          * this function is an approximation because it uses a multiplier internally.
+         * 
          * 
          * @param seconds uint32_t
          * @param minutes uint32_t
          * @param hours uint32_t
          * @param uint32_t uint32_t* pointer to get the total amount of seconds
+         * 
+         * @return a c-string with a lenght of 9
          */
         static const char* durationToTAU(uint32_t seconds = 0, uint32_t minutes = 0, uint32_t hours = 0, uint32_t *actual_duration_seconds = nullptr);
         
         /**
          * @brief converts a given duration of seconds, minutes to a reqActive approximation
          * this function is an approximation because it uses a multiplier internally.
+         * 
          * @param seconds uint32_t
          * @param minutes uint32_t
          * @param uint32_t uint32_t* pointer to get the total amount of seconds
+         * 
+         * @return a c-string with a lenght of 9
          */
         static const char* durationToActiveTime(uint32_t seconds = 0, uint32_t minutes = 0, uint32_t *actual_duration_seconds = nullptr);
 };

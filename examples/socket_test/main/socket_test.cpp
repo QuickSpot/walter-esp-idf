@@ -105,18 +105,6 @@ extern "C" void app_main(void)
     ESP_LOGI("socket_test", "Modem communication error");
     return;
   }
-  const char *psmTAU = "10000001";
-  const char *psmActive = "00000101";
-  WalterModemRsp rsp = {};
-
-  if (!modem.configPSM(WALTER_MODEM_PSM_ENABLE, psmTAU, psmActive, &rsp))
-  {
-    ESP_LOGW("walter", "Failed to configure PSM profile");
-  }
-  else
-  {
-    ESP_LOGI("walter", "setting PSM profile successfully");
-  }
 
   if(modem.getOpState(&rsp)) {
     ESP_LOGI("socket_test", "Modem operational state: %d", rsp.data.opState);
