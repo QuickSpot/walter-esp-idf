@@ -4548,6 +4548,27 @@ class WalterModem
          * expected to be at least SPI_FLASH_SEC_SIZE = 4K
          */
         static void offlineMotaUpgrade(uint8_t *otaBuffer);
+
+        /**
+         * @brief converts a given combination of sconds,minutes, hours to a TAU approximation
+         * 
+         * this function is an approximation because it uses a multiplier internally.
+         * 
+         * @param seconds uint32_t
+         * @param minutes uint32_t
+         * @param hours uint32_t
+         * @param uint32_t uint32_t* pointer to get the total amount of seconds
+         */
+        static const char* durationToTAU(uint32_t seconds = 0, uint32_t minutes = 0, uint32_t hours = 0, uint32_t *actual_duration_seconds = nullptr);
+        
+        /**
+         * @brief converts a given duration of seconds, minutes to a reqActive approximation
+         * this function is an approximation because it uses a multiplier internally.
+         * @param seconds uint32_t
+         * @param minutes uint32_t
+         * @param uint32_t uint32_t* pointer to get the total amount of seconds
+         */
+        static const char* durationToActiveTime(uint32_t seconds = 0, uint32_t minutes = 0, uint32_t *actual_duration_seconds = nullptr);
 };
 
 #endif

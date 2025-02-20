@@ -5420,3 +5420,93 @@ bool WalterModem::performGNSSAction(
         gnssActionStr(action),"\""), "OK", rsp, cb, args);
     _returnAfterReply();
 }
+
+const char* WalterModem::durationToTAU(
+    uint32_t seconds,
+    uint32_t minutes,
+    uint32_t hours,
+    uint32_t *actual_duration_seconds)
+{
+    static const uint32_t base_times[] = {600, 3600, 36000, 2, 30, 60, 1152000};
+
+    uint32_t duration_seconds = seconds + (60 * minutes) + (60 * 60 * hours);
+    uint32_t smallest_modulo = UINT32_MAX;
+    uint8_t final_base = 0;
+    uint8_t final_mult = 0;
+
+    for (uint8_t base = 0; base < sizeof(base_times) / sizeof(uint32_t); ++base)
+    {
+        uint32_t multiplier = duration_seconds / base_times[base];
+        if (multiplier == 0 || multiplier > 31){
+            continue;
+        }
+
+        uint32_t modulo = duration_seconds % base_times[base];
+        if (modulo < smallest_modulo)
+        {
+            final_base = base;
+            final_mult = multiplier;
+        }
+
+    }
+
+    if (actual_duration_seconds) {
+        *actual_duration_seconds = (uint32_t)final_base * (uint32_t)final_mult;
+    }
+
+    uint8_t result = (final_base << 5) | final_mult;
+
+    static char byteString[9]; // 8 bits + null terminator
+    for (int i = 7; i >= 0; --i)
+    {
+        byteString[7 - i] = (result & (1 << i)) ? '1' : '0';
+    }
+    byteString[8] = '\0'; // Null terminator
+
+    return byteString;
+}
+
+const char* WalterModem::durationToActiveTime(
+    uint32_t seconds,
+    uint32_t minutes,
+    uint32_t *actual_duration_seconds = nullptr) 
+{
+    static const uint32_t base_times[] = {2,60,360};
+
+    uint32_t duration_seconds = seconds + (60 * minutes);
+    uint32_t smallest_modulo = UINT32_MAX;
+    uint8_t final_base = 0;
+    uint8_t final_mult = 0;
+
+    for (uint8_t base = 0; base < sizeof(base_times) / sizeof(uint32_t); ++base)
+    {
+        uint32_t multiplier = duration_seconds / base_times[base];
+        if (multiplier == 0 || multiplier > 31)
+        {
+            continue;
+        }
+
+        uint32_t modulo = duration_seconds % base_times[base];
+        if (modulo < smallest_modulo)
+        {
+            final_base = base;
+            final_mult = multiplier;
+        }
+    }
+
+    if (actual_duration_seconds)
+    {
+        *actual_duration_seconds = (uint32_t)final_base * (uint32_t)final_mult;
+    }
+
+    uint8_t result = (final_base << 5) | final_mult;
+
+    static char byteString[9]; // 8 bits + null terminator
+    for (int i = 7; i >= 0; --i)
+    {
+        byteString[7 - i] = (result & (1 << i)) ? '1' : '0';
+    }
+    byteString[8] = '\0'; // Null terminator
+
+    return byteString;
+}

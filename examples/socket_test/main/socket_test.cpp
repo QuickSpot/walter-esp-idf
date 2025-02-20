@@ -52,78 +52,6 @@
 #include <driver/uart.h>
 #include "WalterModem.h"
 
-#define MULTIPLIER_2_SECONDS 2
-#define MULTIPLIER_30_SECONDS 30
-#define MULTIPLIER_1_MINUTE 60
-#define MULTIPLIER_10_MINUTES 10 * MULTIPLIER_1_MINUTE
-#define MULTIPLIER_1_HOUR 6 * MULTIPLIER_10_MINUTES
-#define MULTIPLIER_10_HOURS 10 * MULTIPLIER_1_HOUR
-#define MULTIPLIER_320_HOURS 32 * MULTIPLIER_10_HOURS
-#define VALUE_2_SECONDS 96
-#define VALUE_30_SECONDS 128
-#define VALUE_1_MINUTE 160
-#define VALUE_10_MINUTES 0
-#define VALUE_1_HOUR 32
-#define VALUE_10_HOURS 64
-#define VALUE_320_HOURS 192
-
-#define SEC_TO_HOURS(s) 
-
-const char *uint8ToByteString(uint8_t value)
-{
-  static char byteString[9]; // 8 bits + null terminator
-  for (int i = 7; i >= 0; --i)
-  {
-    byteString[7 - i] = (value & (1 << i)) ? '1' : '0';
-  }
-  byteString[8] = '\0'; // Null terminator
-  return byteString;
-}
-bool isValidMultiplier(uint32_t multiplier, uint32_t seconds)
-{
-  return (((uint32_t)(seconds / multiplier)) < 32);
-}
-const char *secToTAU(uint32_t seconds)
-{
-  uint8_t value = 0;
-  if (isValidMultiplier(MULTIPLIER_2_SECONDS, seconds))
-  {
-    value += VALUE_2_SECONDS;
-    value += (uint32_t)(seconds / MULTIPLIER_2_SECONDS);
-  }
-  else if (isValidMultiplier(MULTIPLIER_30_SECONDS, seconds))
-  {
-    value += VALUE_30_SECONDS;
-    value += (uint32_t)(seconds / MULTIPLIER_30_SECONDS);
-  }
-  else if (isValidMultiplier(MULTIPLIER_1_MINUTE, seconds))
-  {
-    value += VALUE_1_MINUTE;
-    value += (uint32_t)(seconds / MULTIPLIER_1_MINUTE);
-  }
-  else if (isValidMultiplier(MULTIPLIER_10_MINUTES, seconds))
-  {
-    value += VALUE_10_MINUTES;
-    value += (uint32_t)(seconds / MULTIPLIER_10_MINUTES);
-  }
-  else if (isValidMultiplier(MULTIPLIER_1_HOUR, seconds))
-  {
-    value += VALUE_1_HOUR;
-    value += (uint32_t)(seconds / MULTIPLIER_1_HOUR);
-  }
-  else if (isValidMultiplier(MULTIPLIER_10_HOURS, seconds))
-  {
-    value += VALUE_10_HOURS;
-    value += (uint32_t)(seconds / MULTIPLIER_10_HOURS);
-  }
-  else if (isValidMultiplier(MULTIPLIER_320_HOURS, seconds))
-  {
-    value += VALUE_320_HOURS;
-    value += (uint32_t)(seconds / MULTIPLIER_320_HOURS);
-  }
-  return uint8ToByteString(value);
-}
-
 /**
  * @brief The address of the server to upload the data to. 
  */
@@ -298,7 +226,7 @@ extern "C" void app_main(void)
     ESP_LOGI("socket_test", "Could not retrieve PDP context addresses");
     return;
   }
-  ESP_LOGE("tau","tau: %s ",getTAU(20));
+
   /* Construct a socket */
   if(modem.createSocket(&rsp)) {
     ESP_LOGI("socket_test", "Created a new socket");
