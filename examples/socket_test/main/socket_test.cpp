@@ -52,6 +52,12 @@
 #include <driver/uart.h>
 #include "WalterModem.h"
 
+void connected(WalterModemConnectionEventType event) {
+  if(event == WALTER_MODEM_CONNECTED) {
+    ESP_LOGE("event", "connection event: %i",event);
+  }
+}
+
 /**
  * @brief The address of the server to upload the data to. 
  */
@@ -97,6 +103,12 @@ extern "C" void app_main(void)
   } else {
     ESP_LOGI("socket_test", "Modem initialization ERROR");
     return;
+  }
+  
+  if(modem.registerConnectionEventHandler(connected)){
+    ESP_LOGI("event", "succesfully registered handler");
+  } else {
+    ESP_LOGD("event", "could not register connection handler");
   }
 
   if(modem.checkComm()) {
@@ -180,14 +192,7 @@ extern "C" void app_main(void)
   }
 
   /* Wait for the network to become available */
-  WalterModemNetworkRegState regState = modem.getNetworkRegState();
-  while(!(regState == WALTER_MODEM_NETWORK_REG_REGISTERED_HOME ||
-          regState == WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING))
-  {
-    vTaskDelay(pdMS_TO_TICKS(100));
-    regState = modem.getNetworkRegState();
-  }
-  ESP_LOGI("socket_test", "Connected to the network");
+  modem.waitForConnectionEvent(WALTER_MODEM_CONNECTED);
 
   /* Activate the PDP context */
   if(modem.setPDPContextActive(true)) {

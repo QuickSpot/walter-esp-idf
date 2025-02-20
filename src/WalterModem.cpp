@@ -1512,6 +1512,14 @@ void WalterModem::_processQueueRsp(
         int ceReg = atoi(rspStr + _strLitLen("+CEREG: "));
         _regState = (WalterModemNetworkRegState) ceReg;
         //TODO: call correct handlers
+        switch(_regState) {
+            case WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING:
+            case WALTER_MODEM_NETWORK_REG_REGISTERED_HOME:
+                _callConnectionEventHandlers(WALTER_MODEM_CONNECTED);
+                break;
+            default:
+                break;
+        }
     }
     else if(_buffStartsWith(buff, "> ") || _buffStartsWith(buff, ">>>"))
     {
@@ -4045,6 +4053,40 @@ char WalterModem::_getLuhnChecksum(const char *imei)
     return (char) (((10 - (sum % 10)) % 10) + '0');
 }
 
+void WalterModem::_callConnectionEventHandlers(WalterModemConnectionEventType connectionEventType){
+    // set the group and event type (consumed by the eventLock)
+    _currentEventGroup = WALTER_MODEM_EVENT_GROUP_CONNECTION;
+    _currentEventType = connectionEventType;
+
+    for (size_t i = 0; i < WALTER_MODEM_MAX_EVENT_HANDLERS; i++) {
+        if (_eventHandlers[i].handler && 
+            _eventHandlers[i].group == WALTER_MODEM_EVENT_GROUP_CONNECTION)
+        {
+            ((walterModemConnectionEventHandler)_eventHandlers[i].handler)(connectionEventType);
+        }
+    }
+    
+    _eventLock.cond.notify_all();
+}
+
+void WalterModem::_waitForEvent(WalterModemEventGroup group, uint8_t type) {
+    std::unique_lock<std::mutex> lock(_eventLock.mutex);
+    _eventLock.cond.wait(lock, [group, type] { return _currentEventGroup == group && _currentEventType == type; });
+}
+
+bool WalterModem::_registerEventHandler(WalterModemEventHandler eventHandler) {
+    for (size_t i = 0; i < WALTER_MODEM_MAX_EVENT_HANDLERS; i++) {
+        if(_eventHandlers[i].handler == eventHandler.handler){
+            return true; //event handler has already been registered
+        } else if(!_eventHandlers[i].handler) {
+            _eventHandlers[i] = eventHandler;
+            return true;
+        } 
+    }
+    
+    return false;
+}
+
 bool WalterModem::tlsProvisionKeys(
     const char *walterCertificate,
     const char *walterPrivateKey,
@@ -5419,4 +5461,24 @@ bool WalterModem::performGNSSAction(
         "AT+LPGNSSFIXPROG=\"",
         gnssActionStr(action),"\""), "OK", rsp, cb, args);
     _returnAfterReply();
+}
+
+void WalterModem::unregisterEventHandler(void *eventHandler) {
+    for (size_t i = 0; i < WALTER_MODEM_MAX_EVENT_HANDLERS; i++) {
+        if (_eventHandlers[i].handler == eventHandler) {
+            _eventHandlers[i].handler = nullptr;
+        }
+    }
+}
+
+bool WalterModem::registerConnectionEventHandler(walterModemConnectionEventHandler handler) {
+    WalterModemEventHandler eventHandler = { 
+        WALTER_MODEM_EVENT_GROUP_CONNECTION,
+        (void*)handler
+    };
+    return _registerEventHandler(eventHandler);
+}
+
+void WalterModem::waitForConnectionEvent(WalterModemConnectionEventType eventType) {
+    _waitForEvent(WALTER_MODEM_EVENT_GROUP_CONNECTION,eventType);
 }
