@@ -932,6 +932,7 @@ typedef enum : uint8_t {
  * @brief The posible event groups
  */
 typedef enum {
+    WALTER_MODEM_EVENT_GROUP_NONE,
     WALTER_MODEM_EVENT_GROUP_CONNECTION,
     WALTER_MODEM_EVENT_GROUP_AT,
 } WalterModemEventGroup;
