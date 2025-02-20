@@ -53,7 +53,9 @@
 #include "WalterModem.h"
 
 void connected(WalterModemConnectionEventType event) {
-  ESP_LOGE("event", "connection event: %i",event);
+  if(event == WALTER_MODEM_CONNECTED) {
+    ESP_LOGE("event", "connection event: %i",event);
+  }
 }
 
 /**
@@ -191,7 +193,6 @@ extern "C" void app_main(void)
 
   /* Wait for the network to become available */
   modem.waitForConnectionEvent(WALTER_MODEM_CONNECTED);
-  ESP_LOGI("socket_test", "Connected to the network");
 
   /* Activate the PDP context */
   if(modem.setPDPContextActive(true)) {
