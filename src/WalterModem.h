@@ -2985,11 +2985,12 @@ class WalterModem
          * was registered for this specific event the function is a no-op.
          * 
          * @param type The type of event to dispatch.
-         * @param data Specific event info (enum or AT response string).
+         * @param subtype The event subtype specific to the type of event which is dispatched.
+         * @param data Specific event data.
          * 
          * @return None.
          */
-        static void _dispatchEvent(WalterModemEventType type, void *data);
+        static void _dispatchEvent(WalterModemEventType type, int subtype, void *data = nullptr);
         
         /**
          * @brief This function waits for a certain event to fire before returning
