@@ -922,9 +922,9 @@ typedef enum {
  */
 typedef enum {
     /**
-     * @brief Connection related events.
+     * @brief Network registration related events.
      */
-    WALTER_MODEM_EVENT_TYPE_CONNECTION = 0,
+    WALTER_MODEM_EVENT_TYPE_REGISTRATION = 0,
 
     /**
      * @brief System related events.
@@ -943,22 +943,6 @@ typedef enum {
 } WalterModemEventType;
 
 /**
- * @brief This enumeration groups the different types of connection events.
- */
-typedef enum {
-    WALTER_MODEM_CONNECTION_EVENT_DISCONNECTED_NOT_SEARCHING,
-    WALTER_MODEM_CONNECTION_EVENT_SEARCHING,
-    WALTER_MODEM_CONNECTION_EVENT_REGISTRATION_DENIED,
-    WALTER_MODEM_CONNECTION_EVENT_REGISTERED_TEMPORARY_CONNECTION_LOST,
-    WALTER_MODEM_CONNECTION_EVENT_TEMPORARY_DI
-    WALTER_MODEM_CONNECTION_EVENT_REGISTERED_HOME,
-    WALTER_MODEM_CONNECTION_EVENT_REGISTERED_ROAMING,
-    WALTER_MODEM_CONNECTION_EVENT_REGISTERED_SMS_ONLY_HOME,
-    WALTER_MODEM_CONNECTION_EVENT_REGISTERED_SMS_ONLY_ROAMING,
-    WALTER_MODEM_CONNECTION_EVENT_ATTACHED_EMERGENCY_BEARER_ONLY
-} WalterModemConnectionEvent;
-
-/**
  * @brief This enumeration groups the different types of system events.
  */
 typedef enum {
@@ -966,14 +950,14 @@ typedef enum {
 } WalterModemSystemEvent;
 
 /**
- * @brief Header of a connection event handler.
+ * @brief Header of a network registration event handler.
  * 
- * @param ev The type of connection event.
+ * @param ev The new network registration state.
  * @param args Optional arguments set by the application layer.
  * 
  * @return None.
  */
-typedef void (*walterModemConnectionEventHandler)(WalterModemConnectionEvent ev, void *args);
+typedef void (*walterModemRegistrationEventHandler)(WalterModemNetworkRegState ev, void *args);
 
 /**
  * @brief Header of a system event handler.
@@ -4675,9 +4659,9 @@ class WalterModem
         static void offlineMotaUpgrade(uint8_t *otaBuffer);
 
         /**
-         * @brief Register a connection event handler.
+         * @brief Register a network registration event handler.
          * 
-         * This function will register an application layer connection event handler. If you want
+         * This function will register an application layer registration event handler. If you want
          * to explicitly de-register the handler for this type of event you can pass a nullptr to 
          * this function.
          * 
@@ -4686,7 +4670,7 @@ class WalterModem
          * 
          * @return None.
          */
-        static void onConnectionEvent(walterModemConnectionEventHandler handler = nullptr, void *args = nullptr);
+        static void onRegistrationEvent(walterModemRegistrationEventHandler handler = nullptr, void *args = nullptr);
 
         /**
          * @brief Register a system event handler.
