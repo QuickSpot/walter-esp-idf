@@ -972,13 +972,13 @@ typedef void (*walterModemSystemEventHandler)(WalterModemSystemEvent ev, void *a
 /**
  * @brief Header of an AT event handler.
  * 
- * @param at_response A constant string which contains the AT response. Only valid memory during 
- * the lifetime of the event handler.
+ * @param len The number of valid bytes in the response buffer. 
+ * @param buff A buffer which contains the unparsed AT response data, not 0-terminated.
  * @param args Optional arguments set by the application layer.
  * 
  * @return None.
  */
-typedef void (*walterModemATEventHandler)(const char *at_response, void *args);
+typedef void (*walterModemATEventHandler)(size_t len, const char *buff, void *args);
 
 /**
  * @brief This structure represents an event handler and it's metadata.
