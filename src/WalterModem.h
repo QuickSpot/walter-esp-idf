@@ -4685,7 +4685,7 @@ class WalterModem
          * 
          * @return None.
          */
-        static void onConnectionEvent(walterModemConnectionEventHandler handler, void *args);
+        static void onConnectionEvent(walterModemConnectionEventHandler handler = nullptr, void *args = nullptr);
 
         /**
          * @brief Register a system event handler.
@@ -4699,7 +4699,7 @@ class WalterModem
          * 
          * @return None.
          */
-        static void onSystemEvent(walterModemSystemEventHandler handler, void *args);
+        static void onSystemEvent(walterModemSystemEventHandler handler = nullptr, void *args = nullptr);
 
         /**
          * @brief Register an AT event handler.
@@ -4713,7 +4713,7 @@ class WalterModem
          * 
          * @return None.
          */
-        static void onATEvent(walterModemATEventHandler handler, void *args);
+        static void onATEvent(walterModemATEventHandler handler = nullptr, void *args = nullptr);
 
         // /**
         //  * @brief This function will wait for a connection event to fire of the specified type.
