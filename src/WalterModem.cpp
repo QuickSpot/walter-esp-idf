@@ -4053,36 +4053,32 @@ void WalterModem::_dispatchEvent(WalterModemEventType type, int subtype, void *d
         return;
     }
     
+    _currentEventType = type;
+    _currentEventSubType = subtype;
+
     switch(type) {
         case WALTER_MODEM_EVENT_TYPE_REGISTRATION:
             ((walterModemRegistrationEventHandler) handler->handler)
                 ((WalterModemNetworkRegState) subtype, handler->args);
+            _eventLock.cond.notify_all();
             break;
 
         case WALTER_MODEM_EVENT_TYPE_SYSTEM:
             ((walterModemSystemEventHandler) handler->handler)
                 ((WalterModemSystemEvent) subtype, handler->args);
+            _eventLock.cond.notify_all();
             break;
 
         case WALTER_MODEM_EVENT_TYPE_AT:
-            ((walterModemATEventHandler) handler->handler), (size_t) subtype,
-                ((const char*) data, handler->args);
-            break;
+            ((walterModemATEventHandler) handler->handler)
+                (subtype,(const char*) data, handler->args);
+            _eventLock.cond.notify_all();
 
+            break;
         case WALTER_MODEM_EVENT_TYPE_COUNT:
             break;
     }
 
-    _eventLock.cond.notify_all();
-}
-
-void WalterModem::_waitForEvent(WalterModemEventType type, std::initializer_list<int> subTypes)
-{
-    std::unique_lock<std::mutex> lock(_eventLock.mutex);
-    _eventLock.cond.wait(lock, [type, subTypes] {
-        return _currentEventSubType == type && 
-        std::find(subTypes.begin(), subTypes.end(), static_cast<int>(_currentEventSubType)) != subTypes.end(); 
-    });
 }
 
 bool WalterModem::tlsProvisionKeys(
@@ -5462,20 +5458,29 @@ bool WalterModem::performGNSSAction(
 }
 
 void WalterModem::onRegistrationEvent(walterModemRegistrationEventHandler handler, void *args) {
-    _eventHandlers[WALTER_MODEM_EVENT_TYPE_REGISTRATION].handler = handler;
+    _eventHandlers[WALTER_MODEM_EVENT_TYPE_REGISTRATION].handler = (void*) handler;
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_REGISTRATION].args = args;
 }
 
 void WalterModem::onSystemEvent(walterModemSystemEventHandler handler, void *args) {
-    _eventHandlers[WALTER_MODEM_EVENT_TYPE_SYSTEM].handler = handler;
+    _eventHandlers[WALTER_MODEM_EVENT_TYPE_SYSTEM].handler = (void*) handler;
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_SYSTEM].args = args;
 }
 
 void WalterModem::onATEvent(walterModemATEventHandler handler, void *args) {
-    _eventHandlers[WALTER_MODEM_EVENT_TYPE_AT].handler = handler;
+    _eventHandlers[WALTER_MODEM_EVENT_TYPE_AT].handler = (void *) handler;
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_AT].args = args;
 }
 
 void WalterModem::waitForRegistrationEvent(std::initializer_list<WalterModemNetworkRegState> regStates) {
-    _waitForEvent(WALTER_MODEM_EVENT_TYPE_REGISTRATION,(std::initializer_list<int>)regStates);
+    std::unique_lock<std::mutex> lock(_eventLock.mutex);
+    _eventLock.cond.wait(lock, [regStates]
+                         { return _currentEventType == WALTER_MODEM_EVENT_TYPE_REGISTRATION && std::find(regStates.begin(), regStates.end(), (WalterModemNetworkRegState)_currentEventSubType) != regStates.end(); });
+}
+
+void WalterModem::waitForSystemEvent(std::initializer_list<WalterModemSystemEvent> regStates)
+{
+    std::unique_lock<std::mutex> lock(_eventLock.mutex);
+    _eventLock.cond.wait(lock, [regStates]
+                         { return _currentEventType == WALTER_MODEM_EVENT_TYPE_SYSTEM && std::find(regStates.begin(), regStates.end(), (WalterModemSystemEvent)_currentEventSubType) != regStates.end(); });
 }

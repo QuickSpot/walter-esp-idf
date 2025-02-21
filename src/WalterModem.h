@@ -2512,6 +2512,8 @@ class WalterModem
          */
         static inline WalterModemCmdLock _eventLock = {};
 
+        static inline WalterModemEventType _currentEventType = WALTER_MODEM_EVENT_TYPE_COUNT;
+        
         static inline int _currentEventSubType = 0;
 
         /*
@@ -4703,11 +4705,18 @@ class WalterModem
         static void onATEvent(walterModemATEventHandler handler = nullptr, void *args = nullptr);
 
         /**
-         * @brief This function will wait for a connection event to fire of the specified type.
+         * @brief This function will wait for a registration event to fire.
          *
-         * @param regStates as soon as one of the regstates is fired the function will return
+         * @param regStates As soon as one of the provided regstates is reached the function will return
          */
         static void waitForRegistrationEvent(std::initializer_list<WalterModemNetworkRegState> regStates);
-    };
+
+        /**
+         * @brief This function will wait for a system event to fire.
+         * 
+         * @param systemStates As soon as one of the provided regstates is reached the function will return
+         */
+        static void waitForSystemEvent(std::initializer_list<WalterModemSystemEvent> systemStates);
+};
 
 #endif
