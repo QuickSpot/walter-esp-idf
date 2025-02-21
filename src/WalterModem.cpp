@@ -1504,6 +1504,7 @@ void WalterModem::_processQueueRsp(
     WalterModemBuffer *buff)
 {
     ESP_LOGD("WalterModem", "RX: %.*s", buff->size, buff->data);
+    _dispatchEvent(WALTER_MODEM_EVENT_TYPE_AT, buff->size, buff->data);
 
     WalterModemState result = WALTER_MODEM_STATE_OK;
 
@@ -1511,15 +1512,7 @@ void WalterModem::_processQueueRsp(
         const char *rspStr = _buffStr(buff);
         int ceReg = atoi(rspStr + _strLitLen("+CEREG: "));
         _regState = (WalterModemNetworkRegState) ceReg;
-        //TODO: call correct handlers
-        switch(_regState) {
-            case WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING:
-            case WALTER_MODEM_NETWORK_REG_REGISTERED_HOME:
-                _callConnectionEventHandlers(WALTER_MODEM_CONNECTED);
-                break;
-            default:
-                break;
-        }
+        _dispatchEvent(WALTER_MODEM_EVENT_TYPE_REGISTRATION, _regState);
     }
     else if(_buffStartsWith(buff, "> ") || _buffStartsWith(buff, ">>>"))
     {
@@ -4053,38 +4046,53 @@ char WalterModem::_getLuhnChecksum(const char *imei)
     return (char) (((10 - (sum % 10)) % 10) + '0');
 }
 
-void WalterModem::_callConnectionEventHandlers(WalterModemConnectionEventType connectionEventType){
-    // set the group and event type (consumed by the eventLock)
-    _currentEventGroup = WALTER_MODEM_EVENT_GROUP_CONNECTION;
-    _currentEventType = connectionEventType;
+// void WalterModem::_callConnectionEventHandlers(WalterModemConnectionEventType connectionEventType){
+//     // set the group and event type (consumed by the eventLock)
+//     _currentEventGroup = WALTER_MODEM_EVENT_GROUP_CONNECTION;
+//     _currentEventType = connectionEventType;
 
-    for (size_t i = 0; i < WALTER_MODEM_MAX_EVENT_HANDLERS; i++) {
-        if (_eventHandlers[i].handler && 
-            _eventHandlers[i].group == WALTER_MODEM_EVENT_GROUP_CONNECTION)
-        {
-            ((walterModemConnectionEventHandler)_eventHandlers[i].handler)(connectionEventType);
-        }
-    }
+//     for (size_t i = 0; i < WALTER_MODEM_MAX_EVENT_HANDLERS; i++) {
+//         if (_eventHandlers[i].handler && 
+//             _eventHandlers[i].group == WALTER_MODEM_EVENT_GROUP_CONNECTION)
+//         {
+//             ((walterModemConnectionEventHandler)_eventHandlers[i].handler)(connectionEventType);
+//         }
+//     }
     
-    _eventLock.cond.notify_all();
+//     _eventLock.cond.notify_all();
+// }
+
+void WalterModem::_dispatchEvent(WalterModemEventType type, int subtype, void *data) {
+    WalterModemEventHandler *handler = _eventHandlers + type;
+
+    if(handler->handler == nullptr) {
+        return;
+    }
+
+    switch(type) {
+        case WALTER_MODEM_EVENT_TYPE_REGISTRATION:
+            ((walterModemRegistrationEventHandler) handler->handler)
+                ((WalterModemNetworkRegState) subtype, handler->args);
+            break;
+
+        case WALTER_MODEM_EVENT_TYPE_SYSTEM:
+            ((walterModemSystemEventHandler) handler->handler)
+                ((WalterModemSystemEvent) subtype, handler->args);
+            break;
+
+        case WALTER_MODEM_EVENT_TYPE_AT:
+            ((walterModemATEventHandler) handler->handler), (size_t) subtype,
+                ((const char*) data, handler->args);
+            break;
+
+        case WALTER_MODEM_EVENT_TYPE_COUNT:
+            break;
+    }
 }
 
 void WalterModem::_waitForEvent(WalterModemEventGroup group, uint8_t type) {
     std::unique_lock<std::mutex> lock(_eventLock.mutex);
     _eventLock.cond.wait(lock, [group, type] { return _currentEventGroup == group && _currentEventType == type; });
-}
-
-bool WalterModem::_registerEventHandler(WalterModemEventHandler eventHandler) {
-    for (size_t i = 0; i < WALTER_MODEM_MAX_EVENT_HANDLERS; i++) {
-        if(_eventHandlers[i].handler == eventHandler.handler){
-            return true; //event handler has already been registered
-        } else if(!_eventHandlers[i].handler) {
-            _eventHandlers[i] = eventHandler;
-            return true;
-        } 
-    }
-    
-    return false;
 }
 
 bool WalterModem::tlsProvisionKeys(
@@ -5463,22 +5471,21 @@ bool WalterModem::performGNSSAction(
     _returnAfterReply();
 }
 
-void WalterModem::unregisterEventHandler(void *eventHandler) {
-    for (size_t i = 0; i < WALTER_MODEM_MAX_EVENT_HANDLERS; i++) {
-        if (_eventHandlers[i].handler == eventHandler) {
-            _eventHandlers[i].handler = nullptr;
-        }
-    }
+void WalterModem::onRegistrationEvent(walterModemRegistrationEventHandler handler, void *args) {
+    _eventHandlers[WALTER_MODEM_EVENT_TYPE_CONNECTION].handler = handler;
+    _eventHandlers[WALTER_MODEM_EVENT_TYPE_CONNECTION].args = args;
 }
 
-bool WalterModem::registerConnectionEventHandler(walterModemConnectionEventHandler handler) {
-    WalterModemEventHandler eventHandler = { 
-        WALTER_MODEM_EVENT_GROUP_CONNECTION,
-        (void*)handler
-    };
-    return _registerEventHandler(eventHandler);
+void WalterModem::onSystemEvent(walterModemSystemEventHandler handler, void *args) {
+    _eventHandlers[WALTER_MODEM_EVENT_TYPE_CONNECTION].handler = handler;
+    _eventHandlers[WALTER_MODEM_EVENT_TYPE_CONNECTION].args = args;
 }
 
-void WalterModem::waitForConnectionEvent(WalterModemConnectionEventType eventType) {
-    _waitForEvent(WALTER_MODEM_EVENT_GROUP_CONNECTION,eventType);
+void WalterModem::onATEvent(walterModemATEventHandler handler, void *args) {
+    _eventHandlers[WALTER_MODEM_EVENT_TYPE_CONNECTION].handler = handler;
+    _eventHandlers[WALTER_MODEM_EVENT_TYPE_CONNECTION].args = args;
 }
+
+// void WalterModem::waitForConnectionEvent(WalterModemConnectionEventType eventType) {
+//     _waitForEvent(WALTER_MODEM_EVENT_GROUP_CONNECTION,eventType);
+// }
