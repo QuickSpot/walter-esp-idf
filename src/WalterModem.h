@@ -229,7 +229,6 @@
  */
 #define SPI_FLASH_BLOCK_SIZE    (SPI_SECTORS_PER_BLOCK*SPI_FLASH_SEC_SIZE)
 
-#define WALTER_MODEM_MAX_EVENT_HANDLERS 12
 /**
  * @brief This enum groups status codes of functions and operational components
  * of the modem.
@@ -919,25 +918,101 @@ typedef enum {
 } WalterModemBlueCherryEventType;
 
 /**
- * @brief The possible connection event types
- * 
- * @warning The uint8_t is used so we can store multiple event groups in a single uint8_t 
- */
-typedef enum : uint8_t {
-    WALTER_MODEM_CONNECTED,
-    WALTER_MODEM_LOST_CONNECTION,
-} WalterModemConnectionEventType;
-
-/**
- * @brief The posible event groups
+ * @brief The different types of events supported by the library.
  */
 typedef enum {
-    WALTER_MODEM_EVENT_GROUP_NONE,
-    WALTER_MODEM_EVENT_GROUP_CONNECTION,
-    WALTER_MODEM_EVENT_GROUP_AT,
-} WalterModemEventGroup;
+    /**
+     * @brief Connection related events.
+     */
+    WALTER_MODEM_EVENT_TYPE_CONNECTION = 0,
+
+    /**
+     * @brief System related events.
+     */
+    WALTER_MODEM_EVENT_TYPE_SYSTEM = 1,
+
+    /**
+     * @brief Incoming AT string events.
+     */
+    WALTER_MODEM_EVENT_TYPE_AT = 2,
+
+    /**
+     * @brief The number of event types supported by the library.
+     */
+    WALTER_MODEM_EVENT_TYPE_COUNT
+} WalterModemEventType;
+
 /**
- * @brief This structure represents the 
+ * @brief This enumeration groups the different types of connection events.
+ */
+typedef enum {
+    WALTER_MODEM_CONNECTION_EVENT_DISCONNECTED_NOT_SEARCHING,
+    WALTER_MODEM_CONNECTION_EVENT_SEARCHING,
+    WALTER_MODEM_CONNECTION_EVENT_REGISTRATION_DENIED,
+    WALTER_MODEM_CONNECTION_EVENT_REGISTERED_TEMPORARY_CONNECTION_LOST,
+    WALTER_MODEM_CONNECTION_EVENT_TEMPORARY_DI
+    WALTER_MODEM_CONNECTION_EVENT_REGISTERED_HOME,
+    WALTER_MODEM_CONNECTION_EVENT_REGISTERED_ROAMING,
+    WALTER_MODEM_CONNECTION_EVENT_REGISTERED_SMS_ONLY_HOME,
+    WALTER_MODEM_CONNECTION_EVENT_REGISTERED_SMS_ONLY_ROAMING,
+    WALTER_MODEM_CONNECTION_EVENT_ATTACHED_EMERGENCY_BEARER_ONLY
+} WalterModemConnectionEvent;
+
+/**
+ * @brief This enumeration groups the different types of system events.
+ */
+typedef enum {
+  WALTER_MODEM_SYSTEM_EVENT_STARTED,
+} WalterModemSystemEvent;
+
+/**
+ * @brief Header of a connection event handler.
+ * 
+ * @param ev The type of connection event.
+ * @param args Optional arguments set by the application layer.
+ * 
+ * @return None.
+ */
+typedef void (*walterModemConnectionEventHandler)(WalterModemConnectionEvent ev, void *args);
+
+/**
+ * @brief Header of a system event handler.
+ * 
+ * @param ev The type of system event.
+ * @param args Optional arguments set by the application layer.
+ * 
+ * @return None.
+ */
+typedef void (*walterModemSystemEventHandler)(WalterModemSystemEvent ev, void *args);
+
+/**
+ * @brief Header of an AT event handler.
+ * 
+ * @param at_response A constant string which contains the AT response. Only valid memory during 
+ * the lifetime of the event handler.
+ * @param args Optional arguments set by the application layer.
+ * 
+ * @return None.
+ */
+typedef void (*walterModemATEventHandler)(const char *at_response, void *args);
+
+/**
+ * @brief This structure represents an event handler and it's metadata.
+ */
+typedef struct {
+  /**
+   * @brief Pointer to the handler function.
+   */
+  void *handler = nullptr;
+
+  /**
+   * @brief Pointer to arguments set by the application layer.
+   */
+  void *args = nullptr;
+} WalterModemEventHandler;
+
+/**
+ * @brief This structure represents a GNSS satellite.
  */
 typedef struct {
     /**
@@ -2226,17 +2301,6 @@ struct WalterModemStpResponseTransferBlock
 };
 
 /**
- * @brief callback used for modem connection events
- */
-typedef void (*walterModemConnectionEventHandler)(const WalterModemConnectionEventType connectionEventType);
-/**
- * @brief this a representation for a modem even handler
- */
-typedef struct {
-    WalterModemEventGroup group;
-    void *handler;
-} WalterModemEventHandler;
-/**
  * @brief The WalterModem class allows you to use the Sequans Monarch 2 modem
  * and positioning functionality.
  */
@@ -2448,27 +2512,16 @@ class WalterModem
          */
         static inline FILE *_mota_file_ptr = NULL;
 
-        /*
-         * @brief Flag to interrupt the rx interrupt handler
-         * during MOTA updates where we want to read the raw uart
-         * data directly
+        /**
+         * @brief Flag to interrupt the rx interrupt handler during MOTA updates where we want to
+         * read the raw UART data directly.
          */
         static inline bool _rxHandlerInterrupted = false;
 
         /**
-         * @brief array that holds all the event handlers.
+         * @brief Array to keep track of external event handlers.
          */
-        static inline WalterModemEventHandler _eventHandlers[WALTER_MODEM_MAX_EVENT_HANDLERS];
-
-        /**
-         * @brief the current event type that is being handled
-         */
-        static inline uint8_t _currentEventType = 0;
-
-        /**
-         * @brief the current event type that is being handled
-         */
-        static inline WalterModemEventGroup _currentEventGroup;
+        static inline WalterModemEventHandler _eventHandlers[WALTER_MODEM_EVENT_TYPE_COUNT] = {};
 
         /**
          * @brief A lock and condition variable used to implement the blocking event API.
@@ -2926,13 +2979,17 @@ class WalterModem
         static char _getLuhnChecksum(const char *imei);
 
         /**
-         * @brief This function calls all the registerd eventHandler functions.
-         *
-         * @warning This function also sets the current group and type and notifies the condition variable.
+         * @brief Dispatch an event to the registered event handler if there is one.
          * 
-         * @param connectionEventType the eventType to pass down tot the eventHandlers
+         * This function will dispatch an event to the registered event handler. If no event handler
+         * was registered for this specific event the function is a no-op.
+         * 
+         * @param type The type of event to dispatch.
+         * @param data Specific event info (enum or AT response string).
+         * 
+         * @return None.
          */
-        static void _callConnectionEventHandlers(WalterModemConnectionEventType connectionEventType);
+        static void _dispatchEvent(WalterModemEventType type, void *data);
         
         /**
          * @brief This function waits for a certain event to fire before returning
@@ -2942,14 +2999,6 @@ class WalterModem
          */
         static void _waitForEvent(WalterModemEventGroup group, uint8_t type);
 
-        /**
-         * @brief This function registers a generic event handler.
-         * 
-         * @warning This function will also return true when the event handler function has already been registered.
-         * @param eventHandler struct containing the eventGroup and the pointer to the eventHandler function itself.
-         * @return True if the event has bee registered succesfully.
-         */
-        static bool _registerEventHandler(WalterModemEventHandler eventHandler);
     public:
         /**
          * @brief Initialize the modem.
@@ -4625,24 +4674,53 @@ class WalterModem
         static void offlineMotaUpgrade(uint8_t *otaBuffer);
 
         /**
-         * @brief This function will unregister a event handler
-         *
-         * @param eventHandler function pointer of the event handler
-         */
-        static void unregisterEventHandler(void *eventHandler);
-
-        /**
-         * @brief registers a connection event handler
-         * @param handler walterModemConnectionEventHandler
-         */
-        static bool registerConnectionEventHandler(walterModemConnectionEventHandler handler);
-
-        /**
-         * @brief This function will wait for a connection event to fire of the specified type.
+         * @brief Register a connection event handler.
          * 
-         * @param eventType The type of connection event you want to wait for.
+         * This function will register an application layer connection event handler. If you want
+         * to explicitly de-register the handler for this type of event you can pass a nullptr to 
+         * this function.
+         * 
+         * @param handler Pointer to the handler function or nullptr to de-register.
+         * @param args Optional application layer arguments.
+         * 
+         * @return None.
          */
-        static void waitForConnectionEvent(WalterModemConnectionEventType eventType);
+        static void onConnectionEvent(walterModemConnectionEventHandler handler, void *args);
+
+        /**
+         * @brief Register a system event handler.
+         * 
+         * This function will register an application layer system event handler. If you want
+         * to explicitly de-register the handler for this type of event you can pass a nullptr to 
+         * this function.
+         * 
+         * @param handler Pointer to the handler function or nullptr to de-register.
+         * @param args Optional application layer arguments.
+         * 
+         * @return None.
+         */
+        static void onSystemEvent(walterModemSystemEventHandler handler, void *args);
+
+        /**
+         * @brief Register an AT event handler.
+         * 
+         * This function will register an application layer AT response event handler. If you want
+         * to explicitly de-register the handler for this type of event you can pass a nullptr to 
+         * this function.
+         * 
+         * @param handler Pointer to the handler function or nullptr to de-register.
+         * @param args Optional application layer arguments.
+         * 
+         * @return None.
+         */
+        static void onATEvent(walterModemATEventHandler handler, void *args);
+
+        // /**
+        //  * @brief This function will wait for a connection event to fire of the specified type.
+        //  * 
+        //  * @param eventType The type of connection event you want to wait for.
+        //  */
+        // static void waitForConnectionEvent(WalterModemConnectionEventType eventType);
     };
 
 #endif
