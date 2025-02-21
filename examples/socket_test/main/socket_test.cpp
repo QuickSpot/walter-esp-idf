@@ -52,9 +52,10 @@
 #include <driver/uart.h>
 #include "WalterModem.h"
 
-void connected(WalterModemConnectionEventType event) {
-  if(event == WALTER_MODEM_CONNECTED) {
-    ESP_LOGE("event", "connection event: %i",event);
+void registrationEvent(WalterModemNetworkRegState state, void* args) {
+  if (state == WALTER_MODEM_NETWORK_REG_REGISTERED_HOME || state == WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING)
+  {
+    ESP_LOGE("event", "connection event: %i",state);
   }
 }
 
@@ -105,11 +106,8 @@ extern "C" void app_main(void)
     return;
   }
   
-  if(modem.registerConnectionEventHandler(connected)){
-    ESP_LOGI("event", "succesfully registered handler");
-  } else {
-    ESP_LOGD("event", "could not register connection handler");
-  }
+  modem.onRegistrationEvent(registrationEvent);
+
 
   if(modem.checkComm()) {
     ESP_LOGI("socket_test", "Modem communication is ok");
@@ -192,7 +190,10 @@ extern "C" void app_main(void)
   }
 
   /* Wait for the network to become available */
-  modem.waitForConnectionEvent(WALTER_MODEM_CONNECTED);
+  modem.waitForRegistrationEvent({
+    WALTER_MODEM_NETWORK_REG_REGISTERED_HOME,
+    WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING
+  });
 
   /* Activate the PDP context */
   if(modem.setPDPContextActive(true)) {

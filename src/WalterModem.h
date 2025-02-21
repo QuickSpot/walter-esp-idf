@@ -2512,6 +2512,8 @@ class WalterModem
          */
         static inline WalterModemCmdLock _eventLock = {};
 
+        static inline int _currentEventSubType = 0;
+
         /*
          * @brief Helper to boot modem to recovery modem and start upgrade
          */
@@ -2979,10 +2981,10 @@ class WalterModem
         /**
          * @brief This function waits for a certain event to fire before returning
          * 
-         * @param group The group in wich the event is fired.
-         * @param eventType The type of the event that is being fired
+         * @param type The main type of event that is being fired.
+         * @param subTypes The subtypes of the event you want to wait for.
          */
-        static void _waitForEvent(WalterModemEventGroup group, uint8_t type);
+        static void _waitForEvent(WalterModemEventType type, std::initializer_list<int> subTypes);
 
     public:
         /**
@@ -4700,12 +4702,12 @@ class WalterModem
          */
         static void onATEvent(walterModemATEventHandler handler = nullptr, void *args = nullptr);
 
-        // /**
-        //  * @brief This function will wait for a connection event to fire of the specified type.
-        //  * 
-        //  * @param eventType The type of connection event you want to wait for.
-        //  */
-        // static void waitForConnectionEvent(WalterModemConnectionEventType eventType);
+        /**
+         * @brief This function will wait for a connection event to fire of the specified type.
+         *
+         * @param regStates as soon as one of the regstates is fired the function will return
+         */
+        static void waitForRegistrationEvent(std::initializer_list<WalterModemNetworkRegState> regStates);
     };
 
 #endif
