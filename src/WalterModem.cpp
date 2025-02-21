@@ -4065,7 +4065,7 @@ const uint8_t WalterModem::_convertDuration(const uint32_t *base_times, size_t b
     }
 
     if (actual_duration_seconds) {
-        *actual_duration_seconds = (uint32_t)final_base * (uint32_t)final_mult;
+        *actual_duration_seconds = (uint32_t) final_base * (uint32_t) final_mult;
     }
 
     uint8_t result = (final_base << 5) | final_mult;
