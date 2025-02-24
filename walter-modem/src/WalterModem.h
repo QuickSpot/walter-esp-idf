@@ -97,8 +97,7 @@
 /**
  * @brief The size of the stack of the command and response processing task.
  */
-//#define WALTER_MODEM_TASK_STACK_SIZE 4096
-#define WALTER_MODEM_TASK_STACK_SIZE 16384
+#define WALTER_MODEM_TASK_STACK_SIZE (1024 * 6)
 
 /**
  * @brief The default number of attempts to execute a command.
@@ -2411,7 +2410,7 @@ class WalterModem
         /**
          * @brief The memory pool to save pending commands in.
          */
-        static inline WalterModemCmd
+        EXT_RAM_BSS_ATTR static inline WalterModemCmd
             _cmdPool[WALTER_MODEM_MAX_PENDING_COMMANDS] = {};
 
         /**
