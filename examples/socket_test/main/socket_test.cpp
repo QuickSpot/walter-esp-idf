@@ -98,7 +98,7 @@ extern "C" void app_main(void)
     ESP_LOGI("socket_test", "Modem initialization ERROR");
     return;
   }
-
+ 
   if(modem.checkComm()) {
     ESP_LOGI("socket_test", "Modem communication is ok");
   } else {
@@ -106,7 +106,6 @@ extern "C" void app_main(void)
     return;
   }
 
-  WalterModemRsp rsp = {};
   if(modem.getOpState(&rsp)) {
     ESP_LOGI("socket_test", "Modem operational state: %d", rsp.data.opState);
   } else {
@@ -254,3 +253,5 @@ extern "C" void app_main(void)
     vTaskDelay(pdMS_TO_TICKS(10000));
   }
 }
+
+
