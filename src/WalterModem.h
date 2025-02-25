@@ -819,6 +819,26 @@ typedef enum {
     WALTER_MODEM_COAP_OPT_VALUE_APPLICATION_CBOR = 60
 } WalterModemCoapOptValue;
 
+typedef enum {
+    WALTER_MODEM_MQTT_SUCCESS = 0,
+    WALTER_MODEM_MQTT_NOMEM,
+    WALTER_MODEM_MQTT_PROTOCOL,
+    WALTER_MODEM_MQTT_INVAL,
+    WALTER_MODEM_MQTT_NO_CONN,
+    WALTER_MODEM_MQTT_NOT_FOUND,
+    WALTER_MODEM_MQTT_CONN_LOST,
+    WALTER_MODEM_MQTT_TLS,
+    WALTER_MODEM_MQTT_PAYLOAD_SIZE,
+    WALTER_MODEM_MQTT_NOT_SUPPORTED,
+    WALTER_MODEM_MQTT_AUTH,
+    WALTER_MODEM_MQTT_ACL_DENIED,
+    WALTER_MODEM_MQTT_UNKOWN,
+    WALTER_MODEM_MQTT_ERRNO,
+    WALTER_MODEM_MQTT_EAI,
+    WALTER_MODEM_MQTT_PROXY,
+    WALTER_MODEM_MQTT_UNAVAILABLE,
+} WalterModemMqttStatus;
+
 /**
  * @brief The possible option values for the COAP message.
  */
@@ -1315,6 +1335,10 @@ typedef struct {
      */
     uint16_t length;
 
+    /**
+     * @brief contains the status return code received from the modem.
+     */
+    WalterModemMQTTStatus mqttStatus;
     /**
      * topic not needed because mqttDidRing caller specifies desired topic
      */
