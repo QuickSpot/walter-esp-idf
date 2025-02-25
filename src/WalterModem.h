@@ -819,6 +819,9 @@ typedef enum {
     WALTER_MODEM_COAP_OPT_VALUE_APPLICATION_CBOR = 60
 } WalterModemCoapOptValue;
 
+/**
+ * @brief Enum containing the mqtt response codes
+ */
 typedef enum {
     WALTER_MODEM_MQTT_SUCCESS = 0,
     WALTER_MODEM_MQTT_NOMEM,
@@ -1338,7 +1341,7 @@ typedef struct {
     /**
      * @brief contains the status return code received from the modem.
      */
-    WalterModemMQTTStatus mqttStatus;
+    WalterModemMqttStatus mqttStatus;
     /**
      * topic not needed because mqttDidRing caller specifies desired topic
      */
