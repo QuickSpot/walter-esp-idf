@@ -230,6 +230,17 @@
 #define SPI_FLASH_BLOCK_SIZE    (SPI_SECTORS_PER_BLOCK*SPI_FLASH_SEC_SIZE)
 
 /**
+ * @brief Get the character '0' or '1' at offset n in a byte.
+ */
+#define BITCHAR(x, n) (((x) >> (n)) & 1 ? '1' : '0')
+
+/**
+ * @brief Compound literal which represents a byte as a 0-terminated bitstring.
+ */
+#define BINBYTESTR(x) (char[9]){BITCHAR(x, 7), BITCHAR(x, 6), BITCHAR(x, 5), BITCHAR(x, 4), \
+                                BITCHAR(x, 3), BITCHAR(x, 2), BITCHAR(x, 1), BITCHAR(x, 0), '\0'}
+
+/**
  * @brief This enum groups status codes of functions and operational components
  * of the modem.
  */
@@ -744,12 +755,14 @@ typedef enum {
 } WalterModemGNSSAssistanceType;
 
 /**
- * @brief The possible statuses of a BLUECHERRY communication cycle.
+ * @brief The possible statuses of a BlueCherry communication cycle.
  */
 typedef enum {
+    WALTER_MODEM_BLUECHERRY_STATUS_NOT_PROVISIONED,
     WALTER_MODEM_BLUECHERRY_STATUS_IDLE,
     WALTER_MODEM_BLUECHERRY_STATUS_AWAITING_RESPONSE,
     WALTER_MODEM_BLUECHERRY_STATUS_RESPONSE_READY,
+    WALTER_MODEM_BLUECHERRY_STATUS_PENDING_MESSAGES,
     WALTER_MODEM_BLUECHERRY_STATUS_TIMED_OUT
 } WalterModemBlueCherryStatus;
 
@@ -1273,9 +1286,14 @@ typedef struct {
  */
 typedef struct {
     /**
-     * @brief Flag to indicate failed communication attempt.
+     * @brief The BlueCherry connection state
      */
-    bool nak;
+    WalterModemBlueCherryStatus state;
+
+    /**
+     * @brief Flag to indicate if synchronisation is finished.
+     */
+    bool syncFinished;
 
     /**
      * @brief The amount of the messages.
@@ -2178,12 +2196,17 @@ typedef struct {
     /**
      * @brief COAP server name
      */
-    char serverName[WALTER_MODEM_HOSTNAME_BUF_SIZE] = { 0 };
+    char serverName[WALTER_MODEM_HOSTNAME_BUF_SIZE] = "coap.bluecherry.io";
 
     /**
      * @brief COAP server port
      */
-    uint16_t port = 0;
+    uint16_t port = 5684;
+
+    /**
+     * @brief Timeout for ACK of outgoing BlueCherry COAP messages, in seconds
+     */
+    uint16_t ackTimeout = 60;
 
     /**
      * @brief COAP message being composed 
@@ -2219,7 +2242,7 @@ typedef struct {
 
     /**
      * @brief Flag that indicates whether more data is ready on bridge,
-     * meaning an extra blueCherrySynchronize call makes sense
+     * meaning an extra blueCherrySync call is needed
      */
     bool moreDataAvailable = false;
 
@@ -2941,18 +2964,34 @@ class WalterModem
          * @brief Upload key or certificate to modem NVRAM.
          *
          * This function uploads a key or certificate to the modem NVRAM.
+         * It is recommended to save credentials in index 10-19 to avoid
+         * overwriting preinstalled certificates and (if applicable)
+         * BlueCherry cloud platform credentials.
          *
          * @param isPrivateKey true if it is a private key,
          * false if it is a certificate
          * @param slotIdx slot index within the modem NVRAM keystore
-         * @param key NULL-terminated string containing the PEM key/cert data
+         * @param credential NULL-terminated string containing the PEM key/cert data
          *
          * @return True if succeeded, false if not.
          */
-        static bool _tlsUploadKey(
-            bool isPrivateKey,
-            uint8_t slotIdx,
-            const char *key);
+        static bool tlsWriteCredential(bool isPrivateKey, 
+            uint8_t slotIdx, 
+            const char *credential);
+
+        /**
+         * @brief Check if a key or certificate is present in modem NVRAM.
+         *
+         * This function checks if a key or certificate is present on a specific
+         * slot index inside the modem NVRAM.
+         *
+         * @param isPrivateKey true to check for a private key,
+         * false to check for a certificate
+         * @param slotIdx slot index within the modem NVRAM keystore
+         *
+         * @return True if present, false if not.
+         */
+        static bool _tlsIsCredentialPresent(bool isPrivateKey, uint8_t slotIdx);
 
         /**
          * @brief Calculate the Luhn checksum for a 14-digit imei.
@@ -2988,7 +3027,44 @@ class WalterModem
          */
         static void _waitForEvent(WalterModemEventType type, std::initializer_list<int> subTypes);
 
-    public:
+        /**
+         * @brief Save context data in RTC memory before ESP deep sleep.
+         *
+         * This function will save the necessary state and context sets
+         * in RTC memory to keep this information saved during ESP
+         * deep sleep. 
+         *
+         * @return None.
+         */
+        static void _sleepPrepare();
+
+        /**
+         * @brief Load context data from RTC memory after ESP deep sleep.
+         *
+         * This function will load the saved state and context sets
+         * from RTC memory to restore the contexts after ESP deep sleep. 
+         *
+         * @return None.
+         */
+        static void _sleepWakeup();
+        
+        /**
+         * @brief Converts a given duration to encoded uint8_t according to the base_times.
+         *
+         * This function will encode a the given duration according to the base_times / mulipliers for use in PSM.
+         *
+         * @warning This is an approximation based on the base_times array.
+         *
+         * @param base_times Pointer to an array containing the base times
+         * @param base_times_len Length of the base_times array
+         * @param duration_seconds The requested duration in seconds.
+         * @param actual_duration_seconds Optional pointer in which the actual requested duration can be saved.
+         *
+         * @return The duration encoded into the 3GPP standard format.
+         */
+        static const uint8_t _convertDuration(const uint32_t *base_times, size_t base_times_len, uint32_t duration_seconds, uint32_t *actual_duration_seconds);
+
+    public :
         /**
          * @brief Initialize the modem.
          * 
@@ -3435,34 +3511,6 @@ class WalterModem
             void *args = NULL);
 
         /**
-         * @brief Upload BlueCherry keys to the modem.
-         *
-         * Upload the Walter certificate and private key and the BlueCherry
-         * bridge server CA certificate to the modem.
-         *
-         * The key parameters are NULL terminated strings containing the
-         * PEM data with each line terminated by CRLF.
-         *
-         * @param walterCertificate Walter X.509 certificate as PEM string
-         * @param walterPrivateKey Walter private key as PEM string
-         * @param caCertificate BlueCherry CA certificate
-         * @param rsp Pointer to a modem response structure to save the result
-         * of the command in. When NULL is given the result is ignored.
-         * @param cb Optional callback argument, when not NULL this function
-         * will return immediately.
-         * @param args Optional argument to pass to the callback.
-         *
-         * @return True on success, false otherwise.
-         */
-        static bool tlsProvisionKeys(
-            const char *walterCertificate,
-            const char *walterPrivateKey,
-            const char *caCertificate,
-            WalterModemRsp *rsp = NULL,
-            walterModemCb cb = NULL,
-            void *args = NULL);
-
-        /**
          * @brief Configure a HTTP profile.
          * 
          * This function will configure a HTTP profile with parameters
@@ -3640,26 +3688,68 @@ class WalterModem
                 WalterModemRsp *rsp = NULL);
 
         /**
+         * @brief Upload BlueCherry credentials to the modem.
+         *
+         * Upload the Walter certificate and private key and the BlueCherry
+         * cloud server CA certificate to the modem.
+         *
+         * The key parameters are NULL terminated strings containing the
+         * PEM data with each line terminated by CRLF.
+         *
+         * @param walterCertificate Walter X.509 certificate as PEM string
+         * @param walterPrivateKey Walter private key as PEM string
+         * @param caCertificate BlueCherry CA certificate
+         * @param rsp Pointer to a modem response structure to save the result
+         * of the command in. When NULL is given the result is ignored.
+         * @param cb Optional callback argument, when not NULL this function
+         * will return immediately.
+         * @param args Optional argument to pass to the callback.
+         *
+         * @return True on success, false otherwise.
+         */
+        static bool blueCherryProvision(
+            const char *walterCertificate,
+            const char *walterPrivateKey,
+            const char *caCertificate,
+            WalterModemRsp *rsp = NULL,
+            walterModemCb cb = NULL,
+            void *args = NULL);
+
+        /**
+         * @brief Check if device is provisioned for BlueCherry.
+         *
+         * This function checks if the necessary certificates and private
+         * key are present in the modem NVRAM to be used for BlueCherry.
+         * note: it does not check if the credentials are valid, but only
+         * checks if the BlueCherry reserved slot indexes are occupied
+         * inside the modem NVRAM.
+         *
+         * @return True on success, false otherwise.
+         */
+        static bool _blueCherryIsProvisioned();
+
+        /**
          * @brief Initialize BlueCherry COAP bridge.
          * 
-         * This fuction will set the TLS profile id (configured using
-         * tlsConfigProfile and tlsProvisionKeys), serverName, port of the
-         * BlueCherry lite COAP server, initialize the accumulated outgoing
-         * datagram, initialize the current message id to 1,
-         * the last acknowledged id to 0 and set the state machine to IDLE.
+         * This function will set the TLS profile id and initialize
+         * the accumulated outgoing datagram, initialize the current
+         * message id to 1, the last acknowledged id to 0 and set the
+         * state machine to IDLE.
          * 
          * @param tlsProfileId DTLS is used with the given profile (1-6).
-         * @param serverName The name of the server to connect to.
-         * @param port The port of the server.
          * @param otaBuffer A user-supplied buffer for OTA updates to flash;
          * must be 4K = the flash sector size.
+         * @param rsp The (optional) response object.
+         * @param ackTimeout Timeout for ACK of outgoing BlueCherry COAP 
+         * messages, in seconds.
          * 
-         * @return None.
+         * @return True if succeeded, false on error.
          */
-        static void initBlueCherry(uint8_t tlsProfileId,
-                const char *serverName = "",
-                uint16_t port = 0, 
-                uint8_t *otaBuffer = NULL);
+        static bool blueCherryInit(
+                uint8_t tlsProfileId,
+                uint8_t *otaBuffer = NULL,
+                WalterModemRsp *rsp = NULL,
+                uint16_t ackTimeout = 60);
 
         /**
          * @brief Enqueue a MQTT publish message.
@@ -3677,31 +3767,25 @@ class WalterModem
         static bool blueCherryPublish(uint8_t topic, uint8_t len, uint8_t *data);
 
         /**
-         * @brief Send accumulated MQTT messages and request incoming data.
+         * @brief Send accumulated MQTT messages and poll for incoming data.
          * 
          * This function will send all accumulated MQTT publish messages to
          * the BlueCherry cloud server, and ask the server for an acknowledgement
          * and for the new incoming MQTT messages since the last
          * BlueCherrySynchronize call.
          *
-         * The arduino developer will now need to poll for the ACKnowledgement
-         * and the incoming messages using blueCherryDidRing, before more messages can
-         * be published.
-         * 
          * Even if nothing was enqueued for publish, this call must frequently
-         * be executed if Walter is subscribed to one or more MQTT topics.
+         * be executed if Walter is subscribed to one or more MQTT topics or
+         * has enabled BlueCherry OTA updates.
+         * 
+         * A response might not fit in a single datagram response. As long as
+         * rsp.data.BlueCherry.syncFinished is false, this function needs to
+         * be called again repeatedly.
          *
-         * The call is also needed to support OTA updates, which come in
-         * as a response to the sync call.
-         *
-         * @return True if we have sent the message and are awaiting response,
-         * false in the following cases:
-         * - if we are still awaiting a response from a previous blueCherrySynchronize
-         *   call (which the arduino program should know already)
-         * - if we could not connect to the COAP to MQTT bridge server
-         * - if setting the COAP header or sending the COAP data failed
+         * @return True if communication is successfull and a response was
+         * received, false if error occurred.
          */
-        static bool blueCherrySynchronize(void);
+        static bool blueCherrySync(WalterModemRsp *rsp);
 
         /**
          * @brief Poll the API for a received BlueCherry response.
@@ -3746,6 +3830,27 @@ class WalterModem
         static bool blueCherryDidRing(bool *moreDataAvailable, WalterModemRsp *rsp = NULL);
 
         /**
+         * @brief Close the BlueCherry platform CoAP connection.
+         * 
+         * This function will close the CoAP connection to the Bluecherry 
+         * cloud platform. Usually there is no need to call this function, 
+         * unless using deep sleep mode (which might cause a modem bug in 
+         * the latest modem firmware versions).
+         * 
+         * @param rsp Pointer to a modem response structure to save the result 
+         * of the command in. When NULL is given the result is ignored.
+         * @param cb Optional callback argument, when not NULL this function
+         * will return immediately.
+         * @param args Optional argument to pass to the callback.
+         * 
+         * @return True if succeeded, false on error.
+         */
+        static bool blueCherryClose(
+            WalterModemRsp *rsp = NULL,
+            walterModemCb cb = NULL,
+            void *args = NULL);
+
+        /**
          * @brief Create a COAP context.
          * 
          * This function will create a COAP context if it was not open yet.
@@ -3771,7 +3876,7 @@ class WalterModem
             const char *serverName,
             int port,    
             uint8_t tlsProfileId = 0,
-            int localPort = 0,
+            int localPort = -1,
             WalterModemRsp *rsp = NULL,
             walterModemCb cb = NULL,
             void *args = NULL);
@@ -4661,62 +4766,6 @@ class WalterModem
          * expected to be at least SPI_FLASH_SEC_SIZE = 4K
          */
         static void offlineMotaUpgrade(uint8_t *otaBuffer);
-
-        /**
-         * @brief Register a network registration event handler.
-         * 
-         * This function will register an application layer registration event handler. If you want
-         * to explicitly de-register the handler for this type of event you can pass a nullptr to 
-         * this function.
-         * 
-         * @param handler Pointer to the handler function or nullptr to de-register.
-         * @param args Optional application layer arguments.
-         * 
-         * @return None.
-         */
-        static void onRegistrationEvent(walterModemRegistrationEventHandler handler = nullptr, void *args = nullptr);
-
-        /**
-         * @brief Register a system event handler.
-         * 
-         * This function will register an application layer system event handler. If you want
-         * to explicitly de-register the handler for this type of event you can pass a nullptr to 
-         * this function.
-         * 
-         * @param handler Pointer to the handler function or nullptr to de-register.
-         * @param args Optional application layer arguments.
-         * 
-         * @return None.
-         */
-        static void onSystemEvent(walterModemSystemEventHandler handler = nullptr, void *args = nullptr);
-
-        /**
-         * @brief Register an AT event handler.
-         * 
-         * This function will register an application layer AT response event handler. If you want
-         * to explicitly de-register the handler for this type of event you can pass a nullptr to 
-         * this function.
-         * 
-         * @param handler Pointer to the handler function or nullptr to de-register.
-         * @param args Optional application layer arguments.
-         * 
-         * @return None.
-         */
-        static void onATEvent(walterModemATEventHandler handler = nullptr, void *args = nullptr);
-
-        /**
-         * @brief This function will wait for a registration event to fire.
-         *
-         * @param regStates As soon as one of the provided regstates is reached the function will return
-         */
-        static void waitForRegistrationEvent(std::initializer_list<WalterModemNetworkRegState> regStates);
-
-        /**
-         * @brief This function will wait for a system event to fire.
-         * 
-         * @param systemStates As soon as one of the provided regstates is reached the function will return
-         */
-        static void waitForSystemEvent(std::initializer_list<WalterModemSystemEvent> systemStates);
 };
 
 #endif

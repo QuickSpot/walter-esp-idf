@@ -100,7 +100,7 @@
 /**
  * @brief The maximum number of milliseconds to wait.
  */
-#define WALTER_MODEM_CMD_TIMEOUT_MS 30000
+#define WALTER_MODEM_CMD_TIMEOUT_MS 60000
 
 /**
  * @brief The command timeout expressed in system ticks.
@@ -113,11 +113,6 @@
  * invalid time.
  */
 #define WALTER_MODEM_MIN_VALID_TIMESTAMP 1672531200
-
-/**
- * @brief Timeout for ACK of outgoing BlueCherry COAP messages, in seconds
- */
-#define WALTER_MODEM_BLUECHERRY_COAP_TIMEOUT 15
 
 /**
  * @brief The length of a string literal at compile time.
@@ -419,8 +414,6 @@ static bool endOfLine;
         uart_write_bytes((uart_port_t)_uartNo, "\r\n", 2); \
 }
 #endif
-
-RTC_DATA_ATTR WalterModemPDPContext _pdpCtxSetRTC[WALTER_MODEM_MAX_PDP_CTXTS] = {};
 
 struct WalterModemStpRequest stpRequest;
 struct WalterModemStpResponseSessionOpen stpResponseSessionOpen;
@@ -2457,7 +2450,8 @@ void WalterModem::_processQueueRsp(
             start = ++commaPos;
             commaPos = strchr(commaPos, ',');
 
-            if(atoi(profileIdStr) >= WALTER_MODEM_MAX_COAP_PROFILES) {
+            if(!_coapContextSet[atoi(profileIdStr)].connected ||
+               atoi(profileIdStr) >= WALTER_MODEM_MAX_COAP_PROFILES) {
                 /* TODO: return error if modem returns invalid profile id.
                  * problem: this message is an URC: the associated cmd
                  * may be any random command currently executing */
@@ -2607,6 +2601,8 @@ void WalterModem::_processQueueRsp(
 
         if(profileId < WALTER_MODEM_MAX_COAP_PROFILES) {
             _coapContextSet[profileId].connected = false;
+            /* Clear all pending rings on connection close */
+            memset(_coapContextSet[profileId].rings, 0, sizeof(_coapContextSet[profileId].rings));
 
             if(profileId == 0) {
                 /* our own coap profile for BlueCherry was just closed */
@@ -3686,7 +3682,7 @@ bool WalterModem::begin(uint8_t uartNo, uint8_t watchdogTimeout)
             return false;
         }
     } else {
-        _loadRTCPdpContextSet(_pdpCtxSetRTC);
+        _sleepWakeup();
     }
 
     /* Configure reports as we expect them in the library */
@@ -3777,6 +3773,24 @@ bool WalterModem::reset(WalterModemRsp *rsp, walterModemCb cb, void *args)
     _returnAfterReply();
 }
 
+RTC_DATA_ATTR WalterModemPDPContext _pdpCtxSetRTC[WALTER_MODEM_MAX_PDP_CTXTS] = {};
+RTC_DATA_ATTR WalterModemPDPContext _coapCtxSetRTC[WALTER_MODEM_MAX_COAP_PROFILES] = {};
+RTC_DATA_ATTR WalterModemBlueCherryState blueCherryRTC = {};
+
+void WalterModem::_sleepPrepare()
+{
+    memcpy(_pdpCtxSetRTC, _pdpCtxSet, WALTER_MODEM_MAX_PDP_CTXTS * sizeof(WalterModemPDPContext));
+    memcpy(_coapCtxSetRTC, _coapContextSet, WALTER_MODEM_MAX_COAP_PROFILES * sizeof(WalterModemCoapContext));
+    blueCherryRTC = blueCherry;
+}
+
+void WalterModem::_sleepWakeup()
+{
+    memcpy(_pdpCtxSet, _pdpCtxSetRTC, WALTER_MODEM_MAX_PDP_CTXTS * sizeof(WalterModemPDPContext));
+    memcpy(_coapContextSet, _coapCtxSetRTC, WALTER_MODEM_MAX_COAP_PROFILES * sizeof(WalterModemCoapContext));
+    blueCherry = blueCherryRTC;
+}
+
 void WalterModem::sleep(uint32_t sleepTime, bool lightSleep)
 {
     if(lightSleep) {
@@ -3808,7 +3822,7 @@ void WalterModem::sleep(uint32_t sleepTime, bool lightSleep)
         uart_set_hw_flow_ctrl((uart_port_t)_uartNo, UART_HW_FLOWCTRL_CTS_RTS, 122);
 #endif
     } else {
-        _saveRTCPdpContextSet(_pdpCtxSetRTC);
+        _sleepPrepare();
         vTaskDelay(pdMS_TO_TICKS(1000));
         esp_deep_sleep(sleepTime * 1000000);
     }
@@ -4006,10 +4020,10 @@ bool WalterModem::tlsConfigProfile(
     _returnAfterReply();
 }
 
-bool WalterModem::_tlsUploadKey(
+bool WalterModem::tlsWriteCredential(
     bool isPrivateKey,
     uint8_t slotIdx,
-    const char *key)
+    const char *credential)
 {
     WalterModemRsp *rsp = NULL;
     walterModemCb cb = NULL;
@@ -4018,9 +4032,9 @@ bool WalterModem::_tlsUploadKey(
     const char *keyType = isPrivateKey ? "privatekey" : "certificate";
 
     _runCmd(arr("AT+SQNSNVW=", _atStr(keyType), ",",
-                _atNum(slotIdx), ",", _atNum(strlen(key))),
+                _atNum(slotIdx), ",", _atNum(strlen(credential))),
             "OK", rsp, cb, args, NULL, NULL,
-            WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT, (uint8_t *) key, strlen(key));
+            WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT, (uint8_t *) credential, strlen(credential));
 
     _returnAfterReply();
 }
@@ -4475,13 +4489,86 @@ bool WalterModem::mqttDidRing(
     }
 }
 
-void WalterModem::initBlueCherry(uint8_t tlsProfileId,
-        const char *serverName, uint16_t port,
-        uint8_t *otaBuffer)
+bool WalterModem::blueCherryProvision(
+    const char *walterCertificate,
+    const char *walterPrivateKey,
+    const char *caCertificate,
+    WalterModemRsp *rsp,
+    walterModemCb cb,
+    void *args)
 {
-    blueCherry.port = port;
-    strncpy(blueCherry.serverName, serverName == NULL ? "" : serverName,
-        WALTER_MODEM_HOSTNAME_MAX_SIZE);
+    WalterModemState result = WALTER_MODEM_STATE_OK;
+
+    if(walterCertificate) {
+        if(!tlsWriteCredential(false, 5, walterCertificate)) {
+            result = WALTER_MODEM_STATE_ERROR;
+        }
+    }
+
+    if(walterPrivateKey) {
+        if(!tlsWriteCredential(true, 0, walterPrivateKey)) {
+            result = WALTER_MODEM_STATE_ERROR;
+        }
+    }
+
+    if(caCertificate) {
+        if(!tlsWriteCredential(false, 6, caCertificate)) {
+            result = WALTER_MODEM_STATE_ERROR;
+        }
+    }
+
+    _returnState(result);
+}
+
+bool WalterModem::_tlsIsCredentialPresent(bool isPrivateKey, uint8_t slotIdx)
+{
+    WalterModemRsp *rsp = NULL;
+    walterModemCb cb = NULL;
+    void *args = NULL;
+
+    const char *keyType = isPrivateKey ? "privatekey" : "certificate";
+
+    _runCmd(arr("AT+SQNSNVR=", _atStr(keyType), ",",
+                _atNum(slotIdx)), "+SQNSNVR: ", rsp, cb, args);
+
+    _returnAfterReply();
+}
+
+bool WalterModem::_blueCherryIsProvisioned()
+{
+    if(!_tlsIsCredentialPresent(false, 5)) {
+        return false;
+    }
+
+    if(!_tlsIsCredentialPresent(false, 6)) {
+        return false;
+    }
+
+    if(!_tlsIsCredentialPresent(true, 0)) {
+        return false;
+    }
+
+    return true;
+}
+
+bool WalterModem::blueCherryInit(
+    uint8_t tlsProfileId,
+    uint8_t *otaBuffer,
+    WalterModemRsp *rsp,
+    uint16_t ackTimeout)
+{
+    if(!_blueCherryIsProvisioned() ||
+       !tlsConfigProfile(tlsProfileId, WALTER_MODEM_TLS_VALIDATION_URL_AND_CA, WALTER_MODEM_TLS_VERSION_12, 6, 5, 0)) {
+        blueCherry.status = WALTER_MODEM_BLUECHERRY_STATUS_NOT_PROVISIONED;
+        
+        if(rsp) {
+            rsp->type = WALTER_MODEM_RSP_DATA_TYPE_BLUECHERRY;
+            rsp->data.blueCherry.state = WALTER_MODEM_BLUECHERRY_STATUS_NOT_PROVISIONED;
+            rsp->data.blueCherry.messageCount = 0;
+        }
+
+        return false;
+    }
 
     blueCherry.tlsProfileId = tlsProfileId;
 
@@ -4494,11 +4581,15 @@ void WalterModem::initBlueCherry(uint8_t tlsProfileId,
     blueCherry.emitErrorEvent = false;
     blueCherry.otaSize = 0;
     blueCherry.otaBuffer = otaBuffer;
+    blueCherry.ackTimeout = ackTimeout;
+
+    return true;
 }
 
 bool WalterModem::blueCherryPublish(uint8_t topic, uint8_t len, uint8_t *data)
 {
-    if(blueCherry.status != WALTER_MODEM_BLUECHERRY_STATUS_IDLE) {
+    if(blueCherry.status != WALTER_MODEM_BLUECHERRY_STATUS_IDLE &&
+       blueCherry.status != WALTER_MODEM_BLUECHERRY_STATUS_TIMED_OUT) {
         return false;
     }
 
@@ -4515,10 +4606,22 @@ bool WalterModem::blueCherryPublish(uint8_t topic, uint8_t len, uint8_t *data)
     return true;
 }
 
-bool WalterModem::blueCherrySynchronize(void)
+bool WalterModem::blueCherrySync(WalterModemRsp *rsp)
 {
-    if(blueCherry.status != WALTER_MODEM_BLUECHERRY_STATUS_IDLE) {
+    walterModemCb cb = NULL;        /* dummies so we can use _returnState */
+    void *args = NULL;
+    uint16_t curOffset = 0;
+
+    if(blueCherry.status != WALTER_MODEM_BLUECHERRY_STATUS_IDLE &&
+       blueCherry.status != WALTER_MODEM_BLUECHERRY_STATUS_PENDING_MESSAGES &&
+       blueCherry.status != WALTER_MODEM_BLUECHERRY_STATUS_TIMED_OUT) {
         return false;
+    }
+
+    if(rsp) {
+        rsp->type = WALTER_MODEM_RSP_DATA_TYPE_BLUECHERRY;
+        rsp->data.blueCherry.syncFinished = false;
+        rsp->data.blueCherry.messageCount = 0;
     }
 
     if(!coapCreateContext(0, blueCherry.serverName, blueCherry.port,
@@ -4548,51 +4651,19 @@ bool WalterModem::blueCherrySynchronize(void)
     blueCherry.status = WALTER_MODEM_BLUECHERRY_STATUS_AWAITING_RESPONSE;
     blueCherry.lastTransmissionTime = time(NULL);
 
-    return true;
-}
-
-bool WalterModem::blueCherryDidRing(bool *moreDataAvailable, WalterModemRsp *rsp)
-{
-    walterModemCb cb = NULL;        /* dummies so we can use _returnState */
-    void *args = NULL;
-    uint16_t curOffset = 0;
-
-    *moreDataAvailable = false;
-
-    if(rsp) {
-        rsp->type = WALTER_MODEM_RSP_DATA_TYPE_BLUECHERRY;
-        rsp->data.blueCherry.nak = false;
-        rsp->data.blueCherry.messageCount = 0;
-    }
-
-    if(blueCherry.status == WALTER_MODEM_BLUECHERRY_STATUS_IDLE) {
-        _returnState(WALTER_MODEM_STATE_NOT_EXPECTING_RING);
-    }
-
-    if(blueCherry.status == WALTER_MODEM_BLUECHERRY_STATUS_AWAITING_RESPONSE) {
+    while(blueCherry.status == WALTER_MODEM_BLUECHERRY_STATUS_AWAITING_RESPONSE) {
         if(time(NULL) - blueCherry.lastTransmissionTime
-                > WALTER_MODEM_BLUECHERRY_COAP_TIMEOUT) {
+                > blueCherry.ackTimeout) {
             blueCherry.status = WALTER_MODEM_BLUECHERRY_STATUS_TIMED_OUT;
-        } else {
-            _returnState(WALTER_MODEM_STATE_AWAITING_RESPONSE);
         }
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 
-    /* so status must be WALTER_MODEM_BLUECHERRY_STATUS_RESPONSE_READY
-     * or WALTER_MODEM_BLUECHERRY_STATUS_TIMED_OUT
-     */
-
-    if(blueCherry.status == WALTER_MODEM_BLUECHERRY_STATUS_TIMED_OUT) {
-        /* indicate the error condition in the (optional) response object */
-
-        if(rsp) {
-            rsp->data.blueCherry.nak = true;
-        }
-    } else {
+    if(blueCherry.status == WALTER_MODEM_BLUECHERRY_STATUS_RESPONSE_READY) {
         /* process response */
 
         /* copy more available flag */
-        *moreDataAvailable = blueCherry.moreDataAvailable;
+        rsp->data.blueCherry.syncFinished = !blueCherry.moreDataAvailable;
 
         /* BlueCherry cloud ack means our last error line can be cleared */
         blueCherry.emitErrorEvent = false;
@@ -4610,7 +4681,7 @@ bool WalterModem::blueCherryDidRing(bool *moreDataAvailable, WalterModemRsp *rsp
                 /* by definition we want to urge the arduino sketch developer
                  * to soon again synchronize if there are BC OTA events
                  */
-                *moreDataAvailable = true;
+                rsp->data.blueCherry.syncFinished = false;
 
                 if(_processBlueCherryEvent(blueCherry.messageIn + curOffset, dataLen)) {
                     blueCherry.emitErrorEvent = true;
@@ -4630,7 +4701,6 @@ bool WalterModem::blueCherryDidRing(bool *moreDataAvailable, WalterModemRsp *rsp
         }
     }
 
-    blueCherry.status = WALTER_MODEM_BLUECHERRY_STATUS_IDLE;
     blueCherry.curMessageId++;
     if(blueCherry.curMessageId == 0) {
         /* on wrap around, skip msg id 0 which we use as a special/error value */
@@ -4645,7 +4715,29 @@ bool WalterModem::blueCherryDidRing(bool *moreDataAvailable, WalterModemRsp *rsp
         blueCherryPublish(0, 1, &blueCherryErrorEventCode);
     }
 
+    if(blueCherry.status == WALTER_MODEM_BLUECHERRY_STATUS_TIMED_OUT) {
+        rsp->data.blueCherry.state = WALTER_MODEM_BLUECHERRY_STATUS_TIMED_OUT;
+        _returnState(WALTER_MODEM_STATE_ERROR)
+    }
+
+    if(blueCherry.moreDataAvailable) {
+        blueCherry.status = WALTER_MODEM_BLUECHERRY_STATUS_PENDING_MESSAGES;
+        rsp->data.blueCherry.state = WALTER_MODEM_BLUECHERRY_STATUS_PENDING_MESSAGES;
+    } else {
+        blueCherry.status = WALTER_MODEM_BLUECHERRY_STATUS_IDLE;
+        rsp->data.blueCherry.state = WALTER_MODEM_BLUECHERRY_STATUS_IDLE;
+    }
+
     _returnState(WALTER_MODEM_STATE_OK);
+}
+
+bool WalterModem::blueCherryClose(
+    WalterModemRsp *rsp,
+    walterModemCb cb,
+    void *args)
+{
+    _runCmd({"AT+SQNCOAPCLOSE=0"}, "+SQNCOAPCLOSED: ", rsp, cb, args);
+    _returnAfterReply();
 }
 
 bool WalterModem::coapCreateContext(
@@ -4668,9 +4760,18 @@ bool WalterModem::coapCreateContext(
 
     WalterModemBuffer *stringsBuffer = _getFreeBuffer();
     stringsBuffer->size += sprintf((char *) stringsBuffer->data,
-            "AT+SQNCOAPCREATE=%d,\"%s\",%d,%d,%d,10",
-            profileId, serverName, port, localPort,
-            tlsProfileId != 0);
+            "AT+SQNCOAPCREATE=%d,\"%s\",%d,",
+            profileId, serverName, port);
+
+    if(localPort > -1) {
+        stringsBuffer->size += sprintf(
+                (char *) stringsBuffer->data + stringsBuffer->size,
+                "%d", localPort);
+    }
+
+    stringsBuffer->size += sprintf(
+            (char *) stringsBuffer->data + stringsBuffer->size,
+            ",%d,60", tlsProfileId != 0);
 
     if(tlsProfileId) {
         stringsBuffer->size += sprintf(
@@ -4701,7 +4802,7 @@ bool WalterModem::coapClose(
     }
 
     _runCmd(arr("AT+SQNCOAPCLOSE=", _atNum(profileId)),
-        "OK", rsp, cb, args);
+        "+SQNCOAPCLOSED: ", rsp, cb, args);
     _returnAfterReply();
 }
 
@@ -4751,7 +4852,7 @@ bool WalterModem::coapSetOptions(
         action == WALTER_MODEM_COAP_OPT_EXTEND) {
          if(values && *values) {
             stringsBuffer->size += sprintf((char *) stringsBuffer->data,
-                    "AT+SQNCOAPOPT=%d,%d,%d,%s",
+                    "AT+SQNCOAPOPT=%d,%d,%d,\"%s\"",
                     profileId, action, code, values);
          } else {
             stringsBuffer->size += sprintf((char *) stringsBuffer->data,
@@ -5455,6 +5556,52 @@ bool WalterModem::performGNSSAction(
         "AT+LPGNSSFIXPROG=\"",
         gnssActionStr(action),"\""), "OK", rsp, cb, args);
     _returnAfterReply();
+}
+
+const uint8_t WalterModem::durationToTAU(
+    uint32_t seconds,
+    uint32_t minutes,
+    uint32_t hours,
+    uint32_t *actual_duration_seconds)
+{
+    static const uint32_t base_times[] = { 600, 3600, 36000, 2, 30, 60, 1152000 };
+    uint32_t duration_seconds = seconds + (60 * minutes) + (60 * 60 * hours);
+
+    return _convertDuration(base_times,7,duration_seconds,actual_duration_seconds);
+}
+
+const uint8_t WalterModem::durationToActiveTime(
+    uint32_t seconds,
+    uint32_t minutes,
+    uint32_t *actual_duration_seconds) 
+{
+    static const uint32_t base_times[] = { 2, 60, 360 };
+    uint32_t duration_seconds = seconds + (60 * minutes);
+    
+    return _convertDuration(base_times,3, duration_seconds,actual_duration_seconds);
+}
+
+const uint8_t WalterModem::durationToTAU(
+    uint32_t seconds,
+    uint32_t minutes,
+    uint32_t hours,
+    uint32_t *actual_duration_seconds)
+{
+    static const uint32_t base_times[] = { 600, 3600, 36000, 2, 30, 60, 1152000 };
+    uint32_t duration_seconds = seconds + (60 * minutes) + (60 * 60 * hours);
+
+    return _convertDuration(base_times,7,duration_seconds,actual_duration_seconds);
+}
+
+const uint8_t WalterModem::durationToActiveTime(
+    uint32_t seconds,
+    uint32_t minutes,
+    uint32_t *actual_duration_seconds) 
+{
+    static const uint32_t base_times[] = { 2, 60, 360 };
+    uint32_t duration_seconds = seconds + (60 * minutes);
+    
+    return _convertDuration(base_times,3, duration_seconds,actual_duration_seconds);
 }
 
 void WalterModem::onRegistrationEvent(walterModemRegistrationEventHandler handler, void *args) {
