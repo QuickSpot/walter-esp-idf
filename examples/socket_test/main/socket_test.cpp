@@ -52,6 +52,13 @@
 #include <driver/uart.h>
 #include "WalterModem.h"
 
+void registrationEvent(WalterModemNetworkRegState state, void* args) {
+  if (state == WALTER_MODEM_NETWORK_REG_REGISTERED_HOME || state == WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING)
+  {
+    ESP_LOGE("event", "connection event: %i",state);
+  }
+}
+
 /**
  * @brief The address of the server to upload the data to. 
  */
@@ -98,7 +105,10 @@ extern "C" void app_main(void)
     ESP_LOGI("socket_test", "Modem initialization ERROR");
     return;
   }
- 
+  
+  modem.onRegistrationEvent(registrationEvent);
+
+
   if(modem.checkComm()) {
     ESP_LOGI("socket_test", "Modem communication is ok");
   } else {
@@ -179,14 +189,7 @@ extern "C" void app_main(void)
   }
 
   /* Wait for the network to become available */
-  WalterModemNetworkRegState regState = modem.getNetworkRegState();
-  while(!(regState == WALTER_MODEM_NETWORK_REG_REGISTERED_HOME ||
-          regState == WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING))
-  {
-    vTaskDelay(pdMS_TO_TICKS(100));
-    regState = modem.getNetworkRegState();
-  }
-  ESP_LOGI("socket_test", "Connected to the network");
+  waitForNetwork();
 
   /* Activate the PDP context */
   if(modem.setPDPContextActive(true)) {
@@ -254,4 +257,15 @@ extern "C" void app_main(void)
   }
 }
 
-
+void waitForNetwork()
+{
+  /* Wait for the network to become available */
+  WalterModemNetworkRegState regState = modem.getNetworkRegState();
+  while (!(regState == WALTER_MODEM_NETWORK_REG_REGISTERED_HOME ||
+           regState == WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING))
+  {
+    vTaskDelay(pdMS_TO_TICKS(100));
+    regState = modem.getNetworkRegState();
+  }
+  ESP_LOGI("socket_test", "Connected to the network");
+}
