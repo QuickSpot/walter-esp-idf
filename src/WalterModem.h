@@ -4749,6 +4749,39 @@ class WalterModem
          * expected to be at least SPI_FLASH_SEC_SIZE = 4K
          */
         static void offlineMotaUpgrade(uint8_t *otaBuffer);
+
+        /**
+         * @brief Encode a TAU duration for use in PSM configuration.
+         *
+         * This function will encode a given duration into the nearest duration that can be encoded
+         * according to  the 3GPP specification for use in timer T3412 (TAU)
+         *
+         * @warning This function is an approximation because of the encoding used over the wire.
+         *
+         * @param seconds Duration in seconds
+         * @param minutes Duration in minutes
+         * @param hours  Duration in hours
+         * @param actual_duration_seconds Optional pointer in which the actual requested duration can be saved.
+         *
+         * @return The interval encoded into the 3GPP standard format.
+         */
+        static const uint8_t durationToTAU(uint32_t seconds = 0, uint32_t minutes = 0, uint32_t hours = 0, uint32_t *actual_duration_seconds = nullptr);
+
+        /**
+         * @brief Converts a given duration of seconds, minutes to a reqActive approximation
+         *
+         * This function will encode a given duration into the nearest duration that can be encoded
+         * according to  the 3GPP specification for use in timer T3324 (active time).
+         *
+         * @warning This function is an approximation because it uses a multiplier internally.
+         *
+         * @param seconds Duration in seconds
+         * @param minutes Duration in minutes
+         * @param actual_duration_seconds Optional pointer in which the actual requested duration can be saved.
+         *
+         * @return The duration encoded into the 3GPP standard format.
+         */
+        static const uint8_t durationToActiveTime(uint32_t seconds = 0, uint32_t minutes = 0, uint32_t *actual_duration_seconds = nullptr);
 };
 
 #endif
