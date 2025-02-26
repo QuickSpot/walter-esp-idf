@@ -183,7 +183,7 @@
  */
 #define _strncpy_s(dst, src, maxLen) \
     strncpy(dst, src == NULL ? "" : src, maxLen); \
-    dst[maxLen] = '\0';
+    dst[maxLen - 1] = '\0';
 
 /**
  * @brief Make an array of a list of arguments.
@@ -2674,7 +2674,7 @@ void WalterModem::_processQueueRsp(
         const char *rspStr = _buffStr(buff);
         int status = atoi(rspStr + _strLitLen("+SQNSMQTTONCONNECT:0,"));
 
-        cmd->rsp->data.mqttResponse.mqttStatus = (WalterModemMqttStatus)status;
+        cmd->rsp->data.mqttResponse.mqttStatus = (WalterModemMqttStatus) status;
 
         if(status) {
             result = WALTER_MODEM_STATE_ERROR;
@@ -2685,7 +2685,7 @@ void WalterModem::_processQueueRsp(
         const char *rspStr = _buffStr(buff);
         int status = atoi(rspStr + _strLitLen("+SQNSMQTTONDISCONNECT:0,"));
 
-        cmd->rsp->data.mqttResponse.mqttStatus = (WalterModemMqttStatus)status;
+        cmd->rsp->data.mqttResponse.mqttStatus = (WalterModemMqttStatus) status;
 
         if(status) {
             result = WALTER_MODEM_STATE_ERROR;
@@ -2698,7 +2698,7 @@ void WalterModem::_processQueueRsp(
         const char *statusComma = strchr(pmid, ',');
         int status = atoi(statusComma + _strLitLen("+SQNSMQTTONDISCONNECT:0,"));
 
-        cmd->rsp->data.mqttResponse.mqttStatus = (WalterModemMqttStatus)status;
+        cmd->rsp->data.mqttResponse.mqttStatus = (WalterModemMqttStatus) status;
 
         if(statusComma == NULL) {
             result = WALTER_MODEM_STATE_ERROR;
@@ -2715,7 +2715,7 @@ void WalterModem::_processQueueRsp(
         const char *statusComma = strchr(topic, ',');
         int status = atoi(statusComma + _strLitLen("+SQNSMQTTONDISCONNECT:0,"));
 
-        cmd->rsp->data.mqttResponse.mqttStatus = (WalterModemMqttStatus)status;
+        cmd->rsp->data.mqttResponse.mqttStatus = (WalterModemMqttStatus) status;
 
         if(statusComma == NULL) {
             result = WALTER_MODEM_STATE_ERROR;
@@ -4091,7 +4091,7 @@ void WalterModem::_dispatchEvent(WalterModemEventType type, int subtype, void *d
 
         case WALTER_MODEM_EVENT_TYPE_AT:
             ((walterModemATEventHandler)handler->handler)
-                ((const char *)data, subtype, handler->args);
+                ((const char*) data, subtype, handler->args);
             break;
         
         case WALTER_MODEM_EVENT_TYPE_COUNT:
@@ -4110,7 +4110,7 @@ bool WalterModem::tlsProvisionKeys(
     WalterModemState result = WALTER_MODEM_STATE_OK;
 
     if(walterCertificate) {
-        if (!tlsWriteCredential(false, 5, walterCertificate)) {
+        if(!tlsWriteCredential(false, 5, walterCertificate)) {
             result = WALTER_MODEM_STATE_ERROR;
         }
     }
@@ -4122,7 +4122,7 @@ bool WalterModem::tlsProvisionKeys(
     }
 
     if(caCertificate) {
-        if (!tlsWriteCredential(false, 6, caCertificate)) {
+        if(!tlsWriteCredential(false, 6, caCertificate)) {
             result = WALTER_MODEM_STATE_ERROR;
         }
     }
