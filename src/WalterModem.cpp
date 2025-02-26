@@ -1497,7 +1497,7 @@ void WalterModem::_processQueueRsp(
     WalterModemBuffer *buff)
 {
     ESP_LOGD("WalterModem", "RX: %.*s", buff->size, buff->data);
-    _dispatchEvent(WALTER_MODEM_EVENT_TYPE_AT, buff->size, buff->data);
+    _dispatchEvent(WALTER_MODEM_EVENT_TYPE_AT, buff->data, buff->size);
 
     WalterModemState result = WALTER_MODEM_STATE_OK;
 
