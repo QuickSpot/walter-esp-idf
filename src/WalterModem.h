@@ -985,13 +985,13 @@ typedef void (*walterModemSystemEventHandler)(WalterModemSystemEvent ev, void *a
 /**
  * @brief Header of an AT event handler.
  * 
- * @param len The number of valid bytes in the response buffer. 
  * @param buff A buffer which contains the unparsed AT response data, not 0-terminated.
+ * @param len The number of valid bytes in the response buffer. 
  * @param args Optional arguments set by the application layer.
  * 
  * @return None.
  */
-typedef void (*walterModemATEventHandler)(size_t len, const char *buff, void *args);
+typedef void (*walterModemATEventHandler)(const char *buff, size_t len, void *args);
 
 /**
  * @brief This structure represents an event handler and it's metadata.
@@ -2529,15 +2529,6 @@ class WalterModem
          * @brief Array to keep track of external event handlers.
          */
         static inline WalterModemEventHandler _eventHandlers[WALTER_MODEM_EVENT_TYPE_COUNT] = {};
-
-        /**
-         * @brief A lock and condition variable used to implement the blocking event API.
-         */
-        static inline WalterModemCmdLock _eventLock = {};
-
-        static inline WalterModemEventType _currentEventType = WALTER_MODEM_EVENT_TYPE_COUNT;
-        
-        static inline int _currentEventSubType = 0;
 
         /*
          * @brief Helper to boot modem to recovery modem and start upgrade
