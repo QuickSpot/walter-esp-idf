@@ -5587,29 +5587,6 @@ const uint8_t WalterModem::durationToActiveTime(
     return _convertDuration(base_times,3, duration_seconds,actual_duration_seconds);
 }
 
-const uint8_t WalterModem::durationToTAU(
-    uint32_t seconds,
-    uint32_t minutes,
-    uint32_t hours,
-    uint32_t *actual_duration_seconds)
-{
-    static const uint32_t base_times[] = { 600, 3600, 36000, 2, 30, 60, 1152000 };
-    uint32_t duration_seconds = seconds + (60 * minutes) + (60 * 60 * hours);
-
-    return _convertDuration(base_times,7,duration_seconds,actual_duration_seconds);
-}
-
-const uint8_t WalterModem::durationToActiveTime(
-    uint32_t seconds,
-    uint32_t minutes,
-    uint32_t *actual_duration_seconds) 
-{
-    static const uint32_t base_times[] = { 2, 60, 360 };
-    uint32_t duration_seconds = seconds + (60 * minutes);
-    
-    return _convertDuration(base_times,3, duration_seconds,actual_duration_seconds);
-}
-
 void WalterModem::onRegistrationEvent(walterModemRegistrationEventHandler handler, void *args) {
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_REGISTRATION].handler = (void*) handler;
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_REGISTRATION].args = args;
