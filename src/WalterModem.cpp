@@ -4074,25 +4074,21 @@ void WalterModem::_dispatchEvent(WalterModemEventType type, int subtype, void *d
         case WALTER_MODEM_EVENT_TYPE_REGISTRATION:
             ((walterModemRegistrationEventHandler) handler->handler)
                 ((WalterModemNetworkRegState) subtype, handler->args);
-            _eventLock.cond.notify_all();
             break;
 
         case WALTER_MODEM_EVENT_TYPE_SYSTEM:
             ((walterModemSystemEventHandler) handler->handler)
                 ((WalterModemSystemEvent) subtype, handler->args);
-            _eventLock.cond.notify_all();
             break;
 
         case WALTER_MODEM_EVENT_TYPE_AT:
             ((walterModemATEventHandler) handler->handler)
                 (subtype,(const char*) data, handler->args);
-            _eventLock.cond.notify_all();
-
             break;
+        
         case WALTER_MODEM_EVENT_TYPE_COUNT:
             break;
     }
-
 }
 
 bool WalterModem::tlsProvisionKeys(
