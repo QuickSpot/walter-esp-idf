@@ -4091,7 +4091,7 @@ void WalterModem::_dispatchEvent(WalterModemEventType type, int subtype, void *d
 
         case WALTER_MODEM_EVENT_TYPE_AT:
             ((walterModemATEventHandler)handler->handler)
-                ((const char *)data, subtype, handler->args);
+                ((const char*) data, subtype, handler->args);
             break;
         
         case WALTER_MODEM_EVENT_TYPE_COUNT:
@@ -4110,7 +4110,7 @@ bool WalterModem::tlsProvisionKeys(
     WalterModemState result = WALTER_MODEM_STATE_OK;
 
     if(walterCertificate) {
-        if (!tlsWriteCredential(false, 5, walterCertificate)) {
+        if(!tlsWriteCredential(false, 5, walterCertificate)) {
             result = WALTER_MODEM_STATE_ERROR;
         }
     }
@@ -4122,7 +4122,7 @@ bool WalterModem::tlsProvisionKeys(
     }
 
     if(caCertificate) {
-        if (!tlsWriteCredential(false, 6, caCertificate)) {
+        if(!tlsWriteCredential(false, 6, caCertificate)) {
             result = WALTER_MODEM_STATE_ERROR;
         }
     }
