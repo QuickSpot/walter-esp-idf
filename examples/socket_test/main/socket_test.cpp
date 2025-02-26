@@ -189,10 +189,7 @@ extern "C" void app_main(void)
   }
 
   /* Wait for the network to become available */
-  modem.waitForRegistrationEvent({
-    WALTER_MODEM_NETWORK_REG_REGISTERED_HOME,
-    WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING
-  });
+  waitForNetwork();
 
   /* Activate the PDP context */
   if(modem.setPDPContextActive(true)) {
@@ -260,4 +257,15 @@ extern "C" void app_main(void)
   }
 }
 
-
+void waitForNetwork()
+{
+  /* Wait for the network to become available */
+  WalterModemNetworkRegState regState = modem.getNetworkRegState();
+  while (!(regState == WALTER_MODEM_NETWORK_REG_REGISTERED_HOME ||
+           regState == WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING))
+  {
+    vTaskDelay(pdMS_TO_TICKS(100));
+    regState = modem.getNetworkRegState();
+  }
+  ESP_LOGI("socket_test", "Connected to the network");
+}
