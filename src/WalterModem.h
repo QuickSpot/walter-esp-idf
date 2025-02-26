@@ -3020,14 +3020,6 @@ class WalterModem
         static void _dispatchEvent(WalterModemEventType type, int subtype, void *data = nullptr);
         
         /**
-         * @brief This function waits for a certain event to fire before returning
-         * 
-         * @param type The main type of event that is being fired.
-         * @param subTypes The subtypes of the event you want to wait for.
-         */
-        static void _waitForEvent(WalterModemEventType type, std::initializer_list<int> subTypes);
-
-        /**
          * @brief Save context data in RTC memory before ESP deep sleep.
          *
          * This function will save the necessary state and context sets

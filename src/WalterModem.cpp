@@ -5618,16 +5618,3 @@ void WalterModem::onATEvent(walterModemATEventHandler handler, void *args) {
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_AT].handler = (void *) handler;
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_AT].args = args;
 }
-
-void WalterModem::waitForRegistrationEvent(std::initializer_list<WalterModemNetworkRegState> regStates) {
-    std::unique_lock<std::mutex> lock(_eventLock.mutex);
-    _eventLock.cond.wait(lock, [regStates]
-                         { return _currentEventType == WALTER_MODEM_EVENT_TYPE_REGISTRATION && std::find(regStates.begin(), regStates.end(), (WalterModemNetworkRegState)_currentEventSubType) != regStates.end(); });
-}
-
-void WalterModem::waitForSystemEvent(std::initializer_list<WalterModemSystemEvent> regStates)
-{
-    std::unique_lock<std::mutex> lock(_eventLock.mutex);
-    _eventLock.cond.wait(lock, [regStates]
-                         { return _currentEventType == WALTER_MODEM_EVENT_TYPE_SYSTEM && std::find(regStates.begin(), regStates.end(), (WalterModemSystemEvent)_currentEventSubType) != regStates.end(); });
-}
