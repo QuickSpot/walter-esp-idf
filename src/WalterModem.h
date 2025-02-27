@@ -2555,6 +2555,15 @@ class WalterModem
          */
         static inline WalterModemEventHandler _eventHandlers[WALTER_MODEM_EVENT_TYPE_COUNT] = {};
 
+        /**
+         * @brief A lock and condition variable used to implement the blocking event API.
+         */
+        static inline WalterModemCmdLock _eventLock = {};
+
+        static inline WalterModemEventType _currentEventType = WALTER_MODEM_EVENT_TYPE_COUNT;
+        
+        static inline int _currentEventSubType = 0;
+
         /*
          * @brief Helper to boot modem to recovery modem and start upgrade
          */
@@ -3035,6 +3044,14 @@ class WalterModem
          */
         static void _dispatchEvent(WalterModemEventType type, int subtype, void *data = nullptr);
         
+        /**
+         * @brief This function waits for a certain event to fire before returning
+         * 
+         * @param type The main type of event that is being fired.
+         * @param subTypes The subtypes of the event you want to wait for.
+         */
+        static void _waitForEvent(WalterModemEventType type, std::initializer_list<int> subTypes);
+
         /**
          * @brief Save context data in RTC memory before ESP deep sleep.
          *
