@@ -183,7 +183,7 @@
  */
 #define _strncpy_s(dst, src, maxLen) \
     strncpy(dst, src == NULL ? "" : src, maxLen); \
-    dst[maxLen] = '\0';
+    dst[maxLen - 1] = '\0';
 
 /**
  * @brief Make an array of a list of arguments.
@@ -2674,6 +2674,8 @@ void WalterModem::_processQueueRsp(
         const char *rspStr = _buffStr(buff);
         int status = atoi(rspStr + _strLitLen("+SQNSMQTTONCONNECT:0,"));
 
+        cmd->rsp->data.mqttResponse.mqttStatus = (WalterModemMqttStatus) status;
+
         if(status) {
             result = WALTER_MODEM_STATE_ERROR;
         }
@@ -2682,6 +2684,8 @@ void WalterModem::_processQueueRsp(
     {
         const char *rspStr = _buffStr(buff);
         int status = atoi(rspStr + _strLitLen("+SQNSMQTTONDISCONNECT:0,"));
+
+        cmd->rsp->data.mqttResponse.mqttStatus = (WalterModemMqttStatus) status;
 
         if(status) {
             result = WALTER_MODEM_STATE_ERROR;
@@ -2692,6 +2696,9 @@ void WalterModem::_processQueueRsp(
         const char *rspStr = _buffStr(buff);
         const char *pmid = rspStr + _strLitLen("+SQNSMQTTONPUBLISH:0,");
         const char *statusComma = strchr(pmid, ',');
+        int status = atoi(statusComma + _strLitLen("+SQNSMQTTONDISCONNECT:0,"));
+
+        cmd->rsp->data.mqttResponse.mqttStatus = (WalterModemMqttStatus) status;
 
         if(statusComma == NULL) {
             result = WALTER_MODEM_STATE_ERROR;
@@ -2706,6 +2713,9 @@ void WalterModem::_processQueueRsp(
         const char *rspStr = _buffStr(buff);
         const char *topic = rspStr + _strLitLen("+SQNSMQTTONSUBSCRIBE:0,");
         const char *statusComma = strchr(topic, ',');
+        int status = atoi(statusComma + _strLitLen("+SQNSMQTTONDISCONNECT:0,"));
+
+        cmd->rsp->data.mqttResponse.mqttStatus = (WalterModemMqttStatus) status;
 
         if(statusComma == NULL) {
             result = WALTER_MODEM_STATE_ERROR;
@@ -4106,19 +4116,19 @@ bool WalterModem::tlsProvisionKeys(
     WalterModemState result = WALTER_MODEM_STATE_OK;
 
     if(walterCertificate) {
-        if(!_tlsUploadKey(false, 5, walterCertificate)) {
+        if(!tlsWriteCredential(false, 5, walterCertificate)) {
             result = WALTER_MODEM_STATE_ERROR;
         }
     }
 
     if(walterPrivateKey) {
-        if(!_tlsUploadKey(true, 0, walterPrivateKey)) {
+        if (tlsWriteCredential(true, 0, walterPrivateKey)) {
             result = WALTER_MODEM_STATE_ERROR;
         }
     }
 
     if(caCertificate) {
-        if(!_tlsUploadKey(false, 6, caCertificate)) {
+        if(!tlsWriteCredential(false, 6, caCertificate)) {
             result = WALTER_MODEM_STATE_ERROR;
         }
     }

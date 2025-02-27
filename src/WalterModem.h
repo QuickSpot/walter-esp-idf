@@ -820,6 +820,30 @@ typedef enum {
 } WalterModemCoapOptValue;
 
 /**
+ * @brief Enum containing the mqtt response codes
+ */
+typedef enum {
+    WALTER_MODEM_MQTT_SUCCESS = 0,
+    WALTER_MODEM_MQTT_NOMEM = -1,
+    WALTER_MODEM_MQTT_PROTOCOL = -2,
+    WALTER_MODEM_MQTT_INVAL = -3,
+    WALTER_MODEM_MQTT_NO_CONN = -4,
+    WALTER_MODEM_MQTT_CONN_REFUSED = -5,
+    WALTER_MODEM_MQTT_NOT_FOUND = -6,
+    WALTER_MODEM_MQTT_CONN_LOST = -7,
+    WALTER_MODEM_MQTT_TLS = -8,
+    WALTER_MODEM_MQTT_PAYLOAD_SIZE = -9,
+    WALTER_MODEM_MQTT_NOT_SUPPORTED = -10,
+    WALTER_MODEM_MQTT_AUTH = -11,
+    WALTER_MODEM_MQTT_ACL_DENIED = -12,
+    WALTER_MODEM_MQTT_UNKNOWN = -13,
+    WALTER_MODEM_MQTT_ERRNO = -14,
+    WALTER_MODEM_MQTT_EAI = -15,
+    WALTER_MODEM_MQTT_PROXY = -16,
+    WALTER_MODEM_MQTT_UNAVAILABLE = -17
+} WalterModemMqttStatus;
+
+/**
  * @brief The possible option values for the COAP message.
  */
 typedef enum {
@@ -985,13 +1009,13 @@ typedef void (*walterModemSystemEventHandler)(WalterModemSystemEvent ev, void *a
 /**
  * @brief Header of an AT event handler.
  * 
- * @param len The number of valid bytes in the response buffer. 
  * @param buff A buffer which contains the unparsed AT response data, not 0-terminated.
+ * @param len The number of valid bytes in the response buffer. 
  * @param args Optional arguments set by the application layer.
  * 
  * @return None.
  */
-typedef void (*walterModemATEventHandler)(size_t len, const char *buff, void *args);
+typedef void (*walterModemATEventHandler)(const char *buff, size_t len, void *args);
 
 /**
  * @brief This structure represents an event handler and it's metadata.
@@ -1394,8 +1418,9 @@ typedef struct {
     uint16_t length;
 
     /**
-     * topic not needed because mqttDidRing caller specifies desired topic
+     * @brief Contains the status return code received from the modem.
      */
+    WalterModemMqttStatus mqttStatus;
 } WalterModemMqttResponse;
 
 /**
@@ -3511,6 +3536,34 @@ class WalterModem
             void *args = NULL);
 
         /**
+         * @brief Upload BlueCherry keys to the modem.
+         *
+         * Upload the Walter certificate and private key and the BlueCherry
+         * bridge server CA certificate to the modem.
+         *
+         * The key parameters are NULL terminated strings containing the
+         * PEM data with each line terminated by CRLF.
+         *
+         * @param walterCertificate Walter X.509 certificate as PEM string
+         * @param walterPrivateKey Walter private key as PEM string
+         * @param caCertificate BlueCherry CA certificate
+         * @param rsp Pointer to a modem response structure to save the result
+         * of the command in. When NULL is given the result is ignored.
+         * @param cb Optional callback argument, when not NULL this function
+         * will return immediately.
+         * @param args Optional argument to pass to the callback.
+         *
+         * @return True on success, false otherwise.
+         */
+        static bool tlsProvisionKeys(
+            const char *walterCertificate,
+            const char *walterPrivateKey,
+            const char *caCertificate,
+            WalterModemRsp *rsp = NULL,
+            walterModemCb cb = NULL,
+            void *args = NULL);
+
+        /**
          * @brief Configure a HTTP profile.
          * 
          * This function will configure a HTTP profile with parameters
@@ -4766,6 +4819,81 @@ class WalterModem
          * expected to be at least SPI_FLASH_SEC_SIZE = 4K
          */
         static void offlineMotaUpgrade(uint8_t *otaBuffer);
+
+        /**
+         * @brief Encode a TAU duration for use in PSM configuration.
+         *
+         * This function will encode a given duration into the nearest duration that can be encoded
+         * according to  the 3GPP specification for use in timer T3412 (TAU)
+         *
+         * @warning This function is an approximation because of the encoding used over the wire.
+         *
+         * @param seconds Duration in seconds
+         * @param minutes Duration in minutes
+         * @param hours  Duration in hours
+         * @param actual_duration_seconds Optional pointer in which the actual requested duration can be saved.
+         *
+         * @return The interval encoded into the 3GPP standard format.
+         */
+        static const uint8_t durationToTAU(uint32_t seconds = 0, uint32_t minutes = 0, uint32_t hours = 0, uint32_t *actual_duration_seconds = nullptr);
+
+        /**
+         * @brief Converts a given duration of seconds, minutes to a reqActive approximation
+         *
+         * This function will encode a given duration into the nearest duration that can be encoded
+         * according to  the 3GPP specification for use in timer T3324 (active time).
+         *
+         * @warning This function is an approximation because it uses a multiplier internally.
+         *
+         * @param seconds Duration in seconds
+         * @param minutes Duration in minutes
+         * @param actual_duration_seconds Optional pointer in which the actual requested duration can be saved.
+         *
+         * @return The duration encoded into the 3GPP standard format.
+         */
+        static const uint8_t durationToActiveTime(uint32_t seconds = 0, uint32_t minutes = 0, uint32_t *actual_duration_seconds = nullptr);
+
+        /**
+         * @brief Register a network registration event handler.
+         *
+         * This function will register an application layer registration event handler. If you want
+         * to explicitly de-register the handler for this type of event you can pass a nullptr to
+         * this function.
+         *
+         * @param handler Pointer to the handler function or nullptr to de-register.
+         * @param args Optional application layer arguments.
+         *
+         * @return None.
+         */
+        static void onRegistrationEvent(walterModemRegistrationEventHandler handler = nullptr, void *args = nullptr);
+
+        /**
+         * @brief Register a system event handler.
+         *
+         * This function will register an application layer system event handler. If you want
+         * to explicitly de-register the handler for this type of event you can pass a nullptr to
+         * this function.
+         *
+         * @param handler Pointer to the handler function or nullptr to de-register.
+         * @param args Optional application layer arguments.
+         *
+         * @return None.
+         */
+        static void onSystemEvent(walterModemSystemEventHandler handler = nullptr, void *args = nullptr);
+
+        /**
+         * @brief Register an AT event handler.
+         *
+         * This function will register an application layer AT response event handler. If you want
+         * to explicitly de-register the handler for this type of event you can pass a nullptr to
+         * this function.
+         *
+         * @param handler Pointer to the handler function or nullptr to de-register.
+         * @param args Optional application layer arguments.
+         *
+         * @return None.
+         */
+        static void onATEvent(walterModemATEventHandler handler = nullptr, void *args = nullptr);
 };
 
 #endif
