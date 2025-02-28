@@ -406,12 +406,12 @@ static bool endOfLine;
         if(atCmd[i] == NULL) { \
             break; \
         } \
-        uart_write_bytes((uart_port_t)_uartNo, atCmd[i], strlen(atCmd[i])); \
+        uart_write_bytes(_uartNo, atCmd[i], strlen(atCmd[i])); \
     } \
     if(type == WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT) \
-        uart_write_bytes((uart_port_t)_uartNo, "\n", 1); \
+        uart_write_bytes(_uartNo, "\n", 1); \
     else \
-        uart_write_bytes((uart_port_t)_uartNo, "\r\n", 2); \
+        uart_write_bytes(_uartNo, "\r\n", 2); \
 }
 #endif
 
@@ -913,7 +913,7 @@ size_t WalterModem::_uartRead(uint8_t *buf, int readSize, bool tryHard)
     } while(tryHard && totalBytesRead < readSize);
 #else
     do {
-       int bytesRead = uart_read_bytes((uart_port_t)_uartNo, buf, readSize - totalBytesRead,
+       int bytesRead = uart_read_bytes(_uartNo, buf, readSize - totalBytesRead,
             WALTER_MODEM_CMD_TIMEOUT_TICKS);
        if(bytesRead < 0) {
            break;
@@ -931,8 +931,8 @@ size_t WalterModem::_uartWrite(uint8_t *buf, int writeSize)
     writeSize = _uart->write(buf, writeSize);
     _uart->flush();
 #else
-    writeSize = uart_write_bytes((uart_port_t)_uartNo, buf, writeSize);
-    uart_wait_tx_done((uart_port_t)_uartNo, pdMS_TO_TICKS(10));
+    writeSize = uart_write_bytes(_uartNo, buf, writeSize);
+    uart_wait_tx_done(_uartNo, pdMS_TO_TICKS(10));
 #endif
 
     return writeSize;
@@ -1099,7 +1099,7 @@ void WalterModem::_handleRxData(void *params)
             continue;
         }
 
-        uart_get_buffered_data_len((uart_port_t)_uartNo, (size_t *) &uartBufLen);
+        uart_get_buffered_data_len(_uartNo, (size_t *) &uartBufLen);
         if(uartBufLen > UART_BUF_SIZE) {
             uartBufLen = UART_BUF_SIZE;
         }
@@ -1516,7 +1516,7 @@ void WalterModem::_processQueueRsp(
 #ifdef ARDUINO
             _uart->write(cmd->data, cmd->dataSize);
 #else
-            uart_write_bytes((uart_port_t)_uartNo, cmd->data, cmd->dataSize);
+            uart_write_bytes(_uartNo, cmd->data, cmd->dataSize);
 #endif
         }
     }
@@ -2278,10 +2278,7 @@ void WalterModem::_processQueueRsp(
 
             /* find message id in the stored rings for this profile */
             uint8_t ringIdx;
-            for(ringIdx = 0;
-                    ringIdx < sizeof(_coapContextSet[profileId].rings)
-                    / sizeof(WalterModemCoapRing);
-                    ringIdx++) {
+            for(ringIdx = 0; ringIdx < WALTER_MODEM_COAP_MAX_PENDING_RINGS; ringIdx++) {
                 if(_coapContextSet[profileId].rings[ringIdx].messageId
                         == messageId
                         && _coapContextSet[profileId].rings[ringIdx].sendType
@@ -2292,8 +2289,7 @@ void WalterModem::_processQueueRsp(
                 }
             }
 
-            if(ringIdx < sizeof(_coapContextSet[profileId].rings)
-                    / sizeof(WalterModemCoapRing)) {
+            if(ringIdx < WALTER_MODEM_COAP_MAX_PENDING_RINGS) {
                 /* free ring entry */
                 _coapContextSet[profileId].rings[ringIdx].messageId = 0;
             }
@@ -2518,10 +2514,7 @@ void WalterModem::_processQueueRsp(
             } else {
                 /* store ring in ring list for this coap context */
                 uint8_t ringIdx;
-                for(ringIdx = 0;
-                        ringIdx < sizeof(_coapContextSet[profileId].rings)
-                        / sizeof(WalterModemCoapRing);
-                        ringIdx++) {
+                for(ringIdx = 0; ringIdx < WALTER_MODEM_COAP_MAX_PENDING_RINGS; ringIdx++) {
                     if(!_coapContextSet[profileId].rings[ringIdx].messageId) {
                         break;
                     }
@@ -2535,8 +2528,7 @@ void WalterModem::_processQueueRsp(
                     }
                 }
 
-                if(ringIdx == sizeof(_coapContextSet[profileId].rings)
-                        / sizeof(WalterModemCoapRing)) {
+                if(ringIdx == WALTER_MODEM_COAP_MAX_PENDING_RINGS) {
                     /* ring buffer full unfortunately, dropping ring.
                      * TODO: error reporting mechanism for this failed URC
                      */
@@ -2606,7 +2598,6 @@ void WalterModem::_processQueueRsp(
 
             if(profileId == 0) {
                 /* our own coap profile for BlueCherry was just closed */
-
                 if(blueCherry.status == WALTER_MODEM_BLUECHERRY_STATUS_AWAITING_RESPONSE) {
                     blueCherry.status = WALTER_MODEM_BLUECHERRY_STATUS_TIMED_OUT;
                 }
@@ -2774,18 +2765,17 @@ void WalterModem::_processQueueRsp(
 
             /* store ring in ring list for this coap context */
             uint8_t ringIdx;
-            for(ringIdx = 0;
-                    ringIdx < sizeof(_mqttRings) / sizeof(WalterModemMqttRing);
-                    ringIdx++) {
+            for(ringIdx = 0; ringIdx < WALTER_MODEM_MQTT_MAX_PENDING_RINGS; ringIdx++) {
                 if(!_mqttRings[ringIdx].messageId) {
                     break;
                 }
+
                 if(_mqttRings[ringIdx].messageId == messageId) {
                     break;
                 }
             }
 
-            if(ringIdx == sizeof(_mqttRings) / sizeof(WalterModemMqttRing)) {
+            if(ringIdx == WALTER_MODEM_MQTT_MAX_PENDING_RINGS) {
                 /* ring buffer full unfortunately, dropping ring.
                  * TODO: error reporting mechanism for this failed URC
                  */
@@ -2797,8 +2787,7 @@ void WalterModem::_processQueueRsp(
                 _mqttRings[ringIdx].messageId = messageId;
                 _mqttRings[ringIdx].length = length;
                 _mqttRings[ringIdx].qos = qos;
-                _strncpy_s(_mqttRings[ringIdx].topic, topic,
-                    WALTER_MODEM_HOSTNAME_BUF_SIZE);
+                _strncpy_s(_mqttRings[ringIdx].topic, topic, WALTER_MODEM_HOSTNAME_BUF_SIZE);
             }
         }
     }
@@ -3016,11 +3005,10 @@ bool WalterModem::_processOtaFinishEvent(void)
     return false;
 }
 
-bool WalterModem::_formatFat(void)
+bool WalterModem::_motaFormatAndMount(void)
 {
     esp_err_t result;
     if(_wl_handle != WL_INVALID_HANDLE){
-        // if still mounted, no need to format
         ESP_LOGD("WalterModem", "Trying to format FAT partition but it was already mounted");
         if(_mota_file_ptr) {
             fclose(_mota_file_ptr);
@@ -3031,18 +3019,19 @@ bool WalterModem::_formatFat(void)
 
     _mota_file_ptr = NULL;
 
-    // Attempt to mount to see if there is already data
+    /* Attempt to mount to see if there is already data */
     wl_handle_t temp_handle;
     const esp_partition_t *ffat_partition = esp_partition_find_first(
        ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_FAT, "ffat");
-    if (!ffat_partition) {
+
+    if(!ffat_partition) {
         ESP_LOGD("WalterModem", "No FAT partition found to store new modem firmware in");
         return false;
     }
     result = wl_mount(ffat_partition, &temp_handle);
 
-    if (result == ESP_OK) {
-        // Wipe disk- we just wipe the FAT, not the data
+    if(result == ESP_OK) {
+        /* Wipe disk- we just wipe the FAT, not the data */
         wl_erase_range(temp_handle, 0, 16384);
         wl_unmount(temp_handle);
     } else {
@@ -3050,14 +3039,15 @@ bool WalterModem::_formatFat(void)
         return false;
     }
 
-    // Now do a mount with format_if_fail (which it will)
+    /* Now do a mount with format_if_fail (which it will) */
     esp_vfs_fat_mount_config_t conf = {
       .format_if_mount_failed = true,
       .max_files = 1,
       .allocation_unit_size = CONFIG_WL_SECTOR_SIZE
     };
+
     result = esp_vfs_fat_spiflash_mount("/ffat", "ffat", &conf, &_wl_handle);
-    if (result != ESP_OK){
+    if(result != ESP_OK){
         ESP_LOGD("WalterModem", "Mount/format FAT partition failed!");
         _wl_handle = WL_INVALID_HANDLE;
         return false;
@@ -3074,14 +3064,14 @@ bool WalterModem::_processMotaInitializeEvent(uint8_t *data, uint16_t len)
 
     blueCherry.otaSize = *((uint32_t *) data);
     
-    if(!_formatFat()) {
+    if(!_motaFormatAndMount()) {
         ESP_LOGD("WalterModem", "MOTA initialize (format partition) failed");
         return true;
     }
 
     _mota_file_ptr = fopen("/ffat/mota.dup", "w+");
 
-    /* initialize bytes written counter */
+    /* Initialize bytes written counter */
     blueCherry.otaProgress = 0;
 
     ESP_LOGD("WalterModem", "MOTA procedure initialized");
@@ -3597,7 +3587,7 @@ void WalterModem::offlineMotaUpgrade(uint8_t *otaBuffer)
 #ifdef ARDUINO
 bool WalterModem::begin(HardwareSerial *uart, uint8_t watchdogTimeout)
 #else
-bool WalterModem::begin(uint8_t uartNo, uint8_t watchdogTimeout)
+bool WalterModem::begin(uart_port_t uartNo, uint8_t watchdogTimeout)
 #endif
 {
     if(_initialized) {
@@ -3664,9 +3654,9 @@ bool WalterModem::begin(uint8_t uartNo, uint8_t watchdogTimeout)
         .source_clk = UART_SCLK_DEFAULT
     };
     _uartNo = uartNo;
-    uart_driver_install((uart_port_t)uartNo, UART_BUF_SIZE * 2, 0, 0, NULL, 0);
-    uart_param_config((uart_port_t)uartNo, &uart_config);
-    uart_set_pin((uart_port_t)uartNo, WALTER_MODEM_PIN_TX, WALTER_MODEM_PIN_RX,
+    uart_driver_install(uartNo, UART_BUF_SIZE * 2, 0, 0, NULL, 0);
+    uart_param_config(uartNo, &uart_config);
+    uart_set_pin(uartNo, WALTER_MODEM_PIN_TX, WALTER_MODEM_PIN_RX,
             (gpio_num_t)WALTER_MODEM_PIN_RTS, WALTER_MODEM_PIN_CTS);
     //uart_set_rx_timeout(uartNo, 1);
     xTaskCreateStaticPinnedToCore(_handleRxData, "uart_rx_task",
@@ -3715,14 +3705,6 @@ void WalterModem::tickleWatchdog(void)
     }
 }
 
-void WalterModem::setATHandler(
-    void (*handler)(const uint8_t*, uint16_t, void*),
-    void *args)
-{
-    _usrATHandler = handler;
-    _usrATHandlerArgs = args;
-}
-
 void WalterModem::setGNSSfixHandler(
     void (*handler)(const WalterModemGNSSFix*, void*),
     void *args)
@@ -3763,21 +3745,27 @@ bool WalterModem::reset(WalterModemRsp *rsp, walterModemCb cb, void *args)
     _socket = NULL;
     _pdpCtx = NULL;
     _simPIN = NULL;
+
     for(int i = 0; i < WALTER_MODEM_MAX_PDP_CTXTS; ++i) {
       _pdpCtxSet[i] = {};
     }
+
     for(int i = 0; i < WALTER_MODEM_MAX_SOCKETS; ++i) {
       _socketSet[i] = {};
     }
+
     for(int i = 0; i < WALTER_MODEM_MAX_COAP_PROFILES; ++i) {
       _coapContextSet[i] = {};
     }
+
     for(int i = 0; i < WALTER_MODEM_MAX_HTTP_PROFILES; ++i) {
       _httpContextSet[i] = {};
     }
-    for(int i = 0; i < sizeof(_mqttRings) / sizeof(WalterModemMqttRing); i++) {
+
+    for(int i = 0; i < WALTER_MODEM_MQTT_MAX_PENDING_RINGS; i++) {
         _mqttRings[i] = {};
     }
+
     _operator = {};
 
     _returnAfterReply();
@@ -3810,7 +3798,7 @@ void WalterModem::sleep(uint32_t sleepTime, bool lightSleep)
         pinMode((gpio_num_t)WALTER_MODEM_PIN_RTS, OUTPUT);
         digitalWrite((gpio_num_t)WALTER_MODEM_PIN_RTS, HIGH);
 #else
-        uart_set_hw_flow_ctrl((uart_port_t)_uartNo, UART_HW_FLOWCTRL_DISABLE, 0);
+        uart_set_hw_flow_ctrl(_uartNo, UART_HW_FLOWCTRL_DISABLE, 0);
         gpio_set_direction((gpio_num_t)WALTER_MODEM_PIN_RTS, GPIO_MODE_OUTPUT);
         gpio_set_level((gpio_num_t)WALTER_MODEM_PIN_RTS, 1);
 #endif
@@ -3827,9 +3815,9 @@ void WalterModem::sleep(uint32_t sleepTime, bool lightSleep)
             WALTER_MODEM_PIN_RTS);
         _uart->setHwFlowCtrlMode();
 #else
-        uart_set_pin((uart_port_t)_uartNo, WALTER_MODEM_PIN_TX, WALTER_MODEM_PIN_RX,
+        uart_set_pin(_uartNo, WALTER_MODEM_PIN_TX, WALTER_MODEM_PIN_RX,
             WALTER_MODEM_PIN_RTS, WALTER_MODEM_PIN_CTS);
-        uart_set_hw_flow_ctrl((uart_port_t)_uartNo, UART_HW_FLOWCTRL_CTS_RTS, 122);
+        uart_set_hw_flow_ctrl(_uartNo, UART_HW_FLOWCTRL_CTS_RTS, 122);
 #endif
     } else {
         _sleepPrepare();
@@ -4099,37 +4087,6 @@ void WalterModem::_dispatchEvent(WalterModemEventType type, int subtype, void *d
     }
 }
 
-bool WalterModem::tlsProvisionKeys(
-    const char *walterCertificate,
-    const char *walterPrivateKey,
-    const char *caCertificate,
-    WalterModemRsp *rsp,
-    walterModemCb cb,
-    void *args)
-{
-    WalterModemState result = WALTER_MODEM_STATE_OK;
-
-    if(walterCertificate) {
-        if(!tlsWriteCredential(false, 5, walterCertificate)) {
-            result = WALTER_MODEM_STATE_ERROR;
-        }
-    }
-
-    if(walterPrivateKey) {
-        if (tlsWriteCredential(true, 0, walterPrivateKey)) {
-            result = WALTER_MODEM_STATE_ERROR;
-        }
-    }
-
-    if(caCertificate) {
-        if(!tlsWriteCredential(false, 6, caCertificate)) {
-            result = WALTER_MODEM_STATE_ERROR;
-        }
-    }
-
-    _returnState(result);
-}
-
 bool WalterModem::httpConfigProfile(
     uint8_t profileId,
     const char *serverName,
@@ -4343,17 +4300,13 @@ bool WalterModem::coapDidRing(
     }
 
     uint8_t ringIdx;
-    for(ringIdx = 0;
-            ringIdx < sizeof(_coapContextSet[profileId].rings)
-            / sizeof(WalterModemCoapRing);
-            ringIdx++) {
+    for(ringIdx = 0; ringIdx < WALTER_MODEM_COAP_MAX_PENDING_RINGS; ringIdx++) {
         if(_coapContextSet[profileId].rings[ringIdx].messageId) {
             break;
         }
     }
 
-    if(ringIdx == sizeof(_coapContextSet[profileId].rings)
-            / sizeof(WalterModemCoapRing)) {
+    if(ringIdx == WALTER_MODEM_COAP_MAX_PENDING_RINGS) {
         _returnState(WALTER_MODEM_STATE_NO_DATA);
     }
 
@@ -4458,22 +4411,21 @@ bool WalterModem::mqttDidRing(
     void *args = NULL;
 
     uint8_t ringIdx;
-    for(ringIdx = 0;
-            ringIdx < sizeof(_mqttRings) / sizeof(WalterModemMqttRing);
-            ringIdx++) {
+    for(ringIdx = 0; ringIdx < WALTER_MODEM_MQTT_MAX_PENDING_RINGS; ringIdx++) {
         if(!strncmp(topic, _mqttRings[ringIdx].topic, strlen(topic))
                 && _mqttRings[ringIdx].messageId) {
             break;
         }
     }
 
-    if(ringIdx == sizeof(_mqttRings) / sizeof(WalterModemMqttRing)) {
+    if(ringIdx == WALTER_MODEM_MQTT_MAX_PENDING_RINGS) {
         _returnState(WALTER_MODEM_STATE_NO_DATA);
     }
 
     if(targetBufSize < _mqttRings[ringIdx].length) {
         _returnState(WALTER_MODEM_STATE_NO_MEMORY);
     }
+
     targetBufSize = _mqttRings[ringIdx].length;
 
     if(_mqttRings[ringIdx].messageId == 0xffff) {
