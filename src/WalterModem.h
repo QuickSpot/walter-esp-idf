@@ -54,14 +54,14 @@
 #endif
 #include <condition_variable>
 
+#include <esp_vfs.h>
+#include <esp_system.h>
+#include <esp_vfs_fat.h>
 #include <esp_partition.h>
 #include <spi_flash_mmap.h>
+#include <freertos/semphr.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/event_groups.h>
-#include <freertos/semphr.h>
-#include <esp_vfs.h>
-#include <esp_vfs_fat.h>
-#include <esp_system.h>
 
 /**
  * @brief The maximum number of items in the task queue.
@@ -2773,6 +2773,16 @@ class WalterModem {
          * @return None.
          */
         static void _queueRxBuffer();
+
+        /**
+         * @brief Parse incoming modem data.
+         * 
+         * @param rxData The incoming data buffer.
+         * @param len The number of bytes in the rxData buffer.
+         * 
+         * @return None.
+         */
+        static void _parseRxData(char *rxData, size_t len);
 #ifdef ARDUINO
         /**
          * @brief Handle and parse modem RX data.
