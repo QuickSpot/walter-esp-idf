@@ -1428,7 +1428,7 @@ static void coap_received_from_bluecherry(const WalterModemRsp *rsp, void *args)
 void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
 {
     ESP_LOGD("WalterModem", "RX: %.*s", buff->size, buff->data);
-    _dispatchEvent(WALTER_MODEM_EVENT_TYPE_AT, buff->size, buff->data);
+    _dispatchEvent(WALTER_MODEM_EVENT_TYPE_AT, buff->data, buff->size);
 
     WalterModemState result = WALTER_MODEM_STATE_OK;
 
@@ -2010,9 +2010,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             }
         }
 
-        if(_usrGNSSfixHandler != NULL) {
-            _usrGNSSfixHandler(&_GNSSfix, _usrGNSSfixHandlerArgs);
-        }
+        _dispatchEvent(WALTER_MODEM_EVENT_GNSS, &_GNSSfix);
     }
     else if(_buffStartsWith(buff, "+LPGNSSASSISTANCE: "))
     {
@@ -2362,7 +2360,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
 
                     _addQueueCmd(_cmdArr, "+SQNCOAPRCV: ", NULL, coap_received_from_bluecherry,
                         &blueCherry, NULL, NULL, WALTER_MODEM_CMD_TYPE_TX_WAIT,
-                        blueCherry.messageIn, sizeof(blueCherry.messageIn), stringsBuffer);
+                        blueCherry.messageIn, WALTER_MODEM_MAX_INCOMING_MESSAGE_LEN, stringsBuffer);
                 }
             } else {
                 /* store ring in ring list for this coap context */
@@ -2631,7 +2629,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
                 _mqttRings[ringIdx].messageId = messageId;
                 _mqttRings[ringIdx].length = length;
                 _mqttRings[ringIdx].qos = qos;
-                _strncpy_s(_mqttRings[ringIdx].topic, topic, WALTER_MODEM_HOSTNAME_BUF_SIZE);
+                _strncpy_s(_mqttRings[ringIdx].topic, topic, WALTER_MODEM_MQTT_TOPIC_BUF_SIZE);
             }
         }
     }
@@ -3539,12 +3537,6 @@ void WalterModem::tickleWatchdog(void)
     }
 }
 
-void WalterModem::setGNSSfixHandler(void (*handler)(const WalterModemGNSSFix*, void*), void *args)
-{
-    _usrGNSSfixHandler = handler;
-    _usrGNSSfixHandlerArgs = args;
-}
-
 bool WalterModem::sendCmd(const char *cmd)
 {
     const char *_cmdArr[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] = { cmd };
@@ -3899,28 +3891,63 @@ char WalterModem::_getLuhnChecksum(const char *imei)
     return (char) (((10 - (sum % 10)) % 10) + '0');
 }
 
-void WalterModem::_dispatchEvent(WalterModemEventType type, int subtype, void *data)
+template <typename... Args>
+void WalterModem::_dispatchEvent(WalterModemEventType type, Args... args)
 {
-    WalterModemEventHandler *handler = _eventHandlers + type;
-
-    if(handler->handler == nullptr) {
-        return;
-    }
-
     switch(type) {
         case WALTER_MODEM_EVENT_TYPE_REGISTRATION:
-            ((walterModemRegistrationEventHandler) handler->handler)
-                ((WalterModemNetworkRegState) subtype, handler->args);
+            if(_eventHandlers[type].regHandler == nullptr) {
+                return;
+            }
+
+            static_assert(sizeof...(args) == 1, "regisration events take 1 argument");
+            static_assert((std::is_same_v<std::decay_t<Args>, WalterModemNetworkRegState>), 
+                "The argument must be of type WalterModemNetworkRegState");
+            
+            WalterModemNetworkRegState state = args...;
+            _eventHandlers[type].regHandler(state, _eventHandlers[type].args);
             break;
 
         case WALTER_MODEM_EVENT_TYPE_SYSTEM:
-            ((walterModemSystemEventHandler) handler->handler)
-                ((WalterModemSystemEvent) subtype, handler->args);
+            if(_eventHandlers[type].sysHandler == nullptr) {
+                return;
+            }
+
+            static_assert(sizeof...(args) == 1, "system events take 1 argument");
+            static_assert((std::is_same_v<std::decay_t<Args>, WalterModemSystemEvent>), 
+                "The argument must be of type WalterModemSystemEvent");
+            
+            WalterModemSystemEvent ev = args...;
+            _eventHandlers[type].sysHandler(ev, _eventHandlers[type].args);
             break;
 
         case WALTER_MODEM_EVENT_TYPE_AT:
-            ((walterModemATEventHandler)handler->handler)
-                ((const char*) data, subtype, handler->args);
+            if(_eventHandlers[type].atHandler == nullptr) {
+                return;
+            }
+
+            static_assert(sizeof...(args) == 2, "AT events take 2 arguments");
+            static_assert(std::is_same_v<std::decay_t<std::tuple_element_t<0, std::tuple<Args...>>>,
+                const char*>, "The first argument must be of type const char*");
+            static_assert(std::is_same_v<std::decay_t<std::tuple_element_t<1, std::tuple<Args...>>>,
+                size_t>, "The second argument must be of type size_t");
+            
+            const char *buff = std::get<0>(std::tuple<Args...>(args...));
+            size_t len = std::get<1>(std::tuple<Args...>(args...));
+            _eventHandlers[type].atHandler(buff, len, _eventHandlers[type].args);
+            break;
+        
+        case WALTER_MODEM_EVENT_GNSS:
+            if(_eventHandlers[type].gnssHandler == nullptr) {
+                return;
+            }
+
+            static_assert(sizeof...(args) == 1, "GNSS events take 1 argument");
+            static_assert((std::is_same_v<std::decay_t<Args>, const WalterModemGNSSFix*>), 
+                "The argument must be of type const WalterModemGNSSFix*");
+            
+            const WalterModemGNSSFix *fix = args...;
+            _eventHandlers[type].gnssHandler(fix, _eventHandlers[type].args);
             break;
         
         case WALTER_MODEM_EVENT_TYPE_COUNT:
@@ -4235,7 +4262,8 @@ bool WalterModem::mqttDidRing(
 
     uint8_t idx;
     for(idx = 0; idx < WALTER_MODEM_MQTT_MAX_PENDING_RINGS; idx++) {
-        if(!strncmp(topic, _mqttRings[idx].topic, strlen(topic)) && _mqttRings[idx].messageId) {
+        if(!strncmp(topic, _mqttRings[idx].topic, WALTER_MODEM_MQTT_TOPIC_MAX_SIZE) &&
+           _mqttRings[idx].messageId) {
             break;
         }
     }
@@ -4374,7 +4402,7 @@ bool WalterModem::blueCherryPublish(uint8_t topic, uint8_t len, uint8_t *data)
         return false;
     }
 
-    if(blueCherry.messageOutLen + len >= WALTER_MODEM_COAP_MAX_OUTGOING_MESSAGE_LEN) {
+    if(blueCherry.messageOutLen + len >= WALTER_MODEM_MAX_OUTGOING_MESSAGE_LEN) {
         return false;
     }
 
@@ -5325,17 +5353,28 @@ const uint8_t WalterModem::durationToActiveTime(
     return _convertDuration(base_times,3, duration_seconds,actual_duration_seconds);
 }
 
-void WalterModem::onRegistrationEvent(walterModemRegistrationEventHandler handler, void *args) {
-    _eventHandlers[WALTER_MODEM_EVENT_TYPE_REGISTRATION].handler = (void*) handler;
+void WalterModem::setRegistrationEventHandler(
+    walterModemRegistrationEventHandler handler,
+    void *args)
+{
+    _eventHandlers[WALTER_MODEM_EVENT_TYPE_REGISTRATION].regHandler = handler;
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_REGISTRATION].args = args;
 }
 
-void WalterModem::onSystemEvent(walterModemSystemEventHandler handler, void *args) {
-    _eventHandlers[WALTER_MODEM_EVENT_TYPE_SYSTEM].handler = (void*) handler;
+void WalterModem::setSystemEventHandler(walterModemSystemEventHandler handler, void *args)
+{
+    _eventHandlers[WALTER_MODEM_EVENT_TYPE_SYSTEM].sysHandler = handler;
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_SYSTEM].args = args;
 }
 
-void WalterModem::onATEvent(walterModemATEventHandler handler, void *args) {
-    _eventHandlers[WALTER_MODEM_EVENT_TYPE_AT].handler = (void*) handler;
+void WalterModem::setATEventHandler(walterModemATEventHandler handler, void *args)
+{
+    _eventHandlers[WALTER_MODEM_EVENT_TYPE_AT].atHandler = handler;
+    _eventHandlers[WALTER_MODEM_EVENT_TYPE_AT].args = args;
+}
+
+void WalterModem::setGNSSEventHandler(walterModemGNSSEventHandler handler, void *args)
+{
+    _eventHandlers[WALTER_MODEM_EVENT_TYPE_AT].gnssHandler = handler;
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_AT].args = args;
 }

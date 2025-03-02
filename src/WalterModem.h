@@ -202,6 +202,16 @@
 #define WALTER_MODEM_GNSS_MAX_SATS 32
 
 /**
+ * @brief The maximum number of characters in an MQTT topic.
+ */
+#define WALTER_MODEM_MQTT_TOPIC_MAX_SIZE 127
+
+/**
+ * @brief The size of an MQTT topic buffer  
+ */
+#define WALTER_MODEM_MQTT_TOPIC_BUF_SIZE (WALTER_MODEM_MQTT_TOPIC_MAX_SIZE + 1)
+
+/**
  * @brief The maximum number of rings that can be pending for the MQTT protocol.
  */
 #define WALTER_MODEM_MQTT_MAX_PENDING_RINGS 8
@@ -212,14 +222,14 @@
 #define WALTER_MODEM_COAP_MAX_PENDING_RINGS 8
 
 /**
- * @brief The maximum size of an incoming MQTT/CoAP payload.
+ * @brief The maximum size of an incoming protocol message payload.
  */
-#define WALTER_MODEM_COAP_MAX_INCOMING_MESSAGE_LEN 1220
+#define WALTER_MODEM_MAX_INCOMING_MESSAGE_LEN 1220
 
 /**
- * @brief The maximum size of an outgoing MQTT/CoAP payload.
+ * @brief The maximum size of an outgoing message payload.
  */
-#define WALTER_MODEM_COAP_MAX_OUTGOING_MESSAGE_LEN 1024
+#define WALTER_MODEM_MAX_OUTGOING_MESSAGE_LEN 1024
 
 /**
  * @brief Encrypted block size within flash.
@@ -997,12 +1007,17 @@ typedef enum {
     /**
      * @brief System related events.
      */
-    WALTER_MODEM_EVENT_TYPE_SYSTEM = 1,
+    WALTER_MODEM_EVENT_TYPE_SYSTEM
 
     /**
      * @brief Incoming AT string events.
      */
-    WALTER_MODEM_EVENT_TYPE_AT = 2,
+    WALTER_MODEM_EVENT_TYPE_AT
+
+    /**
+     * @brief GNSS related events.
+     */
+    WALTER_MODEM_EVENT_GNSS
 
     /**
      * @brief The number of event types supported by the library.
@@ -1049,18 +1064,45 @@ typedef void (*walterModemSystemEventHandler)(WalterModemSystemEvent ev, void *a
 typedef void (*walterModemATEventHandler)(const char *buff, size_t len, void *args);
 
 /**
+ * @brief Header of a GNSS event handler.
+ * 
+ * @param fix The GNSS fix event data.
+ * @param args Optional arguments set by the application layer.
+ * 
+ * @return None.
+ */
+typedef void (*walterModemGNSSEventHandler)(const WalterModemGNSSFix *fix, void *args);
+
+/**
  * @brief This structure represents an event handler and it's metadata.
  */
 typedef struct {
-  /**
-   * @brief Pointer to the handler function.
-   */
-  void *handler = nullptr;
+    union {
+        /**
+         * @brief Pointer to the registration event handler.
+         */
+        walterModemRegistrationEventHandler regHandler;
 
-  /**
-   * @brief Pointer to arguments set by the application layer.
-   */
-  void *args = nullptr;
+        /**
+         * @brief Pointer to the system event handler.
+         */
+        walterModemSystemEventHandler sysHandler;
+
+        /**
+         * @brief Pointer to the AT event handler.
+         */
+        walterModemATEventHandler atHandler;
+
+        /**
+         * @brief Pointer to the GNSS event handler.
+         */
+        walterModemGNSSEventHandler gnssHandler;
+    };
+
+    /**
+     * @brief Pointer to arguments set by the application layer.
+     */
+    void *args = nullptr;
 } WalterModemEventHandler;
 
 /**
@@ -1560,7 +1602,7 @@ typedef struct {
 /**
  * @brief This union groups the response data of all different commands.
  */
-union uWalterModemRspData {
+union WalterModemRspData {
     /**
      * @brief The operational state of the modem.
      */
@@ -1679,7 +1721,7 @@ typedef struct {
     /**
      * @brief The parsed response data based on the type of response.
      */
-    union uWalterModemRspData data;
+    union WalterModemRspData data;
 } WalterModemRsp;
 
 /**
@@ -2211,9 +2253,9 @@ typedef struct {
     uint8_t qos;
 
     /**
-     * @brief The MQTT topic. //TODO: change the size define to something dedicated.
+     * @brief The MQTT topic.
      */
-    char topic[WALTER_MODEM_HOSTNAME_BUF_SIZE] = { 0 };
+    char topic[WALTER_MODEM_MQTT_TOPIC_BUF_SIZE] = { 0 };
 
     /**
      * @brief The length of the message.
@@ -2248,7 +2290,7 @@ typedef struct {
     /**
      * @brief The outgoing CoAP message buffer.
      */
-    uint8_t messageOut[WALTER_MODEM_COAP_MAX_OUTGOING_MESSAGE_LEN];
+    uint8_t messageOut[WALTER_MODEM_MAX_OUTGOING_MESSAGE_LEN];
 
     /**
      * @brief Length of the CoAP message being composed so far (containing a client id initially)
@@ -2258,7 +2300,7 @@ typedef struct {
     /**
      * @brief Buffer for the incoming CoAP message.
      */
-    uint8_t messageIn[WALTER_MODEM_COAP_MAX_INCOMING_MESSAGE_LEN];
+    uint8_t messageIn[WALTER_MODEM_MAX_INCOMING_MESSAGE_LEN];
 
     /**
      * @brief Length of the incoming CoAP message.
@@ -2519,20 +2561,6 @@ class WalterModem {
          * @brief The GNSS fix which is currently being processed.
          */
         static inline WalterModemGNSSFix _GNSSfix = {};
-
-        /**
-         * @brief Pointer to an optional user GNSS fix handler. When a GNSS fix is acquired this
-         * function will be called.
-         * 
-         * @param fix The GNSS fix data.
-         * @param args Optional user arguments.
-         */
-        static inline void (*_usrGNSSfixHandler)(const WalterModemGNSSFix *fix, void *args) = NULL;
-
-        /**
-         * @brief Pointer to pass as argument in the _usrGNSSfixHandler function.
-         */
-        static inline void* _usrGNSSfixHandlerArgs = NULL;
 
         /*
          * @brief The current BlueCherry state.
@@ -3080,13 +3108,12 @@ class WalterModem {
          * This function will dispatch an event to the registered event handler. If no event handler
          * was registered for this specific event the function is a no-op.
          * 
-         * @param type The type of event to dispatch.
-         * @param subtype The event subtype specific to the type of event which is dispatched.
-         * @param data Specific event data.
-         * 
-         * @return None.
+         * @tparam Args The types of the additional arguments to be passed to the event handler.
+         * @param type The type of event to dispatch, this determinse 
+         * @param args The list of arguments required for the event handler.
          */
-        static void _dispatchEvent(WalterModemEventType type, int subtype, void *data = nullptr);
+        template <typename... Args>
+        static void _dispatchEvent(WalterModemEventType type, Args... args);
         
         /**
          * @brief Save context data in RTC memory before ESP deep sleep.
@@ -3181,23 +3208,6 @@ class WalterModem {
          * @return None.
          */
         static void tickleWatchdog(void);
-
-        /**
-         * @brief Set the GNSS fix handler.
-         * 
-         * This function sets the handler that is called when a GNSS fix was obtained or when the
-         * receiver has given up. When this function is called multiple times only the last handler
-         * will be called. To remove the GNSS fix handler this function must be called with a NULL
-         * pointer as handler.
-         * 
-         * @param handler The handler function or NULL.
-         * @param args Optional handler arguments.
-         * 
-         * @return None.
-         */
-        static void setGNSSfixHandler(
-            void (*handler)(const WalterModemGNSSFix*, void*),
-            void *args = NULL);
 
         /**
          * @brief Send an AT command.
@@ -4647,50 +4657,66 @@ class WalterModem {
             uint32_t *actual_duration_seconds = nullptr);
 
         /**
-         * @brief Register a network registration event handler.
-         *
-         * This function will register an application layer registration event handler. If you want
-         * to explicitly de-register the handler for this type of event you can pass a nullptr to
-         * this function.
-         *
-         * @param handler Pointer to the handler function or nullptr to de-register.
-         * @param args Optional application layer arguments.
-         *
+         * @brief Set the network registration event handler.
+         * 
+         * This function sets the handler that is called when a network registration event occurs. 
+         * When this function is called multiple times, only the last handler will be set. To remove 
+         * the registration event handler, this function must be called with a nullptr as the
+         * handler.
+         * 
+         * @param handler The handler function or nullptr.
+         * @param args Optional handler arguments.
+         * 
          * @return None.
          */
-        static void onRegistrationEvent(
+        static void setRegistrationEventHandler(
             walterModemRegistrationEventHandler handler = nullptr,
             void *args = nullptr);
 
         /**
-         * @brief Register a system event handler.
-         *
-         * This function will register an application layer system event handler. If you want
-         * to explicitly de-register the handler for this type of event you can pass a nullptr to
-         * this function.
-         *
-         * @param handler Pointer to the handler function or nullptr to de-register.
-         * @param args Optional application layer arguments.
-         *
+         * @brief Set the system event handler.
+         * 
+         * This function sets the handler that is called when a system event occurs. When this
+         * function is called multiple times, only the last handler will be set. To remove 
+         * the system event handler, this function must be called with a nullptr as the handler.
+         * 
+         * @param handler The handler function or nullptr.
+         * @param args Optional handler arguments.
+         * 
          * @return None.
          */
-        static void onSystemEvent(
+        static void setSystemEventHandler(
             walterModemSystemEventHandler handler = nullptr,
             void *args = nullptr);
 
         /**
-         * @brief Register an AT event handler.
-         *
-         * This function will register an application layer AT response event handler. If you want
-         * to explicitly de-register the handler for this type of event you can pass a nullptr to
-         * this function.
-         *
-         * @param handler Pointer to the handler function or nullptr to de-register.
-         * @param args Optional application layer arguments.
-         *
+         * @brief Set the AT event handler.
+         * 
+         * This function sets the handler that is called when an AT response event occurs. 
+         * When this function is called multiple times, only the last handler will be set. To remove 
+         * the AT event handler, this function must be called with a nullptr as the handler.
+         * 
+         * @param handler The handler function or nullptr.
+         * @param args Optional handler arguments.
+         * 
          * @return None.
          */
-        static void onATEvent(walterModemATEventHandler handler = nullptr, void *args = nullptr);
+        static void setATEventHandler(walterModemATEventHandler handler = nullptr, void *args = nullptr);
+
+        /**
+         * @brief Set the GNSS event handler.
+         * 
+         * This function sets the handler that is called when a GNSS fix was obtained or when the
+         * receiver has given up. When this function is called multiple times only the last handler
+         * will be set. To remove the GNSS fix handler this function must be called with a nullptr
+         * as the handler.
+         * 
+         * @param handler The handler function or nullptr.
+         * @param args Optional handler arguments.
+         * 
+         * @return None.
+         */
+        static void setGNSSEventHandler(walterModemGNSSEventHandler handler, void *args = NULL);
 };
 
 #endif
