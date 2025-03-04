@@ -110,6 +110,15 @@
 #define WALTER_MODEM_MIN_VALID_TIMESTAMP 1672531200
 
 /**
+ * @brief The event handlers of the Walter modem library are as lightweight as possible and are not
+ * executed in their own thread. Therefore an application should handle them as interrupt handlers. 
+ * It is not allowed to call other WalterModem functions from within an event handler and no 
+ * blocking operations should be performed in an event handler. To aid the user in achieving this 
+ * the library prints a warning when the handler takes more than the defined number of milliseconds.
+ */
+#define WALTER_MODEM_MAX_EVENT_DURATION_MS 500
+
+/**
  * @brief The length of a string literal at compile time.
  */
 #define _strLitLen(str) (sizeof(str) - 1)
@@ -1428,7 +1437,7 @@ static void coap_received_from_bluecherry(const WalterModemRsp *rsp, void *args)
 void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
 {
     ESP_LOGD("WalterModem", "RX: %.*s", buff->size, buff->data);
-    _dispatchEvent((const char*)(buff->data), buff->size);
+    _dispatchEvent((const char*) (buff->data), buff->size);
 
     WalterModemState result = WALTER_MODEM_STATE_OK;
 
@@ -3890,74 +3899,65 @@ char WalterModem::_getLuhnChecksum(const char *imei)
 
     return (char) (((10 - (sum % 10)) % 10) + '0');
 }
+
+void WalterModem::_checkEventDuration(
+    const std::chrono::time_point<std::chrono::steady_clock>& start)
+{
+    auto end = std::chrono::steady_clock::now();
+    auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    if (elapsedTime > WALTER_MODEM_MAX_EVENT_DURATION_MS) {
+        ESP_LOGW("WalterModem","The event handler took %lldms, preferred max is %dms",
+            static_cast<long long>(elapsedTime), WALTER_MODEM_MAX_EVENT_DURATION_MS);
+    }
+}
+
 void WalterModem::_dispatchEvent(WalterModemNetworkRegState state)
 {
-    if (_eventHandlers[WALTER_MODEM_EVENT_TYPE_REGISTRATION].regHandler == nullptr) {
+    WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_REGISTRATION;
+    if(handler->regHandler == nullptr) {
         return;
     }
 
-    auto startTime = std::chrono::steady_clock::now();
-
-    _eventHandlers[WALTER_MODEM_EVENT_TYPE_REGISTRATION]
-        .regHandler(state, _eventHandlers[WALTER_MODEM_EVENT_TYPE_REGISTRATION].args);
-
-    auto endTime = std::chrono::steady_clock::now();
-    auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
-
-    if (elapsedTime > 500) {
-        ESP_LOGW("WalterModem","event handlers duration cannot take longer then 500ms");
-    }
+    auto start = std::chrono::steady_clock::now();
+    handler->regHandler(state, handler->args);
+    _checkEventDuration(start);
 }
 
 void WalterModem::_dispatchEvent(WalterModemSystemEvent event)
 {
-    if (_eventHandlers[WALTER_MODEM_EVENT_TYPE_SYSTEM].sysHandler == nullptr) {
+    WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_SYSTEM;
+    if(handler->sysHandler == nullptr) {
         return;
     }
-    auto startTime = std::chrono::steady_clock::now();
 
-    _eventHandlers[WALTER_MODEM_EVENT_TYPE_SYSTEM]
-        .sysHandler(event, _eventHandlers[WALTER_MODEM_EVENT_TYPE_SYSTEM].args);
-
-    auto endTime = std::chrono::steady_clock::now();
-    auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
-
-    if (elapsedTime > 500) {
-        ESP_LOGW("WalterModem", "Event handler duration cannot take longer then 500ms");
-    }
+    auto start = std::chrono::steady_clock::now();
+    handler->sysHandler(event, handler->args);
+    _checkEventDuration(start);
 }
 
 void WalterModem::_dispatchEvent(const char *buff, size_t len)
 {
-    if (_eventHandlers[WALTER_MODEM_EVENT_TYPE_AT].atHandler == nullptr) {
+    WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_AT;
+    if(handler->atHandler == nullptr) {
         return;
     }
-    auto startTime = std::chrono::steady_clock::now();
-    
-    _eventHandlers[WALTER_MODEM_EVENT_TYPE_AT]
-        .atHandler(buff, len, _eventHandlers[WALTER_MODEM_EVENT_TYPE_AT].args);
-    auto endTime = std::chrono::steady_clock::now();
-    auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
 
-    if (elapsedTime > 500) {
-        ESP_LOGW("WalterModem", "Event handler duration cannot take longer then 500ms");
-    }
+    auto start = std::chrono::steady_clock::now();
+    handler->atHandler(buff, len, handler->args);
+    _checkEventDuration(start);
 }
 
 void WalterModem::_dispatchEvent(const WalterModemGNSSFix *fix)
 {
-    if (_eventHandlers[WALTER_MODEM_EVENT_TYPE_GNSS].gnssHandler == nullptr) {
+    WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_GNSS;
+    if(handler->gnssHandler == nullptr) {
         return;
     }
-    _eventHandlers[WALTER_MODEM_EVENT_TYPE_GNSS]
-        .gnssHandler(fix, _eventHandlers[WALTER_MODEM_EVENT_TYPE_GNSS].args);
 
-    auto endTime = std::chrono::steady_clock::now();
-    auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
-
-    if (elapsedTime > 500) {
-        ESP_LOGW("WalterModem", "Event handler duration cannot take longer then 500ms");
-    }
+    auto start = std::chrono::steady_clock::now();
+    handler->gnssHandler(fix, handler->args);
+    _checkEventDuration(start);
 }
 
 bool WalterModem::httpConfigProfile(

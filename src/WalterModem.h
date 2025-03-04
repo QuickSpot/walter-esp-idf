@@ -3106,24 +3106,66 @@ class WalterModem {
          * @return The Luhn checksum as an ASCII character.
          */
         static char _getLuhnChecksum(const char *imei);
-
-        /**
-         * @brief launch a network registration event.
-         */
-        static void _dispatchEvent(WalterModemNetworkRegState state);
-       
-        /**
-         * @brief launch a system event.
-         */
-        static void _dispatchEvent(WalterModemSystemEvent event);
         
         /**
-         * @brief launch a network registration event.
+         * @brief Check the execution time of an application layer event handler.
+         * 
+         * This function will check the execution time of an event handler given the start time of 
+         * the event.
+         * 
+         * @param start The event start time.
+         * 
+         * @return None.
+         */
+        static void _checkEventDuration(
+            const std::chrono::time_point<std::chrono::steady_clock>& start);
+
+        /**
+         * @brief Dispatch a network registration event.
+         * 
+         * This function will try to call a network registration event handler. When no such handler
+         * is installed this function is a no-op.
+         * 
+         * @param state The new network registration state.
+         * 
+         * @return None.
+         */
+        static void _dispatchEvent(WalterModemNetworkRegState state);
+            
+        /**
+         * @brief Dispatch a system event.
+         * 
+         * This function will try to call a system event handler. When no such handler is installed
+         * this function is a no-op.
+         * 
+         * @param event The type of system event that has occurred.
+         * 
+         * @return None.
+         */
+        static void _dispatchEvent(WalterModemSystemEvent event);
+
+        /**
+         * @brief Dispatch an AT event.
+         * 
+         * This function will try to call an AT event handler. When no such handler is installed
+         * this function is a no-op.
+         * 
+         * @param buff The AT data buffer.
+         * @param len The number of bytes in the AT buffer.
+         * 
+         * @return None.
          */
         static void _dispatchEvent(const char *buff, size_t len);
 
         /**
-         * @brief launch a gnss fix event.
+         * @brief Dispatch a GNSS event.
+         * 
+         * This function will try to call a GNSS event handler. When no such handler is installed
+         * this function is a no-op.
+         * 
+         * @param fix The GNSS fix data.
+         * 
+         * @return None.
          */
         static void _dispatchEvent(const WalterModemGNSSFix *fix);
 
