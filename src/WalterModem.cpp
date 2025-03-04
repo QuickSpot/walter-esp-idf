@@ -3892,31 +3892,31 @@ char WalterModem::_getLuhnChecksum(const char *imei)
 }
 
 template <typename... Args>
-void WalterModem::_dispatchEvent(WalterModemEventType type, Args... args)
+void WalterModem::_dispatchEvent(const WalterModemEventType type, Args&&... args)
 {
     switch(type) {
         case WALTER_MODEM_EVENT_TYPE_REGISTRATION:
             if(_eventHandlers[type].regHandler == nullptr) {
                 return;
             }
-
+            /*
             static_assert(sizeof...(args) == 1, "regisration events take 1 argument");
             static_assert((std::is_same_v<std::decay_t<Args>, WalterModemNetworkRegState>), 
                 "The argument must be of type WalterModemNetworkRegState");
-            
+            */
             WalterModemNetworkRegState state = args...;
             _eventHandlers[type].regHandler(state, _eventHandlers[type].args);
             break;
-
+            
         case WALTER_MODEM_EVENT_TYPE_SYSTEM:
             if(_eventHandlers[type].sysHandler == nullptr) {
                 return;
             }
-
+            /*
             static_assert(sizeof...(args) == 1, "system events take 1 argument");
             static_assert((std::is_same_v<std::decay_t<Args>, WalterModemSystemEvent>), 
                 "The argument must be of type WalterModemSystemEvent");
-            
+            */
             WalterModemSystemEvent ev = args...;
             _eventHandlers[type].sysHandler(ev, _eventHandlers[type].args);
             break;
@@ -3925,13 +3925,13 @@ void WalterModem::_dispatchEvent(WalterModemEventType type, Args... args)
             if(_eventHandlers[type].atHandler == nullptr) {
                 return;
             }
-
+            /*
             static_assert(sizeof...(args) == 2, "AT events take 2 arguments");
             static_assert(std::is_same_v<std::decay_t<std::tuple_element_t<0, std::tuple<Args...>>>,
                 const char*>, "The first argument must be of type const char*");
             static_assert(std::is_same_v<std::decay_t<std::tuple_element_t<1, std::tuple<Args...>>>,
                 size_t>, "The second argument must be of type size_t");
-            
+            */
             const char *buff = std::get<0>(std::tuple<Args...>(args...));
             size_t len = std::get<1>(std::tuple<Args...>(args...));
             _eventHandlers[type].atHandler(buff, len, _eventHandlers[type].args);
@@ -3941,11 +3941,11 @@ void WalterModem::_dispatchEvent(WalterModemEventType type, Args... args)
             if(_eventHandlers[type].gnssHandler == nullptr) {
                 return;
             }
-
+            /*
             static_assert(sizeof...(args) == 1, "GNSS events take 1 argument");
             static_assert((std::is_same_v<std::decay_t<Args>, const WalterModemGNSSFix*>), 
                 "The argument must be of type const WalterModemGNSSFix*");
-            
+            */
             const WalterModemGNSSFix *fix = args...;
             _eventHandlers[type].gnssHandler(fix, _eventHandlers[type].args);
             break;

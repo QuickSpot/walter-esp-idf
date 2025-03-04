@@ -62,6 +62,7 @@
 #include <freertos/semphr.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/event_groups.h>
+#include <driver/uart.h>
 
 /**
  * @brief The maximum number of items in the task queue.
@@ -1007,17 +1008,17 @@ typedef enum {
     /**
      * @brief System related events.
      */
-    WALTER_MODEM_EVENT_TYPE_SYSTEM
+    WALTER_MODEM_EVENT_TYPE_SYSTEM,
 
     /**
      * @brief Incoming AT string events.
      */
-    WALTER_MODEM_EVENT_TYPE_AT
+    WALTER_MODEM_EVENT_TYPE_AT,
 
     /**
      * @brief GNSS related events.
      */
-    WALTER_MODEM_EVENT_GNSS
+    WALTER_MODEM_EVENT_GNSS,
 
     /**
      * @brief The number of event types supported by the library.
@@ -3113,7 +3114,7 @@ class WalterModem {
          * @param args The list of arguments required for the event handler.
          */
         template <typename... Args>
-        static void _dispatchEvent(WalterModemEventType type, Args... args);
+        static void _dispatchEvent(const WalterModemEventType type, Args&&... args);
         
         /**
          * @brief Save context data in RTC memory before ESP deep sleep.
