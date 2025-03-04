@@ -1428,7 +1428,7 @@ static void coap_received_from_bluecherry(const WalterModemRsp *rsp, void *args)
 void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
 {
     ESP_LOGD("WalterModem", "RX: %.*s", buff->size, buff->data);
-    _dispatchEvent(WALTER_MODEM_EVENT_TYPE_AT, buff->data, buff->size);
+    _dispatchEvent((const char*)(buff->data), buff->size);
 
     WalterModemState result = WALTER_MODEM_STATE_OK;
 
@@ -1436,7 +1436,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         const char *rspStr = _buffStr(buff);
         int ceReg = atoi(rspStr + _strLitLen("+CEREG: "));
         _regState = (WalterModemNetworkRegState) ceReg;
-        _dispatchEvent(WALTER_MODEM_EVENT_TYPE_REGISTRATION, _regState);
+        _dispatchEvent(_regState);
     }
     else if(_buffStartsWith(buff, "> ") || _buffStartsWith(buff, ">>>"))
     {
@@ -2010,7 +2010,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             }
         }
 
-        _dispatchEvent(WALTER_MODEM_EVENT_GNSS, &_GNSSfix);
+        _dispatchEvent(&_GNSSfix);
     }
     else if(_buffStartsWith(buff, "+LPGNSSASSISTANCE: "))
     {
@@ -3890,69 +3890,44 @@ char WalterModem::_getLuhnChecksum(const char *imei)
 
     return (char) (((10 - (sum % 10)) % 10) + '0');
 }
-
-template <typename... Args>
-void WalterModem::_dispatchEvent(const WalterModemEventType type, Args&&... args)
+void WalterModem::_dispatchEvent(WalterModemNetworkRegState state)
 {
-    switch(type) {
-        case WALTER_MODEM_EVENT_TYPE_REGISTRATION:
-            if(_eventHandlers[type].regHandler == nullptr) {
-                return;
-            }
-            /*
-            static_assert(sizeof...(args) == 1, "regisration events take 1 argument");
-            static_assert((std::is_same_v<std::decay_t<Args>, WalterModemNetworkRegState>), 
-                "The argument must be of type WalterModemNetworkRegState");
-            */
-            WalterModemNetworkRegState state = args...;
-            _eventHandlers[type].regHandler(state, _eventHandlers[type].args);
-            break;
-            
-        case WALTER_MODEM_EVENT_TYPE_SYSTEM:
-            if(_eventHandlers[type].sysHandler == nullptr) {
-                return;
-            }
-            /*
-            static_assert(sizeof...(args) == 1, "system events take 1 argument");
-            static_assert((std::is_same_v<std::decay_t<Args>, WalterModemSystemEvent>), 
-                "The argument must be of type WalterModemSystemEvent");
-            */
-            WalterModemSystemEvent ev = args...;
-            _eventHandlers[type].sysHandler(ev, _eventHandlers[type].args);
-            break;
-
-        case WALTER_MODEM_EVENT_TYPE_AT:
-            if(_eventHandlers[type].atHandler == nullptr) {
-                return;
-            }
-            /*
-            static_assert(sizeof...(args) == 2, "AT events take 2 arguments");
-            static_assert(std::is_same_v<std::decay_t<std::tuple_element_t<0, std::tuple<Args...>>>,
-                const char*>, "The first argument must be of type const char*");
-            static_assert(std::is_same_v<std::decay_t<std::tuple_element_t<1, std::tuple<Args...>>>,
-                size_t>, "The second argument must be of type size_t");
-            */
-            const char *buff = std::get<0>(std::tuple<Args...>(args...));
-            size_t len = std::get<1>(std::tuple<Args...>(args...));
-            _eventHandlers[type].atHandler(buff, len, _eventHandlers[type].args);
-            break;
-        
-        case WALTER_MODEM_EVENT_GNSS:
-            if(_eventHandlers[type].gnssHandler == nullptr) {
-                return;
-            }
-            /*
-            static_assert(sizeof...(args) == 1, "GNSS events take 1 argument");
-            static_assert((std::is_same_v<std::decay_t<Args>, const WalterModemGNSSFix*>), 
-                "The argument must be of type const WalterModemGNSSFix*");
-            */
-            const WalterModemGNSSFix *fix = args...;
-            _eventHandlers[type].gnssHandler(fix, _eventHandlers[type].args);
-            break;
-        
-        case WALTER_MODEM_EVENT_TYPE_COUNT:
-            break;
+    if (_eventHandlers[WALTER_MODEM_EVENT_TYPE_REGISTRATION].regHandler == nullptr)
+    {
+        return;
     }
+    _eventHandlers[WALTER_MODEM_EVENT_TYPE_REGISTRATION]
+        .regHandler(state, _eventHandlers[WALTER_MODEM_EVENT_TYPE_REGISTRATION].args);
+}
+
+void WalterModem::_dispatchEvent(WalterModemSystemEvent event)
+{
+    if (_eventHandlers[WALTER_MODEM_EVENT_TYPE_SYSTEM].sysHandler == nullptr)
+    {
+        return;
+    }
+    _eventHandlers[WALTER_MODEM_EVENT_TYPE_SYSTEM]
+        .sysHandler(event, _eventHandlers[WALTER_MODEM_EVENT_TYPE_SYSTEM].args);
+}
+
+void WalterModem::_dispatchEvent(const char *buff, size_t len)
+{
+    if (_eventHandlers[WALTER_MODEM_EVENT_TYPE_AT].atHandler == nullptr)
+    {
+        return;
+    }
+    _eventHandlers[WALTER_MODEM_EVENT_TYPE_AT]
+        .atHandler(buff, len, _eventHandlers[WALTER_MODEM_EVENT_TYPE_AT].args);
+}
+
+void WalterModem::_dispatchEvent(const WalterModemGNSSFix *fix)
+{
+    if (_eventHandlers[WALTER_MODEM_EVENT_TYPE_GNSS].gnssHandler == nullptr)
+    {
+        return;
+    }
+    _eventHandlers[WALTER_MODEM_EVENT_TYPE_GNSS]
+        .gnssHandler(fix, _eventHandlers[WALTER_MODEM_EVENT_TYPE_GNSS].args);
 }
 
 bool WalterModem::httpConfigProfile(

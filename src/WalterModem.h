@@ -997,116 +997,6 @@ typedef enum {
 } WalterModemBlueCherryEventType;
 
 /**
- * @brief The different types of events supported by the library.
- */
-typedef enum {
-    /**
-     * @brief Network registration related events.
-     */
-    WALTER_MODEM_EVENT_TYPE_REGISTRATION = 0,
-
-    /**
-     * @brief System related events.
-     */
-    WALTER_MODEM_EVENT_TYPE_SYSTEM,
-
-    /**
-     * @brief Incoming AT string events.
-     */
-    WALTER_MODEM_EVENT_TYPE_AT,
-
-    /**
-     * @brief GNSS related events.
-     */
-    WALTER_MODEM_EVENT_GNSS,
-
-    /**
-     * @brief The number of event types supported by the library.
-     */
-    WALTER_MODEM_EVENT_TYPE_COUNT
-} WalterModemEventType;
-
-/**
- * @brief This enumeration groups the different types of system events.
- */
-typedef enum {
-  WALTER_MODEM_SYSTEM_EVENT_STARTED,
-} WalterModemSystemEvent;
-
-/**
- * @brief Header of a network registration event handler.
- * 
- * @param ev The new network registration state.
- * @param args Optional arguments set by the application layer.
- * 
- * @return None.
- */
-typedef void (*walterModemRegistrationEventHandler)(WalterModemNetworkRegState ev, void *args);
-
-/**
- * @brief Header of a system event handler.
- * 
- * @param ev The type of system event.
- * @param args Optional arguments set by the application layer.
- * 
- * @return None.
- */
-typedef void (*walterModemSystemEventHandler)(WalterModemSystemEvent ev, void *args);
-
-/**
- * @brief Header of an AT event handler.
- * 
- * @param buff A buffer which contains the unparsed AT response data, not 0-terminated.
- * @param len The number of valid bytes in the response buffer. 
- * @param args Optional arguments set by the application layer.
- * 
- * @return None.
- */
-typedef void (*walterModemATEventHandler)(const char *buff, size_t len, void *args);
-
-/**
- * @brief Header of a GNSS event handler.
- * 
- * @param fix The GNSS fix event data.
- * @param args Optional arguments set by the application layer.
- * 
- * @return None.
- */
-typedef void (*walterModemGNSSEventHandler)(const WalterModemGNSSFix *fix, void *args);
-
-/**
- * @brief This structure represents an event handler and it's metadata.
- */
-typedef struct {
-    union {
-        /**
-         * @brief Pointer to the registration event handler.
-         */
-        walterModemRegistrationEventHandler regHandler;
-
-        /**
-         * @brief Pointer to the system event handler.
-         */
-        walterModemSystemEventHandler sysHandler;
-
-        /**
-         * @brief Pointer to the AT event handler.
-         */
-        walterModemATEventHandler atHandler;
-
-        /**
-         * @brief Pointer to the GNSS event handler.
-         */
-        walterModemGNSSEventHandler gnssHandler;
-    };
-
-    /**
-     * @brief Pointer to arguments set by the application layer.
-     */
-    void *args = nullptr;
-} WalterModemEventHandler;
-
-/**
  * @brief This structure represents a GNSS satellite.
  */
 typedef struct {
@@ -1244,6 +1134,120 @@ typedef struct {
      */
     WalterModemGNSSAssistanceTypeDetails predictedEphemeris;
 } WalterModemGNSSAssistance;
+
+/**
+ * @brief The different types of events supported by the library.
+ */
+typedef enum
+{
+    /**
+     * @brief Network registration related events.
+     */
+    WALTER_MODEM_EVENT_TYPE_REGISTRATION = 0,
+
+    /**
+     * @brief System related events.
+     */
+    WALTER_MODEM_EVENT_TYPE_SYSTEM,
+
+    /**
+     * @brief Incoming AT string events.
+     */
+    WALTER_MODEM_EVENT_TYPE_AT,
+
+    /**
+     * @brief GNSS related events.
+     */
+    WALTER_MODEM_EVENT_TYPE_GNSS,
+
+    /**
+     * @brief The number of event types supported by the library.
+     */
+    WALTER_MODEM_EVENT_TYPE_COUNT
+} WalterModemEventType;
+
+/**
+ * @brief This enumeration groups the different types of system events.
+ */
+typedef enum
+{
+    WALTER_MODEM_SYSTEM_EVENT_STARTED,
+} WalterModemSystemEvent;
+
+/**
+ * @brief Header of a network registration event handler.
+ *
+ * @param ev The new network registration state.
+ * @param args Optional arguments set by the application layer.
+ *
+ * @return None.
+ */
+typedef void (*walterModemRegistrationEventHandler)(WalterModemNetworkRegState ev, void *args);
+
+/**
+ * @brief Header of a system event handler.
+ *
+ * @param ev The type of system event.
+ * @param args Optional arguments set by the application layer.
+ *
+ * @return None.
+ */
+typedef void (*walterModemSystemEventHandler)(WalterModemSystemEvent ev, void *args);
+
+/**
+ * @brief Header of an AT event handler.
+ *
+ * @param buff A buffer which contains the unparsed AT response data, not 0-terminated.
+ * @param len The number of valid bytes in the response buffer.
+ * @param args Optional arguments set by the application layer.
+ *
+ * @return None.
+ */
+typedef void (*walterModemATEventHandler)(const char *buff, size_t len, void *args);
+
+/**
+ * @brief Header of a GNSS event handler.
+ *
+ * @param fix The GNSS fix event data.
+ * @param args Optional arguments set by the application layer.
+ *
+ * @return None.
+ */
+typedef void (*walterModemGNSSEventHandler)(const WalterModemGNSSFix *fix, void *args);
+
+/**
+ * @brief This structure represents an event handler and it's metadata.
+ */
+typedef struct
+{
+    union
+    {
+        /**
+         * @brief Pointer to the registration event handler.
+         */
+        walterModemRegistrationEventHandler regHandler;
+
+        /**
+         * @brief Pointer to the system event handler.
+         */
+        walterModemSystemEventHandler sysHandler;
+
+        /**
+         * @brief Pointer to the AT event handler.
+         */
+        walterModemATEventHandler atHandler;
+
+        /**
+         * @brief Pointer to the GNSS event handler.
+         */
+        walterModemGNSSEventHandler gnssHandler;
+    };
+
+    /**
+     * @brief Pointer to arguments set by the application layer.
+     */
+    void *args = nullptr;
+} WalterModemEventHandler;
 
 /**
  * @brief This structure represents an operator.
@@ -2431,7 +2435,7 @@ class WalterModem {
         /**
          * @brief The number of the hardware UART used by the modem.
          */
-        static inline uart_port_t _uartNo = 1;
+        static inline uart_port_t _uartNo = uart_port_t::UART_NUM_1;
 
         /**
          * @brief The modem UART receive task stack memory.
@@ -3104,18 +3108,25 @@ class WalterModem {
         static char _getLuhnChecksum(const char *imei);
 
         /**
-         * @brief Dispatch an event to the registered event handler if there is one.
-         * 
-         * This function will dispatch an event to the registered event handler. If no event handler
-         * was registered for this specific event the function is a no-op.
-         * 
-         * @tparam Args The types of the additional arguments to be passed to the event handler.
-         * @param type The type of event to dispatch, this determinse 
-         * @param args The list of arguments required for the event handler.
+         * @brief launch a network registration event.
          */
-        template <typename... Args>
-        static void _dispatchEvent(const WalterModemEventType type, Args&&... args);
+        static void _dispatchEvent(WalterModemNetworkRegState state);
+       
+        /**
+         * @brief launch a system event.
+         */
+        static void _dispatchEvent(WalterModemSystemEvent event);
         
+        /**
+         * @brief launch a network registration event.
+         */
+        static void _dispatchEvent(const char *buff, size_t len);
+
+        /**
+         * @brief launch a gnss fix event.
+         */
+        static void _dispatchEvent(const WalterModemGNSSFix *fix);
+
         /**
          * @brief Save context data in RTC memory before ESP deep sleep.
          *
