@@ -3734,7 +3734,7 @@ bool WalterModem::_mqttConfig(
             "OK", rsp, cb, args);
         _returnAfterReply();
     } else {
-        if(userName && *userName) {
+        if(userName) {
             _runCmd(arr(
                 "AT+SQNSMQTTCFG=0,",
                 _atStr(clientId), ",",
