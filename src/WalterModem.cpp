@@ -2542,12 +2542,10 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         const char *rspStr = _buffStr(buff);
         const char *pmid = rspStr + _strLitLen("+SQNSMQTTONPUBLISH:0,");
         const char *statusComma = strchr(pmid, ',');
-       
-
         if(statusComma == NULL) {
             result = WALTER_MODEM_STATE_ERROR;
         } else {
-            int status = atoi(statusComma + _strLitLen("+SQNSMQTTONPUBLISH:0,"));
+            int status = atoi(statusComma + 1);
             _mqttStatus = (WalterModemMqttStatus)status;
             cmd->rsp->data.mqttResponse.mqttStatus = (WalterModemMqttStatus)status;
             if(status < 0) {
@@ -2560,14 +2558,15 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         const char *rspStr = _buffStr(buff);
         const char *topic = rspStr + _strLitLen("+SQNSMQTTONSUBSCRIBE:0,");
         const char *statusComma = strchr(topic, ',');
-        int status = atoi(statusComma + _strLitLen("+SQNSMQTTONDISCONNECT:0,"));
-
-        cmd->rsp->data.mqttResponse.mqttStatus = (WalterModemMqttStatus) status;
 
         if(statusComma == NULL) {
             result = WALTER_MODEM_STATE_ERROR;
         } else {
-            if(atoi(statusComma + 1)) {
+            int status = atoi(statusComma + 1);
+            _mqttStatus = (WalterModemMqttStatus)status;
+            cmd->rsp->data.mqttResponse.mqttStatus = (WalterModemMqttStatus)status;
+            if (status < 0)
+            {
                 result = WALTER_MODEM_STATE_ERROR;
             }
         }
