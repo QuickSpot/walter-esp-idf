@@ -3733,8 +3733,7 @@ bool WalterModem::_mqttConfig(
             _atNum(tlsProfileId)),
             "OK", rsp, cb, args);
         _returnAfterReply();
-    } else {
-        if(userName) {
+    } else if(userName) {
             _runCmd(arr(
                 "AT+SQNSMQTTCFG=0,",
                 _atStr(clientId), ",",
@@ -3742,10 +3741,9 @@ bool WalterModem::_mqttConfig(
                 _atStr(password)),
                 "OK", rsp, cb, args);
             _returnAfterReply();
-        } else {
+    } else {
             _runCmd(arr("AT+SQNSMQTTCFG=0,", _atStr(clientId)), "OK", rsp, cb, args);
             _returnAfterReply();
-        }
     }
 }
 
