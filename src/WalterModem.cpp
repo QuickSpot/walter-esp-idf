@@ -3787,6 +3787,12 @@ bool WalterModem::mqttPublish(
     walterModemCb cb,
     void *args)
 {
+
+    if (getNetworkRegState() != WALTER_MODEM_NETWORK_REG_REGISTERED_HOME || getNetworkRegState() != WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING) {
+        ESP_LOGD("WalterModem","network is not connected!");
+        _returnState(WALTER_MODEM_STATE_ERROR);
+    }
+
     _runCmd(arr(
         "AT+SQNSMQTTPUBLISH=0,",
         _atStr(topicString), ",",
