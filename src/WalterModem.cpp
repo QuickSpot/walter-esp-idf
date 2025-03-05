@@ -3714,7 +3714,7 @@ bool WalterModem::getIdentity(WalterModemRsp *rsp, walterModemCb cb, void *args)
 }   
 
 //TODO: double check this for memory safetey
-bool WalterModem::_mqttConfig(
+bool WalterModem::mqttConfig(
     const char *clientId,
     const char *userName,
     const char *password,
@@ -3724,27 +3724,32 @@ bool WalterModem::_mqttConfig(
     walterModemCb cb = NULL;
     void *args = NULL;
 
-    if(tlsProfileId) {
-        _runCmd(arr(
-            "AT+SQNSMQTTCFG=0,",
-            _atStr(clientId), ",",
-            _atStr(userName), ",",
-            _atStr(password), ",",
-            _atNum(tlsProfileId)),
-            "OK", rsp, cb, args);
-        _returnAfterReply();
-    } else if(userName) {
-            _runCmd(arr(
-                "AT+SQNSMQTTCFG=0,",
-                _atStr(clientId), ",",
-                _atStr(userName), ",",
-                _atStr(password)),
-                "OK", rsp, cb, args);
-            _returnAfterReply();
+    WalterModemBuffer * const stringsBuffer = _getFreeBuffer();
+    stringsBuffer->size += sprintf(
+        (char *)stringsBuffer->data,
+        "AT+SQNSMQTTCFG=0,%s"
+        _atStr(clientId)
+    );
+
+    if(userName && password) {
+        stringsBuffer->size += sprintf(
+            (char *)stringsBuffer->data + stringsBuffer->size,
+            ",%s,%s", _atStr(userName), _atStr(password));
     } else {
-            _runCmd(arr("AT+SQNSMQTTCFG=0,", _atStr(clientId)), "OK", rsp, cb, args);
-            _returnAfterReply();
+        stringsBuffer->size += sprintf(
+            (char *) stringsBuffer->data + stringsBuffer->size, 
+            ",,");
     }
+
+    if(tlsProfileId) {
+            stringsBuffer->size += sprintf(
+            (char *) stringsBuffer->data + stringsBuffer->size, 
+            ",%u", _atNum(tlsProfileId));
+    }
+    _runCmd(arr((const char *) stringsBuffer->data), "OK", rsp, cb, args);
+   
+    _returnAfterReply();
+    
 }
 
 bool WalterModem::mqttDisconnect(WalterModemRsp *rsp, walterModemCb cb, void *args)
@@ -3756,17 +3761,10 @@ bool WalterModem::mqttDisconnect(WalterModemRsp *rsp, walterModemCb cb, void *ar
 bool WalterModem::mqttConnect(
     const char *serverName,
     uint16_t port,
-    const char *clientId,
-    const char *userName,
-    const char *password,
-    uint8_t tlsProfileId,
     WalterModemRsp *rsp,
     walterModemCb cb,
     void *args)
 {
-    if(!_mqttConfig(clientId, userName, password, tlsProfileId)) {
-        _returnState(WALTER_MODEM_STATE_ERROR);
-    }
 
     _runCmd(arr(
         "AT+SQNSMQTTCONNECT=0,",

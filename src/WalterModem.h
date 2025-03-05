@@ -3050,24 +3050,6 @@ class WalterModem {
         static bool _processMotaFinishEvent(void);
 
         /**
-         * @brief Configure an MQTT client.
-         *
-         * This function configures an mqtt client, without connecting.
-         *
-         * @param clientId MQTT client id to be used
-         * @param userName Username for auth
-         * @param password Password for auth
-         * @param tlsProfileId TLS profile id to be used
-         *
-         * @return True if succeeded, false if not.
-         */
-        static bool _mqttConfig(
-            const char *clientId,
-            const char *userName,
-            const char *password,
-            uint8_t tlsProfileId);
-
-        /**
          * @brief Upload key or certificate to modem NVRAM.
          *
          * This function uploads a key or certificate to the modem NVRAM. It is recommended to save
@@ -3446,7 +3428,25 @@ class WalterModem {
         static bool getIdentity(
             WalterModemRsp *rsp = NULL,
             walterModemCb cb = NULL,
-            void *args = NULL);     
+            void *args = NULL);
+
+        /**
+         * @brief Configure an MQTT client.
+         *
+         * This function configures an mqtt client, without connecting.
+         *
+         * @param clientId MQTT client id to be used
+         * @param userName Username for auth
+         * @param password Password for auth
+         * @param tlsProfileId TLS profile id to be used
+         *
+         * @return True if succeeded, false if not.
+         */
+        static bool mqttConfig(
+            const char *clientId = "walter-mqtt-client",
+            const char *userName = "",
+            const char *password = "",
+            uint8_t tlsProfileId = 0);
 
         /**
          * @brief Disconnect an MQTT connection.
@@ -3484,11 +3484,8 @@ class WalterModem {
         static bool mqttConnect(
             const char *serverName,
             uint16_t port,
-            const char *clientId = "walter-mqtt-client",
-            const char *userName = "",
-            const char *password = "",
-            uint8_t tlsProfileId = 0,
             WalterModemRsp *rsp = NULL,
+            bool keepAlive = true,
             walterModemCb cb = NULL,
             void *args = NULL);
 
