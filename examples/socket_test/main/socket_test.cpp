@@ -75,6 +75,11 @@ void registrationEvent(WalterModemNetworkRegState state, void* args) {
 WalterModem modem;
 
 /**
+ * @brief rsp
+ */
+WalterModemRsp rsp;
+
+/**
  * @brief The buffer to transmit to the UDP server. The first 6 bytes will be
  * the MAC address of the Walter this code is running on.
  */
@@ -84,6 +89,19 @@ uint8_t dataBuf[8] = { 0 };
  * @brief The counter used in the ping packets.
  */
 uint16_t counter = 0;
+
+void waitForNetwork()
+{
+  /* Wait for the network to become available */
+  WalterModemNetworkRegState regState = modem.getNetworkRegState();
+  while (!(regState == WALTER_MODEM_NETWORK_REG_REGISTERED_HOME ||
+           regState == WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING))
+  {
+    vTaskDelay(pdMS_TO_TICKS(100));
+    regState = modem.getNetworkRegState();
+  }
+  ESP_LOGI("socket_test", "Connected to the network");
+}
 
 extern "C" void app_main(void)
 {
@@ -106,7 +124,7 @@ extern "C" void app_main(void)
     return;
   }
   
-  modem.onRegistrationEvent(registrationEvent);
+  modem.setRegistrationEventHandler(registrationEvent);
 
 
   if(modem.checkComm()) {
@@ -257,15 +275,4 @@ extern "C" void app_main(void)
   }
 }
 
-void waitForNetwork()
-{
-  /* Wait for the network to become available */
-  WalterModemNetworkRegState regState = modem.getNetworkRegState();
-  while (!(regState == WALTER_MODEM_NETWORK_REG_REGISTERED_HOME ||
-           regState == WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING))
-  {
-    vTaskDelay(pdMS_TO_TICKS(100));
-    regState = modem.getNetworkRegState();
-  }
-  ESP_LOGI("socket_test", "Connected to the network");
-}
+
