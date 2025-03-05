@@ -3485,7 +3485,6 @@ class WalterModem {
             const char *serverName,
             uint16_t port,
             WalterModemRsp *rsp = NULL,
-            bool keepAlive = true,
             walterModemCb cb = NULL,
             void *args = NULL);
 

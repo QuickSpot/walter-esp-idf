@@ -212,16 +212,23 @@ extern "C" void app_main(void)
   }
 
   // other public mqtt broker with web client: mqtthq.com
-  if(modem.mqttConnect("test.mosquitto.org", 8883, macString, "", "", 1)) {
-    ESP_LOGI("mqtt_test", "MQTT connection succeeded");
+  if (modem.mqttConfig("walter-mqtt-test-topic", "", "", 1))
 
-    if(modem.mqttSubscribe("waltertopic")) {
-      ESP_LOGI("mqtt_test", "MQTT subscribed to topic 'waltertopic'");
-    } else {
+    if (modem.mqttConnect("test.mosquitto.org", 8883))
+    {
+      ESP_LOGI("mqtt_test", "MQTT connection succeeded");
+
+      if (modem.mqttSubscribe("waltertopic"))
+      {
+        ESP_LOGI("mqtt_test", "MQTT subscribed to topic 'waltertopic'");
+      } else {
       ESP_LOGI("mqtt_test", "MQTT subscribe failed");
+      }
+    } else {
+      ESP_LOGI("mqtt_test", "MQTT connection failed");
     }
-  } else {
-    ESP_LOGI("mqtt_test", "MQTT connection failed");
+  else{
+    ESP_LOGI("mqtt_test", "MQTT configuration failed");
   }
 
   /* this loop is basically the Arduino loop function */

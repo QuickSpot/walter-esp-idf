@@ -3724,17 +3724,14 @@ bool WalterModem::mqttConfig(
     walterModemCb cb = NULL;
     void *args = NULL;
 
-    WalterModemBuffer * const stringsBuffer = _getFreeBuffer();
-    stringsBuffer->size += sprintf(
-        (char *)stringsBuffer->data,
-        "AT+SQNSMQTTCFG=0,%s"
-        _atStr(clientId)
-    );
+    WalterModemBuffer*  stringsBuffer = _getFreeBuffer();
+    stringsBuffer->size += sprintf((char *)stringsBuffer->data,
+        "AT+SQNSMQTTCFG=0,\"%s\"", clientId);
 
     if(userName && password) {
         stringsBuffer->size += sprintf(
             (char *)stringsBuffer->data + stringsBuffer->size,
-            ",%s,%s", _atStr(userName), _atStr(password));
+            ",\"%s\",\"%s\"", userName, password);
     } else {
         stringsBuffer->size += sprintf(
             (char *) stringsBuffer->data + stringsBuffer->size, 
@@ -3744,7 +3741,7 @@ bool WalterModem::mqttConfig(
     if(tlsProfileId) {
             stringsBuffer->size += sprintf(
             (char *) stringsBuffer->data + stringsBuffer->size, 
-            ",%u", _atNum(tlsProfileId));
+            ",%u", tlsProfileId);
     }
     _runCmd(arr((const char *) stringsBuffer->data), "OK", rsp, cb, args);
    
@@ -3784,7 +3781,7 @@ bool WalterModem::mqttPublish(
     void *args)
 {
 
-    if (getNetworkRegState() != WALTER_MODEM_NETWORK_REG_REGISTERED_HOME || getNetworkRegState() != WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING) {
+    if (getNetworkRegState() != WALTER_MODEM_NETWORK_REG_REGISTERED_HOME && getNetworkRegState() != WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING) {
         ESP_LOGD("WalterModem","network is not connected!");
         _returnState(WALTER_MODEM_STATE_ERROR);
     }
