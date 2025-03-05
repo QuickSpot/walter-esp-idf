@@ -3758,6 +3758,7 @@ bool WalterModem::mqttDisconnect(WalterModemRsp *rsp, walterModemCb cb, void *ar
 bool WalterModem::mqttConnect(
     const char *serverName,
     uint16_t port,
+    bool keepAlive,
     WalterModemRsp *rsp,
     walterModemCb cb,
     void *args)
@@ -3766,7 +3767,8 @@ bool WalterModem::mqttConnect(
     _runCmd(arr(
         "AT+SQNSMQTTCONNECT=0,",
         _atStr(serverName), ",",
-        _atNum(port)),
+        _atNum(port),
+        _atNum(keepAlive))
         "+SQNSMQTTONCONNECT:0,", rsp, cb, args);
     _returnAfterReply();
 }

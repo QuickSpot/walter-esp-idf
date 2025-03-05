@@ -3484,6 +3484,7 @@ class WalterModem {
         static bool mqttConnect(
             const char *serverName,
             uint16_t port,
+            bool keepAlive = true,
             WalterModemRsp *rsp = NULL,
             walterModemCb cb = NULL,
             void *args = NULL);
