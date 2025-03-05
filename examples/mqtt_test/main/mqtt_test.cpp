@@ -212,9 +212,9 @@ extern "C" void app_main(void)
   }
 
   // other public mqtt broker with web client: mqtthq.com
-  if (modem.mqttConfig("walter-mqtt-test-topic", "", "", 1))
+  if (modem.mqttConfig("walter-mqtt-test-topic", "", ""))
 
-    if (modem.mqttConnect("test.mosquitto.org", 8883))
+    if (modem.mqttConnect("test.mosquitto.org", 1883,true))
     {
       ESP_LOGI("mqtt_test", "MQTT connection succeeded");
 
@@ -242,16 +242,11 @@ extern "C" void app_main(void)
     seq++;
     if(seq % 3 == 0) {
       sprintf(outgoingMsg, "%s-%d", macString, seq);
+
       if(modem.mqttPublish("waltertopic", (uint8_t *) outgoingMsg, strlen(outgoingMsg),2,&rsp)) {
         ESP_LOGI("mqtt_test", "published '%s' on topic 'waltertopic'", outgoingMsg);
       } else {
-        if(rsp.data.mqttResponse.mqttStatus == WALTER_MODEM_MQTT_CONN_LOST){
-          if (modem.mqttConnect("test.mosquitto.org", 8883)) {
-            ESP_LOGI("mqtt_test", "MQTT connection succeeded");
-          } else {
-            ESP_LOGD("mqtt_test", "MQTT connection failed");
-          }
-        }
+        
         ESP_LOGI("mqtt_test", "MQTT publish failed");
       }
     }

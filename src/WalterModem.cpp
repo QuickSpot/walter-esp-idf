@@ -2519,9 +2519,8 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         int status = atoi(rspStr + _strLitLen("+SQNSMQTTONCONNECT:0,"));
 
         _mqttStatus = (WalterModemMqttStatus)status;
-        cmd->rsp->data.mqttResponse.mqttStatus = _mqttStatus;
 
-        if(status) {
+        if(status < 0) {
             result = WALTER_MODEM_STATE_ERROR;
         }
     }
@@ -2531,7 +2530,6 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         int status = atoi(rspStr + _strLitLen("+SQNSMQTTONDISCONNECT:0,"));
 
         _mqttStatus = (WalterModemMqttStatus)status;
-        cmd->rsp->data.mqttResponse.mqttStatus = _mqttStatus;
 
         if(status < 0) {
             result = WALTER_MODEM_STATE_ERROR;
@@ -2547,7 +2545,6 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         } else {
             int status = atoi(statusComma + 1);
             _mqttStatus = (WalterModemMqttStatus)status;
-            cmd->rsp->data.mqttResponse.mqttStatus = (WalterModemMqttStatus)status;
             if(status < 0) {
                 result = WALTER_MODEM_STATE_ERROR;
             }
@@ -2564,7 +2561,6 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         } else {
             int status = atoi(statusComma + 1);
             _mqttStatus = (WalterModemMqttStatus)status;
-            cmd->rsp->data.mqttResponse.mqttStatus = (WalterModemMqttStatus)status;
             if (status < 0)
             {
                 result = WALTER_MODEM_STATE_ERROR;
