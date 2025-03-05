@@ -3768,7 +3768,7 @@ bool WalterModem::mqttConnect(
         "AT+SQNSMQTTCONNECT=0,",
         _atStr(serverName), ",",
         _atNum(port),
-        _atNum(keepAlive))
+        _atNum(keepAlive)),
         "+SQNSMQTTONCONNECT:0,", rsp, cb, args);
     _returnAfterReply();
 }
