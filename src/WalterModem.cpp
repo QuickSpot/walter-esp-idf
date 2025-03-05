@@ -2547,7 +2547,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         if(statusComma == NULL) {
             result = WALTER_MODEM_STATE_ERROR;
         } else {
-            int status = atoi(rspStr + _strLitLen("+SQNSMQTTONPUBLISH:0,"));
+            int status = atoi(statusComma + _strLitLen("+SQNSMQTTONPUBLISH:0,"));
             _mqttStatus = (WalterModemMqttStatus)status;
             cmd->rsp->data.mqttResponse.mqttStatus = (WalterModemMqttStatus)status;
             if(satus < 0) {
