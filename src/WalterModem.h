@@ -2593,6 +2593,9 @@ class WalterModem {
          */
         static inline WalterModemEventHandler _eventHandlers[WALTER_MODEM_EVENT_TYPE_COUNT] = {};
 
+        /*
+        */
+        static inline WalterModemMqttStatus _mqttStatus = WALTER_MODEM_MQTT_SUCCESS;
         /**
          * @brief Helper to boot modem to recovery modem and start upgrade.
          *
@@ -3430,6 +3433,11 @@ class WalterModem {
             walterModemCb cb = NULL,
             void *args = NULL);
 
+        /**
+         * @brief returns the last received mqttStatus.
+         */
+        static WalterModemMqttStatus getMqttStatus();
+        
         /**
          * @brief Configure an MQTT client.
          *
