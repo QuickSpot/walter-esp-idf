@@ -218,6 +218,16 @@
 #define WALTER_MODEM_MQTT_MAX_PENDING_RINGS 8
 
 /**
+ * @brief The recommended minimum for the mqtt keep alive time
+ */
+#define WALTER_MODEM_MQTT_MIN_PREF_KEEP_ALIVE 20
+
+/**
+ * @brief The maximum allowed mqtt topics to subscribe to.
+ */
+#define WALTER_MODEM_MQTT_MAX_TOPICS 4
+
+/**
  * @brief The maximum number of rings that can be pending for the CoAP protocol.
  */
 #define WALTER_MODEM_COAP_MAX_PENDING_RINGS 8
@@ -2268,6 +2278,22 @@ typedef struct {
     uint16_t length;
 } WalterModemMqttRing;
 
+typedef struct {
+    /**
+     * @brief is the topic in use/subscribed to.
+     */
+    bool free = true;
+
+    /**
+     * @brief Qos ofr the subscription.
+     */
+    uint8_t qos = 0;
+
+    /**
+     * @brief mqtt topic
+     */
+    char topic[WALTER_MODEM_MQTT_TOPIC_BUF_SIZE] = {0};
+} WalterModemMqttTopic;
 /**
  * @brief This structure represents the state of the BlueCherry connection.
  */
@@ -2492,6 +2518,12 @@ class WalterModem {
          */
         static inline WalterModemMqttRing _mqttRings[WALTER_MODEM_MQTT_MAX_PENDING_RINGS];
 
+        /**
+         * @brief MQTT subscribed topics
+         */
+        static inline WalterModemMqttTopic _mqttTopics[WALTER_MODEM_MQTT_MAX_TOPICS];
+
+        static inline WalterModemMqttTopic* _currentTopic = NULL;
         /**
          * @brief The task in which AT commands and responses are handled.
          */
@@ -3190,11 +3222,16 @@ class WalterModem {
          *
          * @return The duration encoded into the 3GPP standard format.
          */
-        static const uint8_t _convertDuration(
+        static uint8_t _convertDuration(
             const uint32_t *base_times,
             size_t base_times_len,
             uint32_t duration_seconds,
             uint32_t *actual_duration_seconds);
+
+        /**
+         * @brief subscribes without saving the topic in _mqttTopics. (same as mqttSubscribe)
+         */
+        static bool _mqttSubscribeRaw(const char *topicString, uint8_t qos, WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
 
     public :
 #ifdef ARDUINO
@@ -3492,7 +3529,7 @@ class WalterModem {
         static bool mqttConnect(
             const char *serverName,
             uint16_t port,
-            bool keepAlive = true,
+            uint16_t keepAlive = 10,
             WalterModemRsp *rsp = NULL,
             walterModemCb cb = NULL,
             void *args = NULL);
@@ -4689,7 +4726,7 @@ class WalterModem {
          *
          * @return The interval encoded into the 3GPP standard format.
          */
-        static const uint8_t durationToTAU(
+        static uint8_t durationToTAU(
             uint32_t seconds = 0,
             uint32_t minutes = 0,
             uint32_t hours = 0,
@@ -4710,7 +4747,7 @@ class WalterModem {
          *
          * @return The duration encoded into the 3GPP standard format.
          */
-        static const uint8_t durationToActiveTime(
+        static uint8_t durationToActiveTime(
             uint32_t seconds = 0,
             uint32_t minutes = 0,
             uint32_t *actual_duration_seconds = nullptr);

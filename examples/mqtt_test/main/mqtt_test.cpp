@@ -204,17 +204,10 @@ extern "C" void app_main(void)
     return;
   }
 
-  /* Configure TLS profile */
-  if(modem.tlsConfigProfile(TLS_PROFILE, WALTER_MODEM_TLS_VALIDATION_NONE, WALTER_MODEM_TLS_VERSION_12, 1)) {
-    ESP_LOGI("mqtt_test", "Successfully configured the TLS profile");
-  } else {
-    ESP_LOGI("mqtt_test", "Failed to configure TLS profile");
-  }
-
   // other public mqtt broker with web client: mqtthq.com
   if (modem.mqttConfig("walter-mqtt-test-topic", "", ""))
 
-    if (modem.mqttConnect("test.mosquitto.org", 1883,true))
+    if (modem.mqttConnect("test.mosquitto.org", 1883,5))
     {
       ESP_LOGI("mqtt_test", "MQTT connection succeeded");
 
@@ -233,7 +226,7 @@ extern "C" void app_main(void)
 
   /* this loop is basically the Arduino loop function */
   for(;;) {
-    vTaskDelay(pdMS_TO_TICKS(15000));
+    vTaskDelay(pdMS_TO_TICKS(1000));
 
     WalterModemRsp rsp = {};
   

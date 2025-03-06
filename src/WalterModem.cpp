@@ -423,6 +423,7 @@ struct WalterModemStpResponseTransferBlock stpResponseTransferBlock;
 RTC_DATA_ATTR WalterModemPDPContext _pdpCtxSetRTC[WALTER_MODEM_MAX_PDP_CTXTS] = {};
 RTC_DATA_ATTR WalterModemPDPContext _coapCtxSetRTC[WALTER_MODEM_MAX_COAP_PROFILES] = {};
 RTC_DATA_ATTR WalterModemBlueCherryState blueCherryRTC = {};
+RTC_DATA_ATTR WalterModemMqttTopic _mqttTopicSetRTC[WALTER_MODEM_MQTT_MAX_TOPICS] = {};
 
 /**
  * @brief Convert a digit to a string literal.
@@ -2521,6 +2522,13 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
 
         _mqttStatus = (WalterModemMqttStatus)status;
 
+        for (size_t i = 0; i < WALTER_MODEM_MQTT_MAX_TOPICS; i++) {
+            if(!_mqttTopics[i].free) {
+                _mqttSubscribeRaw(_mqttTopics[i].topic,_mqttTopics[i].qos);
+            }
+        }
+        
+
         if(cmd != NULL) {
             cmd->rsp->data.mqttResponse.mqttStatus = _mqttStatus;
         }
@@ -3616,6 +3624,8 @@ void WalterModem::_sleepPrepare()
     memcpy(_pdpCtxSetRTC, _pdpCtxSet, WALTER_MODEM_MAX_PDP_CTXTS * sizeof(WalterModemPDPContext));
     memcpy(_coapCtxSetRTC, _coapContextSet,
         WALTER_MODEM_MAX_COAP_PROFILES * sizeof(WalterModemCoapContext));
+    memcpy(_mqttTopics, _mqttTopicSetRTC, 
+        WALTER_MODEM_MQTT_MAX_TOPICS *sizeof(WalterModemMqttTopic));
     blueCherryRTC = blueCherry;
 }
 
@@ -3624,6 +3634,9 @@ void WalterModem::_sleepWakeup()
     memcpy(_pdpCtxSet, _pdpCtxSetRTC, WALTER_MODEM_MAX_PDP_CTXTS * sizeof(WalterModemPDPContext));
     memcpy(_coapContextSet, _coapCtxSetRTC,
         WALTER_MODEM_MAX_COAP_PROFILES * sizeof(WalterModemCoapContext));
+    memcpy(_mqttTopicSetRTC, _mqttTopics, 
+        WALTER_MODEM_MQTT_MAX_TOPICS * sizeof(WalterModemMqttTopic));
+
     blueCherry = blueCherryRTC;
 }
 
@@ -3770,7 +3783,7 @@ bool WalterModem::mqttDisconnect(WalterModemRsp *rsp, walterModemCb cb, void *ar
 bool WalterModem::mqttConnect(
     const char *serverName,
     uint16_t port,
-    bool keepAlive,
+    uint16_t keepAlive,
     WalterModemRsp *rsp,
     walterModemCb cb,
     void *args)
@@ -3805,8 +3818,19 @@ bool WalterModem::mqttPublish(
         _atStr(topicString), ",",
         _atNum(qos), ",",
         _atNum(dataSize)),
-        "+SQNSMQTTONPUBLISH:0",
+        "+SQNSMQTTONPUBLISH:0,",
         rsp, cb, args, NULL, NULL, WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT, data, dataSize);
+    _returnAfterReply();
+}
+
+bool WalterModem::_mqttSubscribeRaw(
+    const char *topicString,
+    uint8_t qos,
+    WalterModemRsp *rsp,
+    walterModemCb cb,
+    void *args)
+{
+    _runCmd(arr("AT+SQNSMQTTSUBSCRIBE=0,", _atStr(topicString), ",", _atNum(qos)), "+SQNSMQTTONSUBSCRIBE:0,", rsp, cb, args);
     _returnAfterReply();
 }
 
@@ -3817,11 +3841,38 @@ bool WalterModem::mqttSubscribe(
     walterModemCb cb,
     void *args)
 {
-    _runCmd(arr(
-        "AT+SQNSMQTTSUBSCRIBE=0,",
-        _atStr(topicString), ",",
-        _atNum(qos)),
-        "+SQNSMQTTONSUBSCRIBE:0,", rsp, cb, args);
+    
+    int index = -1;
+
+    for (size_t i = 0; i < WALTER_MODEM_MQTT_MAX_TOPICS; i++) {
+        if(_mqttTopics[i].free) {
+            index = i;
+            //reserve the topic by setting free to false;
+            _mqttTopics[i].free = false;
+            _mqttTopics[i].qos = qos;
+            _currentTopic = &_mqttTopics[i];
+            break;
+        }
+    }
+
+    if(index < 0) {
+        _currentTopic = NULL;
+        rsp->data.mqttResponse.mqttStatus = WALTER_MODEM_MQTT_UNAVAILABLE;
+        _returnState(WALTER_MODEM_STATE_ERROR);
+    }
+
+    strcpy(_currentTopic->topic, topicString);
+    _currentTopic->topic[WALTER_MODEM_MQTT_TOPIC_MAX_SIZE - 1] = '\0';
+
+    auto completeHandler = [](WalterModemCmd *cmd, WalterModemState result) {
+        if(result == WALTER_MODEM_STATE_ERROR) {
+            //If subscription was not succesfull free the topic so we can try again.
+            _currentTopic->free = true;
+        }
+    };
+
+
+    _runCmd(arr("AT+SQNSMQTTSUBSCRIBE=0,", _atStr(topicString), ",", _atNum(qos)), "+SQNSMQTTONSUBSCRIBE:0,", rsp, cb, args, completeHandler);
     _returnAfterReply();
 }
 
@@ -5348,7 +5399,37 @@ bool WalterModem::performGNSSAction(
     _returnAfterReply();
 }
 
-const uint8_t WalterModem::durationToTAU(
+uint8_t WalterModem::_convertDuration(
+    const uint32_t *base_times,
+    size_t base_times_len,
+    uint32_t duration_seconds,
+    uint32_t *actual_duration_seconds)
+{
+    uint32_t smallest_modulo = UINT32_MAX;
+    uint8_t final_base = 0;
+    uint8_t final_mult = 0;
+
+    for (uint8_t base = 0; base < base_times_len; ++base) {
+        uint32_t multiplier = duration_seconds / base_times[base];
+        if (multiplier == 0 || multiplier > 31) {
+            continue;
+        }
+
+        uint32_t modulo = duration_seconds % base_times[base];
+        if (modulo < smallest_modulo) {
+            final_base = base;
+            final_mult = multiplier;
+        }
+    }
+
+    if (actual_duration_seconds) {
+        *actual_duration_seconds = (uint32_t)final_base * (uint32_t)final_mult;
+    }
+
+    return  (final_base << 5) | final_mult;
+}
+
+uint8_t WalterModem::durationToTAU(
     uint32_t seconds,
     uint32_t minutes,
     uint32_t hours,
@@ -5360,7 +5441,7 @@ const uint8_t WalterModem::durationToTAU(
     return _convertDuration(base_times,7,duration_seconds,actual_duration_seconds);
 }
 
-const uint8_t WalterModem::durationToActiveTime(
+uint8_t WalterModem::durationToActiveTime(
     uint32_t seconds,
     uint32_t minutes,
     uint32_t *actual_duration_seconds) 
