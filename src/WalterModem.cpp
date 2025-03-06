@@ -2522,6 +2522,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
 
         _mqttStatus = (WalterModemMqttStatus)status;
 
+
         for (size_t i = 0; i < WALTER_MODEM_MQTT_MAX_TOPICS; i++) {
             if(!_mqttTopics[i].free) {
                 _mqttSubscribeRaw(_mqttTopics[i].topic,_mqttTopics[i].qos);
@@ -3830,8 +3831,11 @@ bool WalterModem::_mqttSubscribeRaw(
     walterModemCb cb,
     void *args)
 {
-    _runCmd(arr("AT+SQNSMQTTSUBSCRIBE=0,", _atStr(topicString), ",", _atNum(qos)), "+SQNSMQTTONSUBSCRIBE:0,", rsp, cb, args);
-    _returnAfterReply();
+    WalterModemBuffer *stringsBuffer = _getFreeBuffer();
+    stringsBuffer->size += sprintf((char *)stringsBuffer->data,
+        "AT+SQNSMQTTSUBSCRIBE=0,\"%s\",%d", topicString, qos);
+
+    return sendCmd((char *)stringsBuffer->data);
 }
 
 bool WalterModem::mqttSubscribe(
