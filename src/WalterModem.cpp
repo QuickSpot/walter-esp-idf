@@ -94,10 +94,11 @@
  */
 #define WALTER_MODEM_BAUD 115200
 
+//TODO change to 300000 to test, original: 60000
 /**
  * @brief The maximum number of milliseconds to wait.
  */
-#define WALTER_MODEM_CMD_TIMEOUT_MS 60000
+#define WALTER_MODEM_CMD_TIMEOUT_MS 300000
 
 /**
  * @brief The command timeout expressed in system ticks.
@@ -2518,9 +2519,13 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         const char *rspStr = _buffStr(buff);
         int status = atoi(rspStr + _strLitLen("+SQNSMQTTONCONNECT:0,"));
 
-        cmd->rsp->data.mqttResponse.mqttStatus = (WalterModemMqttStatus) status;
+        _mqttStatus = (WalterModemMqttStatus)status;
 
-        if(status) {
+        if(cmd != NULL) {
+            cmd->rsp->data.mqttResponse.mqttStatus = _mqttStatus;
+        }
+
+        if(status < 0) {
             result = WALTER_MODEM_STATE_ERROR;
         }
     }
@@ -2529,9 +2534,9 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         const char *rspStr = _buffStr(buff);
         int status = atoi(rspStr + _strLitLen("+SQNSMQTTONDISCONNECT:0,"));
 
-        cmd->rsp->data.mqttResponse.mqttStatus = (WalterModemMqttStatus) status;
+        _mqttStatus = (WalterModemMqttStatus)status;
 
-        if(status) {
+        if(status < 0) {
             result = WALTER_MODEM_STATE_ERROR;
         }
     }
@@ -2540,14 +2545,15 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         const char *rspStr = _buffStr(buff);
         const char *pmid = rspStr + _strLitLen("+SQNSMQTTONPUBLISH:0,");
         const char *statusComma = strchr(pmid, ',');
-        int status = atoi(statusComma + _strLitLen("+SQNSMQTTONDISCONNECT:0,"));
+        if (statusComma) {
+            int status = atoi(statusComma + 1);
+            _mqttStatus = (WalterModemMqttStatus)status;
 
-        cmd->rsp->data.mqttResponse.mqttStatus = (WalterModemMqttStatus) status;
+            if (cmd != NULL) {
+                cmd->rsp->data.mqttResponse.mqttStatus = _mqttStatus;
+            }
 
-        if(statusComma == NULL) {
-            result = WALTER_MODEM_STATE_ERROR;
-        } else {
-            if(atoi(statusComma + 1)) {
+            if (status < 0) {
                 result = WALTER_MODEM_STATE_ERROR;
             }
         }
@@ -2557,14 +2563,16 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         const char *rspStr = _buffStr(buff);
         const char *topic = rspStr + _strLitLen("+SQNSMQTTONSUBSCRIBE:0,");
         const char *statusComma = strchr(topic, ',');
-        int status = atoi(statusComma + _strLitLen("+SQNSMQTTONDISCONNECT:0,"));
 
-        cmd->rsp->data.mqttResponse.mqttStatus = (WalterModemMqttStatus) status;
+        if(statusComma) {
+            int status = atoi(statusComma + 1);
+            _mqttStatus = (WalterModemMqttStatus)status;
 
-        if(statusComma == NULL) {
-            result = WALTER_MODEM_STATE_ERROR;
-        } else {
-            if(atoi(statusComma + 1)) {
+            if (cmd != NULL) {
+                cmd->rsp->data.mqttResponse.mqttStatus = _mqttStatus;
+            }
+
+            if (status < 0) {
                 result = WALTER_MODEM_STATE_ERROR;
             }
         }
@@ -3713,8 +3721,12 @@ bool WalterModem::getIdentity(WalterModemRsp *rsp, walterModemCb cb, void *args)
     _returnAfterReply();
 }   
 
+WalterModemMqttStatus WalterModem::getMqttStatus(){
+    return _mqttStatus;
+}
+
 //TODO: double check this for memory safetey
-bool WalterModem::_mqttConfig(
+bool WalterModem::mqttConfig(
     const char *clientId,
     const char *userName,
     const char *password,
@@ -3724,29 +3736,29 @@ bool WalterModem::_mqttConfig(
     walterModemCb cb = NULL;
     void *args = NULL;
 
-    if(tlsProfileId) {
-        _runCmd(arr(
-            "AT+SQNSMQTTCFG=0,",
-            _atStr(clientId), ",",
-            _atStr(userName), ",",
-            _atStr(password), ",",
-            _atNum(tlsProfileId)),
-            "OK", rsp, cb, args);
-        _returnAfterReply();
+    WalterModemBuffer*  stringsBuffer = _getFreeBuffer();
+    stringsBuffer->size += sprintf((char *)stringsBuffer->data,
+        "AT+SQNSMQTTCFG=0,\"%s\"", clientId);
+
+    if(userName && password) {
+        stringsBuffer->size += sprintf(
+            (char *)stringsBuffer->data + stringsBuffer->size,
+            ",\"%s\",\"%s\"", userName, password);
     } else {
-        if(userName && *userName) {
-            _runCmd(arr(
-                "AT+SQNSMQTTCFG=0,",
-                _atStr(clientId), ",",
-                _atStr(userName), ",",
-                _atStr(password)),
-                "OK", rsp, cb, args);
-            _returnAfterReply();
-        } else {
-            _runCmd(arr("AT+SQNSMQTTCFG=0,", _atStr(clientId)), "OK", rsp, cb, args);
-            _returnAfterReply();
-        }
+        stringsBuffer->size += sprintf(
+            (char *) stringsBuffer->data + stringsBuffer->size, 
+            ",,");
     }
+
+    if(tlsProfileId) {
+            stringsBuffer->size += sprintf(
+            (char *) stringsBuffer->data + stringsBuffer->size, 
+            ",%u", tlsProfileId);
+    }
+    _runCmd(arr((const char *) stringsBuffer->data), "OK", rsp, cb, args);
+   
+    _returnAfterReply();
+    
 }
 
 bool WalterModem::mqttDisconnect(WalterModemRsp *rsp, walterModemCb cb, void *args)
@@ -3758,22 +3770,17 @@ bool WalterModem::mqttDisconnect(WalterModemRsp *rsp, walterModemCb cb, void *ar
 bool WalterModem::mqttConnect(
     const char *serverName,
     uint16_t port,
-    const char *clientId,
-    const char *userName,
-    const char *password,
-    uint8_t tlsProfileId,
+    bool keepAlive,
     WalterModemRsp *rsp,
     walterModemCb cb,
     void *args)
 {
-    if(!_mqttConfig(clientId, userName, password, tlsProfileId)) {
-        _returnState(WALTER_MODEM_STATE_ERROR);
-    }
 
     _runCmd(arr(
         "AT+SQNSMQTTCONNECT=0,",
         _atStr(serverName), ",",
-        _atNum(port)),
+        _atNum(port),",",
+        _atNum(keepAlive)),
         "+SQNSMQTTONCONNECT:0,", rsp, cb, args);
     _returnAfterReply();
 }
@@ -3788,7 +3795,7 @@ bool WalterModem::mqttPublish(
     void *args)
 {
 
-    if (getNetworkRegState() != WALTER_MODEM_NETWORK_REG_REGISTERED_HOME || getNetworkRegState() != WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING) {
+    if (getNetworkRegState() != WALTER_MODEM_NETWORK_REG_REGISTERED_HOME && getNetworkRegState() != WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING) {
         ESP_LOGD("WalterModem","network is not connected!");
         _returnState(WALTER_MODEM_STATE_ERROR);
     }
@@ -3798,7 +3805,7 @@ bool WalterModem::mqttPublish(
         _atStr(topicString), ",",
         _atNum(qos), ",",
         _atNum(dataSize)),
-        "+SQNSMQTTONPUBLISH:0,",
+        "wai,",
         rsp, cb, args, NULL, NULL, WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT, data, dataSize);
     _returnAfterReply();
 }
