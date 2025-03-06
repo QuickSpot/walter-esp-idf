@@ -249,9 +249,8 @@ extern "C" void app_main(void)
           rsp.data.mqttResponse.qos,
           rsp.data.mqttResponse.messageId,
           rsp.data.mqttResponse.length);
-      for(int i = 0; i < rsp.data.mqttResponse.length; i++) {
-        ESP_LOGI("mqtt_test", "'%c' 0x%02x", incomingBuf[i], incomingBuf[i]);
-      }
+      incomingBuf[rsp.data.mqttResponse.length] = '\0';
+      ESP_LOGI("mqtt_test","%s",incomingBuf);
     }
   }
 }
