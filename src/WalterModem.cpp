@@ -3805,7 +3805,7 @@ bool WalterModem::mqttPublish(
         _atStr(topicString), ",",
         _atNum(qos), ",",
         _atNum(dataSize)),
-        "wai,",
+        "+SQNSMQTTONPUBLISH:0",
         rsp, cb, args, NULL, NULL, WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT, data, dataSize);
     _returnAfterReply();
 }
