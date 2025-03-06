@@ -3516,10 +3516,8 @@ class WalterModem {
          *
          * @param serverName MQTT broker hostname
          * @param port Port to connect to
-         * @param clientId Client id string to be used
-         * @param userName Username
-         * @param password Password
-         * @param tlsProfileId TLS profile id to be used (default 0=plaintext)
+         * @param keepAlive Maximum time (in Seconds) 
+         * allowed between communications with the broker.
          * @param rsp Optional modem response structure to save the result in.
          * @param cb Optional callback function, if set this function will not block.
          * @param args Optional argument to pass to the callback.
@@ -3529,7 +3527,7 @@ class WalterModem {
         static bool mqttConnect(
             const char *serverName,
             uint16_t port,
-            uint16_t keepAlive = 10,
+            uint16_t keepAlive = 5,
             WalterModemRsp *rsp = NULL,
             walterModemCb cb = NULL,
             void *args = NULL);
