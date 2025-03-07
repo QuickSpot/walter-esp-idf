@@ -207,7 +207,7 @@ extern "C" void app_main(void)
   // other public mqtt broker with web client: mqtthq.com
   if (modem.mqttConfig("walter-mqtt-test-topic", "", ""))
   {
-    if (modem.mqttConnect("test.mosquitto.org", 1883,5))
+    if (modem.mqttConnect("test.mosquitto.org", 1883))
     {
       ESP_LOGI("mqtt_test", "MQTT connection succeeded");
 

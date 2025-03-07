@@ -2276,6 +2276,11 @@ typedef struct {
      * @brief The length of the message.
      */
     uint16_t length;
+
+    /**
+     * @brief Is this ring free for usage.
+     */
+    bool free = true;
 } WalterModemMqttRing;
 
 typedef struct {

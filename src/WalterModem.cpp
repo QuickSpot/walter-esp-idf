@@ -2630,15 +2630,15 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             /* convert parameters to int */
             uint16_t length = atoi(lenStr);
             uint8_t qos = atoi(qosStr);
-            uint16_t messageId = midStr ? atoi(midStr) : 0xffff;
+            uint16_t messageId = midStr ? atoi(midStr) : 0;
 
             uint8_t ringIdx;
             for(ringIdx = 0; ringIdx < WALTER_MODEM_MQTT_MAX_PENDING_RINGS; ringIdx++) {
-                if(!_mqttRings[ringIdx].messageId) {
+                if(_mqttRings[ringIdx].free) {
                     break;
                 }
 
-                if (strncmp(topic, _mqttRings[ringIdx].topic, strlen(topic)) == 0 && _mqttRings[ringIdx].messageId == messageId) {
+                if (strncmp(topic, _mqttRings[ringIdx].topic, strlen(topic)) == 0 && _mqttRings[ringIdx].messageId == messageId && _mqttRings[ringIdx].qos == qos) {
                     ESP_LOGD("WalterModem", "mqtt duplicate message!");
                     goto after_processing_logic;
                 }
@@ -2651,7 +2651,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             }
             
             /* store ring in ring list for this mqtt context */
-            if (!_mqttRings[ringIdx].messageId) {
+            if (_mqttRings[ringIdx].free) {
                 _mqttRings[ringIdx].messageId = messageId;
                 _mqttRings[ringIdx].length = length;
                 _mqttRings[ringIdx].qos = qos;
@@ -3833,13 +3833,8 @@ bool WalterModem::_mqttSubscribeRaw(
     walterModemCb cb,
     void *args)
 {
-    WalterModemBuffer *stringsBuffer = _getFreeBuffer();
-    stringsBuffer->size += sprintf((char *)stringsBuffer->data,
-        "AT+SQNSMQTTSUBSCRIBE=0,\"%s\",%d", topicString, qos);
-
-    const char *_cmdArr[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] = {(const char *)stringsBuffer->data};
-
-    return _addQueueCmd(_cmdArr, NULL,NULL, mqtt_resubscribe_callback, NULL, NULL, NULL, WALTER_MODEM_CMD_TYPE_TX) != nullptr;
+    _runCmd(arr("AT+SQNSMQTTSUBSCRIBE=0,", _atStr(topicString), ",", _atNum(qos)), NULL, rsp, mqtt_resubscribe_callback, args);
+    return true;
 }
 
 bool WalterModem::mqttSubscribe(
@@ -3859,6 +3854,8 @@ bool WalterModem::mqttSubscribe(
             _mqttTopics[i].free = false;
             _mqttTopics[i].qos = qos;
             _currentTopic = &_mqttTopics[i];
+            _strncpy_s(_mqttTopics[i].topic, topicString, WALTER_MODEM_MQTT_TOPIC_BUF_SIZE);
+
             break;
         }
     }
@@ -3868,9 +3865,6 @@ bool WalterModem::mqttSubscribe(
         rsp->data.mqttResponse.mqttStatus = WALTER_MODEM_MQTT_UNAVAILABLE;
         _returnState(WALTER_MODEM_STATE_ERROR);
     }
-
-    strcpy(_currentTopic->topic, topicString);
-    _currentTopic->topic[WALTER_MODEM_MQTT_TOPIC_MAX_SIZE - 1] = '\0';
 
     auto completeHandler = [](WalterModemCmd *cmd, WalterModemState result) {
         if(result == WALTER_MODEM_STATE_ERROR) {
@@ -4354,8 +4348,10 @@ bool WalterModem::mqttDidRing(
     }
 
     targetBufSize = _mqttRings[idx].length;
+    _mqttRings[idx].free = true;
 
-    if(_mqttRings[idx].messageId == 0xffff) {
+    if (_mqttRings[idx].qos == 0)
+    {
         /* no msg id means qos 0 message */
         _runCmd(arr(
             "AT+SQNSMQTTRCVMESSAGE=0,",
@@ -4364,7 +4360,9 @@ bool WalterModem::mqttDidRing(
             targetBufSize);
 
         _returnAfterReply();
-    } else {
+    }
+    else
+    {
         _runCmd(arr(
             "AT+SQNSMQTTRCVMESSAGE=0,",
             _atStr(topic), ",",
