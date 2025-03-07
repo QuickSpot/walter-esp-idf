@@ -94,7 +94,6 @@
  */
 #define WALTER_MODEM_BAUD 115200
 
-//TODO change to 300000 to test, original: 60000
 /**
  * @brief The maximum number of milliseconds to wait.
  */
@@ -2520,10 +2519,10 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         const char *rspStr = _buffStr(buff);
         int status = atoi(rspStr + _strLitLen("+SQNSMQTTONCONNECT:0,"));
 
-        _mqttStatus = (WalterModemMqttStatus)status;
+        _mqttStatus = (WalterModemMqttStatus) status;
 
 
-        for (size_t i = 0; i < WALTER_MODEM_MQTT_MAX_TOPICS; i++) {
+        for(size_t i = 0; i < WALTER_MODEM_MQTT_MAX_TOPICS; i++) {
             if(!_mqttTopics[i].free) {
                 _mqttSubscribeRaw(_mqttTopics[i].topic,_mqttTopics[i].qos);
             }
@@ -2640,13 +2639,13 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
                     break;
                 }
 
-                if(_mqttRings[ringIdx].messageId == messageId) {
+                if (strncmp(topic, _mqttRings[ringIdx].topic, strlen(topic)) == 0 && _mqttRings [ringIdx].messageId == messageId) {
                     break;
                 }
             }
 
             if(ringIdx == WALTER_MODEM_MQTT_MAX_PENDING_RINGS) {
-                //TODO: implemented error reporting mechanism for full ring buffer.
+                _mqttStatus = WALTER_MODEM_MQTT_NOMEM;
                 buff->free = true;
                 return;
             }
@@ -3739,7 +3738,6 @@ WalterModemMqttStatus WalterModem::getMqttStatus(){
     return _mqttStatus;
 }
 
-//TODO: double check this for memory safetey
 bool WalterModem::mqttConfig(
     const char *clientId,
     const char *userName,
@@ -3760,7 +3758,7 @@ bool WalterModem::mqttConfig(
             ",\"%s\",\"%s\"", userName, password);
     } else {
         stringsBuffer->size += sprintf(
-            (char *) stringsBuffer->data + stringsBuffer->size, 
+            (char *) stringsBuffer->data + stringsBuffer->size,
             ",,");
     }
 
@@ -3770,7 +3768,6 @@ bool WalterModem::mqttConfig(
             ",%u", tlsProfileId);
     }
     _runCmd(arr((const char *) stringsBuffer->data), "OK", rsp, cb, args);
-   
     _returnAfterReply();
     
 }
@@ -3809,7 +3806,8 @@ bool WalterModem::mqttPublish(
     void *args)
 {
 
-    if (getNetworkRegState() != WALTER_MODEM_NETWORK_REG_REGISTERED_HOME && getNetworkRegState() != WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING) {
+    if (getNetworkRegState() != WALTER_MODEM_NETWORK_REG_REGISTERED_HOME 
+     && getNetworkRegState() != WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING) {
         ESP_LOGD("WalterModem","network is not connected!");
         _returnState(WALTER_MODEM_STATE_ERROR);
     }
@@ -3824,6 +3822,9 @@ bool WalterModem::mqttPublish(
     _returnAfterReply();
 }
 
+static void mqtt_resubscribe_callback(const WalterModemRsp *rsp, void *args) {
+
+}
 bool WalterModem::_mqttSubscribeRaw(
     const char *topicString,
     uint8_t qos,
@@ -3835,7 +3836,9 @@ bool WalterModem::_mqttSubscribeRaw(
     stringsBuffer->size += sprintf((char *)stringsBuffer->data,
         "AT+SQNSMQTTSUBSCRIBE=0,\"%s\",%d", topicString, qos);
 
-    return sendCmd((char *)stringsBuffer->data);
+    const char *_cmdArr[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] = {(const char *)stringsBuffer->data};
+
+    return _addQueueCmd(_cmdArr, NULL,NULL, mqtt_resubscribe_callback, NULL, NULL, NULL, WALTER_MODEM_CMD_TYPE_TX) != nullptr;
 }
 
 bool WalterModem::mqttSubscribe(
@@ -3851,7 +3854,7 @@ bool WalterModem::mqttSubscribe(
     for (size_t i = 0; i < WALTER_MODEM_MQTT_MAX_TOPICS; i++) {
         if(_mqttTopics[i].free) {
             index = i;
-            //reserve the topic by setting free to false;
+            /*Reserve the topic by setting free to false*/
             _mqttTopics[i].free = false;
             _mqttTopics[i].qos = qos;
             _currentTopic = &_mqttTopics[i];
@@ -3870,7 +3873,7 @@ bool WalterModem::mqttSubscribe(
 
     auto completeHandler = [](WalterModemCmd *cmd, WalterModemState result) {
         if(result == WALTER_MODEM_STATE_ERROR) {
-            //If subscription was not succesfull free the topic so we can try again.
+            /*If subscription was not succesfull free the topic so we can try again.*/
             _currentTopic->free = true;
         }
     };
@@ -4336,7 +4339,7 @@ bool WalterModem::mqttDidRing(
     uint8_t idx;
     for(idx = 0; idx < WALTER_MODEM_MQTT_MAX_PENDING_RINGS; idx++) {
         if(!strncmp(topic, _mqttRings[idx].topic, WALTER_MODEM_MQTT_TOPIC_MAX_SIZE) &&
-           _mqttRings[idx].messageId) {
+            _mqttRings[idx].messageId) {
             break;
         }
     }

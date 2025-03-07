@@ -2519,6 +2519,15 @@ class WalterModem {
         static inline WalterModemMqttRing _mqttRings[WALTER_MODEM_MQTT_MAX_PENDING_RINGS];
 
         /**
+         * @brief MQTT already received messages.
+         */
+        static inline WalterModemMqttRing _mqttReceivedMessages[WALTER_MODEM_MQTT_MAX_PENDING_RINGS];
+
+        /**
+         * @brief MQTT current index of _mqttReceivedMessages.
+         */
+        static inline uint8_t _mqttReceivedIndex = 0;
+        /**
          * @brief MQTT subscribed topics
          */
         static inline WalterModemMqttTopic _mqttTopics[WALTER_MODEM_MQTT_MAX_TOPICS];
@@ -3527,7 +3536,7 @@ class WalterModem {
         static bool mqttConnect(
             const char *serverName,
             uint16_t port,
-            uint16_t keepAlive = 5,
+            uint16_t keepAlive = 60,
             WalterModemRsp *rsp = NULL,
             walterModemCb cb = NULL,
             void *args = NULL);
