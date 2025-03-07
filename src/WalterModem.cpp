@@ -2638,15 +2638,16 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
                     break;
                 }
 
-                if (strncmp(topic, _mqttRings[ringIdx].topic, strlen(topic)) == 0 && _mqttRings [ringIdx].messageId == messageId) {
-                    break;
+                if (strncmp(topic, _mqttRings[ringIdx].topic, strlen(topic)) == 0 && _mqttRings[ringIdx].messageId == messageId) {
+                    ESP_LOGD("WalterModem", "mqtt duplicate message!");
+                    goto after_processing_logic;
                 }
             }
 
             if(ringIdx == WALTER_MODEM_MQTT_MAX_PENDING_RINGS) {
                 _mqttStatus = WALTER_MODEM_MQTT_NOMEM;
-                buff->free = true;
-                return;
+                ESP_LOGD("WalterModem","mqtt message buffer was full!");
+                goto after_processing_logic;
             }
             
             /* store ring in ring list for this mqtt context */
