@@ -204,29 +204,29 @@ extern "C" void app_main(void)
     return;
   }
 
-  /* Configure TLS profile */
-  if(modem.tlsConfigProfile(TLS_PROFILE, WALTER_MODEM_TLS_VALIDATION_NONE, WALTER_MODEM_TLS_VERSION_12, 1)) {
-    ESP_LOGI("mqtt_test", "Successfully configured the TLS profile");
-  } else {
-    ESP_LOGI("mqtt_test", "Failed to configure TLS profile");
-  }
-
   // other public mqtt broker with web client: mqtthq.com
-  if(modem.mqttConnect("test.mosquitto.org", 8883, macString, "", "", 1)) {
-    ESP_LOGI("mqtt_test", "MQTT connection succeeded");
+  if (modem.mqttConfig("walter-mqtt-test-topic", "", ""))
+  {
+    if (modem.mqttConnect("test.mosquitto.org", 1883))
+    {
+      ESP_LOGI("mqtt_test", "MQTT connection succeeded");
 
-    if(modem.mqttSubscribe("waltertopic")) {
-      ESP_LOGI("mqtt_test", "MQTT subscribed to topic 'waltertopic'");
-    } else {
+      if (modem.mqttSubscribe("waltertopic"))
+      {
+        ESP_LOGI("mqtt_test", "MQTT subscribed to topic 'waltertopic'");
+      } else {
       ESP_LOGI("mqtt_test", "MQTT subscribe failed");
+      }
+    } else {
+      ESP_LOGI("mqtt_test", "MQTT connection failed");
     }
-  } else {
-    ESP_LOGI("mqtt_test", "MQTT connection failed");
+  } else{
+    ESP_LOGI("mqtt_test", "MQTT configuration failed");
   }
 
   /* this loop is basically the Arduino loop function */
   for(;;) {
-    vTaskDelay(pdMS_TO_TICKS(15000));
+    vTaskDelay(pdMS_TO_TICKS(1000));
 
     WalterModemRsp rsp = {};
   
@@ -235,9 +235,11 @@ extern "C" void app_main(void)
     seq++;
     if(seq % 3 == 0) {
       sprintf(outgoingMsg, "%s-%d", macString, seq);
-      if(modem.mqttPublish("waltertopic", (uint8_t *) outgoingMsg, strlen(outgoingMsg))) {
+
+      if(modem.mqttPublish("waltertopic", (uint8_t *) outgoingMsg, strlen(outgoingMsg),2,&rsp)) {
         ESP_LOGI("mqtt_test", "published '%s' on topic 'waltertopic'", outgoingMsg);
       } else {
+        
         ESP_LOGI("mqtt_test", "MQTT publish failed");
       }
     }
@@ -247,9 +249,8 @@ extern "C" void app_main(void)
           rsp.data.mqttResponse.qos,
           rsp.data.mqttResponse.messageId,
           rsp.data.mqttResponse.length);
-      for(int i = 0; i < rsp.data.mqttResponse.length; i++) {
-        ESP_LOGI("mqtt_test", "'%c' 0x%02x", incomingBuf[i], incomingBuf[i]);
-      }
+      incomingBuf[rsp.data.mqttResponse.length] = '\0';
+      ESP_LOGI("mqtt_test","%s",incomingBuf);
     }
   }
 }
