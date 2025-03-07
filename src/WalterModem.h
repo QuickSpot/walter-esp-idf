@@ -3235,11 +3235,6 @@ class WalterModem {
          * @brief subscribes without saving the topic in _mqttTopics. (same as mqttSubscribe)
          */
         static bool _mqttSubscribeRaw(const char *topicString, uint8_t qos, WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
-
-        /**
-         * @brief Check if a message ring has already been received.
-         */
-        bool _mqttMessageAlreadyReceived(const char *topic, uint16_t messageId);
     public:
 #ifdef ARDUINO
         /**
