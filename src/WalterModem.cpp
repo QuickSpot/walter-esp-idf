@@ -2632,7 +2632,6 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             uint8_t qos = atoi(qosStr);
             uint16_t messageId = midStr ? atoi(midStr) : 0xffff;
 
-            /* store ring in ring list for this coap context */
             uint8_t ringIdx;
             for(ringIdx = 0; ringIdx < WALTER_MODEM_MQTT_MAX_PENDING_RINGS; ringIdx++) {
                 if(!_mqttRings[ringIdx].messageId) {
@@ -2649,8 +2648,9 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
                 buff->free = true;
                 return;
             }
-
-            if(!_mqttRings[ringIdx].messageId) {
+            
+            /* store ring in ring list for this mqtt context */
+            if (!_mqttMessageAlreadyReceived(topic, messageId) && !_mqttRings[ringIdx].messageId) {
                 _mqttRings[ringIdx].messageId = messageId;
                 _mqttRings[ringIdx].length = length;
                 _mqttRings[ringIdx].qos = qos;
@@ -3839,6 +3839,18 @@ bool WalterModem::_mqttSubscribeRaw(
     const char *_cmdArr[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] = {(const char *)stringsBuffer->data};
 
     return _addQueueCmd(_cmdArr, NULL,NULL, mqtt_resubscribe_callback, NULL, NULL, NULL, WALTER_MODEM_CMD_TYPE_TX) != nullptr;
+}
+
+bool WalterModem::_mqttMessageAlreadyReceived(const char *topic, uint16_t messageId)
+{
+    for (size_t i = 0; i < WALTER_MODEM_MQTT_MAX_PENDING_RINGS; i++) {
+        if (strcmp(_mqttRings[i].topic, topic) 
+            && _mqttRings[i].messageId == messageId) {
+            return true;
+        }
+    }
+    
+    return false;
 }
 
 bool WalterModem::mqttSubscribe(
