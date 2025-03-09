@@ -3826,7 +3826,7 @@ bool WalterModem::mqttPublish(
 static void mqtt_resubscribe_callback(const WalterModemRsp *rsp, void *args) {
 
 }
-bool WalterModem::_mqttSubscribeRaw(
+void WalterModem::_mqttSubscribeRaw(
     const char *topicString,
     uint8_t qos,
     WalterModemRsp *rsp,
@@ -3834,7 +3834,6 @@ bool WalterModem::_mqttSubscribeRaw(
     void *args)
 {
     _runCmd(arr("AT+SQNSMQTTSUBSCRIBE=0,", _atStr(topicString), ",", _atNum(qos)), NULL, rsp, mqtt_resubscribe_callback, args);
-    return true;
 }
 
 bool WalterModem::mqttSubscribe(
