@@ -3834,6 +3834,7 @@ bool WalterModem::_mqttSubscribeRaw(
     void *args)
 {
     _runCmd(arr("AT+SQNSMQTTSUBSCRIBE=0,", _atStr(topicString), ",", _atNum(qos)), NULL, rsp, mqtt_resubscribe_callback, args);
+    _returnState(WALTER_MODEM_STATE_OK);
 }
 
 bool WalterModem::mqttSubscribe(
