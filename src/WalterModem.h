@@ -3239,7 +3239,7 @@ class WalterModem {
         /**
          * @brief subscribes without saving the topic in _mqttTopics. (same as mqttSubscribe)
          */
-        static void _mqttSubscribeRaw(const char *topicString, uint8_t qos, WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
+        static bool _mqttSubscribeRaw(const char *topicString, uint8_t qos, WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
     public:
 #ifdef ARDUINO
         /**

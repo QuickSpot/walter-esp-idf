@@ -3826,7 +3826,7 @@ bool WalterModem::mqttPublish(
 static void mqtt_resubscribe_callback(const WalterModemRsp *rsp, void *args) {
 
 }
-void WalterModem::_mqttSubscribeRaw(
+bool WalterModem::_mqttSubscribeRaw(
     const char *topicString,
     uint8_t qos,
     WalterModemRsp *rsp,
