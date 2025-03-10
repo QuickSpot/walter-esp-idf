@@ -3597,7 +3597,8 @@ class WalterModem {
          *
          * Poll if the modem has reported any incoming MQTT messages received on topics that we are
          * subscribed on.
-         * @warning when a QoS 0 message was received it must be retrieved before the next message on the same topic.
+         * @warning when a QoS 0 message was received it must be retrieved before the next message 
+         * on the same topic.
          *
          * @param topic Topic to poll
          * @param targetBuf Target buffer to write incoming mqtt data in
