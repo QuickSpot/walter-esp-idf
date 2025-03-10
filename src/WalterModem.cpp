@@ -2553,9 +2553,10 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         const char *rspStr = _buffStr(buff);
         const char *pmid = rspStr + _strLitLen("+SQNSMQTTONPUBLISH:0,");
         const char *statusComma = strchr(pmid, ',');
+
         if (statusComma) {
             int status = atoi(statusComma + 1);
-            _mqttStatus = (WalterModemMqttStatus)status;
+            _mqttStatus = (WalterModemMqttStatus) status;
 
             if (cmd != NULL) {
                 cmd->rsp->data.mqttResponse.mqttStatus = _mqttStatus;
@@ -2574,7 +2575,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
 
         if(statusComma) {
             int status = atoi(statusComma + 1);
-            _mqttStatus = (WalterModemMqttStatus)status;
+            _mqttStatus = (WalterModemMqttStatus) status;
 
             if (cmd != NULL) {
                 cmd->rsp->data.mqttResponse.mqttStatus = _mqttStatus;
