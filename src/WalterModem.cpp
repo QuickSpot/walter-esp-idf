@@ -3626,7 +3626,7 @@ void WalterModem::_sleepPrepare()
     memcpy(_pdpCtxSetRTC, _pdpCtxSet, WALTER_MODEM_MAX_PDP_CTXTS * sizeof(WalterModemPDPContext));
     memcpy(_coapCtxSetRTC, _coapContextSet,
         WALTER_MODEM_MAX_COAP_PROFILES * sizeof(WalterModemCoapContext));
-    memcpy(_mqttTopics, _mqttTopicSetRTC, 
+    memcpy(_mqttTopicSetRTC, _mqttTopics,
         WALTER_MODEM_MQTT_MAX_TOPICS *sizeof(WalterModemMqttTopic));
     blueCherryRTC = blueCherry;
 }
@@ -3636,7 +3636,7 @@ void WalterModem::_sleepWakeup()
     memcpy(_pdpCtxSet, _pdpCtxSetRTC, WALTER_MODEM_MAX_PDP_CTXTS * sizeof(WalterModemPDPContext));
     memcpy(_coapContextSet, _coapCtxSetRTC,
         WALTER_MODEM_MAX_COAP_PROFILES * sizeof(WalterModemCoapContext));
-    memcpy(_mqttTopicSetRTC, _mqttTopics, 
+    memcpy(_mqttTopics, _mqttTopicSetRTC,
         WALTER_MODEM_MQTT_MAX_TOPICS * sizeof(WalterModemMqttTopic));
 
     blueCherry = blueCherryRTC;

@@ -2529,7 +2529,7 @@ class WalterModem {
         static inline WalterModemMqttTopic _mqttTopics[WALTER_MODEM_MQTT_MAX_TOPICS];
 
         /**
-         * @brief topic that is currently in use
+         * @brief The topic that is currently in use for the completeHandler.
          */
         static inline WalterModemMqttTopic* _currentTopic = NULL;
         /**
@@ -2633,8 +2633,9 @@ class WalterModem {
          */
         static inline WalterModemEventHandler _eventHandlers[WALTER_MODEM_EVENT_TYPE_COUNT] = {};
 
-        /*
-        */
+        /**
+         * @brief The latest MQTT status code received from the modem.
+         */
         static inline WalterModemMqttStatus _mqttStatus = WALTER_MODEM_MQTT_SUCCESS;
         /**
          * @brief Helper to boot modem to recovery modem and start upgrade.
@@ -3237,9 +3238,15 @@ class WalterModem {
             uint32_t *actual_duration_seconds);
 
         /**
-         * @brief subscribes without saving the topic in _mqttTopics. (same as mqttSubscribe)
+         * @brief This function subscribes without saving the topic in _mqttTopics and runs async. 
+         * (same as mqttSubscribe)
          */
-        static bool _mqttSubscribeRaw(const char *topicString, uint8_t qos, WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
+        static bool _mqttSubscribeRaw(
+            const char *topicString,
+            uint8_t qos,
+            WalterModemRsp *rsp = NULL,
+            walterModemCb cb = NULL,
+            void *args = NULL);
     public:
 #ifdef ARDUINO
         /**
