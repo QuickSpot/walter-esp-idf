@@ -3824,7 +3824,7 @@ bool WalterModem::mqttPublish(
 }
 
 static void mqtt_resubscribe_callback(const WalterModemRsp *rsp, void *args) {
-
+    /*This is an empty callback so the _runCmd() runs async*/
 }
 bool WalterModem::_mqttSubscribeRaw(
     const char *topicString,
