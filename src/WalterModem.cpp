@@ -3639,6 +3639,13 @@ void WalterModem::_sleepWakeup()
     memcpy(_mqttTopics, _mqttTopicSetRTC,
         WALTER_MODEM_MQTT_MAX_TOPICS * sizeof(WalterModemMqttTopic));
 
+    for (size_t i = 0; i < WALTER_MODEM_MAX_PDP_CTXTS; i++) {
+        if(_pdpCtxSet[i].state == WALTER_MODEM_PDP_CONTEXT_STATE_ACTIVE) {
+            _pdpCtx = _pdpCtxSet + i;
+        }
+    }
+    
+
     blueCherry = blueCherryRTC;
 }
 
@@ -5117,7 +5124,14 @@ bool WalterModem::setPDPContextActive(
         
         if(result == WALTER_MODEM_STATE_OK) {
             ctx->state = WALTER_MODEM_PDP_CONTEXT_STATE_ACTIVE;
-            //TODO: set all other PDP contexts to inactive.
+            for (size_t i = 0; i < WALTER_MODEM_MAX_PDP_CTXTS; i++) {
+                WalterModemPDPContext *_ctx = _pdpContextGet(i);
+                if(_ctx->id != ctx->id) {
+                    _ctx->state = WALTER_MODEM_PDP_CONTEXT_STATE_INACTIVE;
+                }
+            }
+            /* Reset the active PDP context */
+            _pdpCtx = ctx;
         }
     };
 
@@ -5138,7 +5152,8 @@ bool WalterModem::attachPDPContext(
     auto completeHandler = [](WalterModemCmd *cmd, WalterModemState result) 
     {
         if(result == WALTER_MODEM_STATE_OK) {
-            //TODO: set active PDP context to ATTACHED.
+            WalterModemPDPContext *ctx = _pdpContextGet();
+            ctx->state = WALTER_MODEM_PDP_CONTEXT_STATE_ATTACHED;
         }
     };
 

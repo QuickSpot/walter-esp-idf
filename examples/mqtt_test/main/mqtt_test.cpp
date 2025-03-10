@@ -143,8 +143,7 @@ extern "C" void app_main(void)
   }
 
   /* Create PDP context */
-  if(modem.createPDPContext("", WALTER_MODEM_PDP_AUTH_PROTO_PAP, "sora", "sora"))
-  {
+  if(modem.createPDPContext("", WALTER_MODEM_PDP_AUTH_PROTO_PAP, "sora", "sora")) {
     ESP_LOGI("mqtt_test", "Created PDP context");
   } else {
     ESP_LOGI("mqtt_test", "Could not create PDP context");
@@ -176,15 +175,7 @@ extern "C" void app_main(void)
   }
 
   waitForNetwork();
-
-  /* Activate the PDP context */
-  if(modem.setPDPContextActive(true)) {
-    ESP_LOGI("mqtt_test", "Activated the PDP context");
-  } else {
-    ESP_LOGI("mqtt_test", "Could not activate the PDP context");
-    return;
-  }
-
+  
   /* Attach the PDP context */
   if(modem.attachPDPContext(true)) {
     ESP_LOGI("mqtt_test", "Attached to the PDP context");
@@ -227,7 +218,7 @@ extern "C" void app_main(void)
   /* this loop is basically the Arduino loop function */
   for(;;) {
     vTaskDelay(pdMS_TO_TICKS(1000));
-
+    
     WalterModemRsp rsp = {};
   
     static int seq = 0;
