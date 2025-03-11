@@ -2521,7 +2521,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
 
         _mqttStatus = (WalterModemMqttStatus) status;
 
-        _dispatchEvent(WALTER_MODEM_MQTT_EVENT_CONNECTED,_mqttStatus);
+        _dispatchEvent(WALTER_MODEM_MQTT_EVENT_CONNECTED, _mqttStatus);
 
         for(size_t i = 0; i < WALTER_MODEM_MQTT_MAX_TOPICS; i++) {
             if(!_mqttTopics[i].free) {
