@@ -5517,7 +5517,7 @@ void WalterModem::setGNSSEventHandler(walterModemGNSSEventHandler handler, void 
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_GNSS].args = args;
 }
 
-void WalterModem::setMQTTEventHandler(walterModemMQTTEventHandler handler, void *args = NULL)
+void WalterModem::setMQTTEventHandler(walterModemMQTTEventHandler handler, void *args)
 {
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_MQTT].mqttHandler = handler;
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_MQTT].args = args;
