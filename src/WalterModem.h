@@ -1189,6 +1189,10 @@ typedef enum
     WALTER_MODEM_SYSTEM_EVENT_STARTED,
 } WalterModemSystemEvent;
 
+
+/**
+ * @brief This enumeration groups the different types of MQTT events.
+ */
 typedef enum
 {
     WALTER_MODEM_MQTT_EVENT_CONNECTED,
