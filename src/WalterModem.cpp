@@ -2521,7 +2521,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
 
         _mqttStatus = (WalterModemMqttStatus) status;
 
-        _dispatchEvent(WALTER_MODEM_MQTT_EVENT_CONNECTED);
+        _dispatchEvent(WALTER_MODEM_MQTT_EVENT_CONNECTED,_mqttStatus);
 
         for(size_t i = 0; i < WALTER_MODEM_MQTT_MAX_TOPICS; i++) {
             if(!_mqttTopics[i].free) {
@@ -2545,7 +2545,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
 
         _mqttStatus = (WalterModemMqttStatus)status;
 
-        _dispatchEvent(WALTER_MODEM_MQTT_EVENT_DISCONNECTED);
+        _dispatchEvent(WALTER_MODEM_MQTT_EVENT_DISCONNECTED, _mqttStatus);
 
         if(status < 0) {
             result = WALTER_MODEM_STATE_ERROR;
@@ -2662,7 +2662,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
                 _strncpy_s(_mqttRings[ringIdx].topic, topic, WALTER_MODEM_MQTT_TOPIC_BUF_SIZE);
             }
 
-            _dispatchEvent(WALTER_MODEM_MQTT_EVENT_RING);
+            _dispatchEvent(WALTER_MODEM_MQTT_EVENT_RING, _mqttStatus);
         }
     }
     else if(_buffStartsWithDigit(buff))
@@ -4039,7 +4039,7 @@ void WalterModem::_dispatchEvent(const WalterModemGNSSFix *fix)
     _checkEventDuration(start);
 }
 
-void WalterModem::_dispatchEvent(const WalterModemMQTTEvent event)
+void WalterModem::_dispatchEvent(WalterModemMQTTEvent event, WalterModemMqttStatus status)
 {
     WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_MQTT;
     if (handler->mqttHandler == nullptr) {
@@ -4047,7 +4047,7 @@ void WalterModem::_dispatchEvent(const WalterModemMQTTEvent event)
     }
 
     auto start = std::chrono::steady_clock::now();
-    handler->mqttHandler(event, handler->args);
+    handler->mqttHandler(event, status, handler->args);
     _checkEventDuration(start);
 }
 

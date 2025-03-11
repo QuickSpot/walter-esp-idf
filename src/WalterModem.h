@@ -1245,7 +1245,7 @@ typedef void (*walterModemGNSSEventHandler)(const WalterModemGNSSFix *fix, void 
  *
  * @return None.
  */
-typedef void (*walterModemMQTTEventHandler)(WalterModemMQTTEvent ev, void *args);
+typedef void (*walterModemMQTTEventHandler)(WalterModemMQTTEvent ev, WalterModemMqttStatus status, void *args);
 
 /**
  * @brief This structure represents an event handler and it's metadata.
@@ -3232,7 +3232,7 @@ class WalterModem {
          * 
          * @return None
          */
-        static void _dispatchEvent(const WalterModemMQTTEvent event);
+        static void _dispatchEvent(WalterModemMQTTEvent event, WalterModemMqttStatus status);
 
         /**
          * @brief Save context data in RTC memory before ESP deep sleep.
