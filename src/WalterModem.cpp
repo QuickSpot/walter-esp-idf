@@ -2628,8 +2628,9 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
                     break;
                 }
 
-                if (strncmp(topic, _mqttRings[ringIdx].topic, strlen(topic)) == 0 && _mqttRings[ringIdx].messageId == messageId && _mqttRings[ringIdx].qos == qos) {
-                    ESP_LOGD("WalterModem", "mqtt duplicate message!");
+                if (qos != 0 && _mqttRings [ringIdx].messageId == messageId && strncmp(topic, _mqttRings[ringIdx].topic, strlen(topic)) == 0)
+                {
+                    ESP_LOGW("WalterModem", "mqtt duplicate message!");
                     goto after_processing_logic;
                 }
             }
@@ -2641,12 +2642,12 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             }
             
             /* store ring in ring list for this mqtt context */
-            if (_mqttRings[ringIdx].free) {
-                _mqttRings[ringIdx].messageId = messageId;
-                _mqttRings[ringIdx].length = length;
-                _mqttRings[ringIdx].qos = qos;
-                _strncpy_s(_mqttRings[ringIdx].topic, topic, WALTER_MODEM_MQTT_TOPIC_BUF_SIZE);
-            }
+            _mqttRings[ringIdx].free = false;
+            _mqttRings[ringIdx].messageId = messageId;
+            _mqttRings[ringIdx].length = length;
+            _mqttRings[ringIdx].qos = qos;
+            _strncpy_s(_mqttRings[ringIdx].topic, topic, WALTER_MODEM_MQTT_TOPIC_BUF_SIZE);
+        
 
             _dispatchEvent(WALTER_MODEM_MQTT_EVENT_RING, _mqttStatus);
         }
@@ -2664,8 +2665,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
 
         /* entry is freed at mqttDidRing */
 
-        if (cmd->data)
-        {
+        if (cmd->data) {
             /* skip leading \r\n */
             memcpy(cmd->data, rspStr + 2, cmd->dataSize);
         }
@@ -4363,8 +4363,7 @@ bool WalterModem::mqttDidRing(
 
     uint8_t idx;
     for(idx = 0; idx < WALTER_MODEM_MQTT_MAX_PENDING_RINGS; idx++) {
-        if(!strncmp(topic, _mqttRings[idx].topic, WALTER_MODEM_MQTT_TOPIC_MAX_SIZE) &&
-            _mqttRings[idx].messageId) {
+        if (!strncmp(topic, _mqttRings[idx].topic, strlen(topic)) && !_mqttRings[idx].free) {
             break;
         }
     }
@@ -4379,7 +4378,6 @@ bool WalterModem::mqttDidRing(
 
     targetBufSize = _mqttRings[idx].length;
     _mqttRings[idx].free = true;
-
     if (_mqttRings[idx].qos == 0)
     {
         /* no msg id means qos 0 message */
