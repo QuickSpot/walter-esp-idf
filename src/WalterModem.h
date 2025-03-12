@@ -3562,9 +3562,9 @@ class WalterModem {
          * @return True on success, false otherwise.
          */
         static bool mqttDisconnect(
-            WalterModemRsp *rsp,
-            walterModemCb cb,
-            void *args);
+            WalterModemRsp *rsp = NULL,
+            walterModemCb cb = NULL,
+            void *args = NULL);
 
         /**
          * @brief Initialize MQTT and establish connection.
