@@ -4,6 +4,7 @@ menu "walter-modem"
             default y
             help
                 enable Kconfig for Walter Modem.
+
     if WALTER_MODEM_KCONFIG
         menu "Protocols"
             config WALTER_MODEM_ENABLE_SOCKETS
@@ -70,7 +71,52 @@ menu "walter-modem"
                 default 115200
                 help 
                     The baud rate used to talk to the modem.
+            
+            config UART_BUF_SIZE
+                int "Uart buffer size"
+                default 128
+                help
+                    The uart buffer size for modem communication.
+        endmenu
+        menu "AT Commands"
+            config WALTER_MODEM_CMD_TIMEOUT_MS
+                int "Default cmd timeout in MS"
+                default 300000
+                help
+                    The maximum number of milliseconds to wait.
+            
+            config WALTER_MODEM_MAX_PENDING_COMMANDS
+                int "The maximum commands that can be pending at one moment"
+                default 32
+                help
+                    The maximum number of pending commands. 
+        endmenu
+        menu "modem task"
+            config WALTER_MODEM_TASK_QUEUE_MAX_ITEMS
+                int "Queue Mac items"
+                range 10 255
+                default 32
+                help
+                    The maximum number of items in the task queue.
+            
+            config WALTER_MODEM_TASK_STACK_SIZE
+                int "The stack size of the modem task in bytes"
+                default 4096
+                range 2048 8192
+                help
+                    The size of the stack of the command and response processing task.
+
+            menu "Events"
+                config WALTER_MODEM_MAX_EVENT_DURATION_MS
+                    int "Max event handler duration in MS"
+                    default 500
+                    help
+                        The event handlers of the Walter modem library are as lightweight as possible and are not
+                        executed in their own thread. Therefore an application should handle them as interrupt handlers.
+                        It is not allowed to call other WalterModem functions from within an event handler and no
+                        blocking operations should be performed in an event handler. To aid the user in achieving this
+                        the library prints a warning when the handler takes more than the defined number of milliseconds.
+            endmenu
         endmenu
     endif
-
 endmenu

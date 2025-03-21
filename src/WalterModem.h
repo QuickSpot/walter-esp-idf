@@ -53,6 +53,10 @@
 #include <Arduino.h>
 #else
 #include "sdkconfig.h
+#ifndef CONFIG_WALTER_MODEM_KCONFIG
+#warning "It is highly recommended to use KConfig and the idf.py menuconfig when using ESP-IDF \
+for efficient configuration management."
+#endif
 #endif
 
 #ifdef CONFIG_WALTER_MODEM_KCONFIG
@@ -62,8 +66,17 @@
 #define CONFIG(name, type, default_value) \
     static constexpr type name = default_value;
 #endif
-//TODO add more config types.
-#define CONFIG_INT(name,default_value) CONFIG(name, int, default_value)
+
+#define CONFIG_INT(name, default_value) CONFIG(name, int, default_value)
+#define CONFIG_UINT8(name, default_value) CONFIG(name, uint8_t, default_value)
+#define CONFIG_UINT16(name, default_value) CONFIG(name, uint16_t, default_value)
+#define CONFIG_UINT32(name, default_value) CONFIG(name, uint32_t, default_value)
+#define CONFIG_UINT64(name, default_value) CONFIG(name, uint64_t, default_value)
+
+#define CONFIG_INT8(name, default_value) CONFIG(name, int8_t, default_value)
+#define CONFIG_INT16(name, default_value) CONFIG(name, int16_t, default_value)
+#define CONFIG_INT32(name, default_value) CONFIG(name, int32_t, default_value)
+#define CONFIG_INT64(name, default_value) CONFIG(name, int64_t, default_value)
 
 #include <condition_variable>
 
@@ -80,7 +93,7 @@
 /**
  * @brief The maximum number of items in the task queue.
  */
-#define WALTER_MODEM_TASK_QUEUE_MAX_ITEMS 32
+CONFIG_UINT8(WALTER_MODEM_TASK_QUEUE_MAX_ITEMS, 32)
 
 /**
  * @brief The size in bytes of the task queue.
@@ -89,9 +102,14 @@
     WALTER_MODEM_TASK_QUEUE_MAX_ITEMS * sizeof(WalterModemTaskQueueItem)
 
 /**
+ * @brief The size of the stack of the command and response processing task.
+ */
+CONFIG_INT(WALTER_MODEM_TASK_STACK_SIZE, 4096)
+
+/**
  * @brief The maximum number of pending commands.
  */
-#define WALTER_MODEM_MAX_PENDING_COMMANDS 32
+CONFIG_UINT8(WALTER_MODEM_MAX_PENDING_COMMANDS, 32)
 
 /**
  * @brief The size of an AT response buffer.
@@ -102,11 +120,6 @@
  * @brief The number of buffers in the buffer pool.
  */
 #define WALTER_MODEM_BUFFER_POOL_SIZE 8
-
-/**
- * @brief The size of the stack of the command and response processing task.
- */
-#define WALTER_MODEM_TASK_STACK_SIZE 4096
 
 /**
  * @brief The default number of attempts to execute a command.
