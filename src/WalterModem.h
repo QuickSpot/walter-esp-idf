@@ -51,6 +51,8 @@
 #include <cstdint>
 #ifdef ARDUINO
 #include <Arduino.h>
+#else
+#include "sdkconfig.h
 #endif
 #include <condition_variable>
 

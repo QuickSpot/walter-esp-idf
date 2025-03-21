@@ -59,12 +59,18 @@ menu "walter-modem"
                 default 45
                 help
                     The active low modem reset pin.
-            
-            config WALTER_MODEM_BAUD
-                int "The modem BAUD rate"
-                default 115200
-                help 
-                    The baud rate used to talk to the modem.
         endif
     endmenu
+    menu "UART"
+        config WALTER_MODEM_UART_CONFIG
+            bool "Enable uart config"
+            default y
+            
+        config WALTER_MODEM_BAUD
+            int "The modem BAUD rate"
+            default 115200
+            help 
+                The baud rate used to talk to the modem.
+    endmenu
+
 endmenu
