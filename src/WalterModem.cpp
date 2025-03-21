@@ -64,6 +64,7 @@
 #include <esp_partition.h>
 #include <esp_image_format.h>
 
+#ifndef WALTER_MODEM_KCONFIG_PINOUT
 /**
  * @brief The RX pin on which modem data is received.
  */
@@ -94,6 +95,7 @@
  */
 #define WALTER_MODEM_BAUD 115200
 
+#endif
 /**
  * @brief The maximum number of milliseconds to wait.
  */
