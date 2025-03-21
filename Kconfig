@@ -11,8 +11,13 @@ menu "walter-modem"
                 bool "Enable Socket functions"
                 default y
                 help
-                    enable socket functions.
+                    Enable socket functions.
 
+            if WALTER_MODEM_ENABLE_SOCKETS
+                menu "Socket (TCP/UDP)"
+                    
+                endmenu
+            endif
 
             config WALTER_MODEM_ENABLE_MQTT
                 bool "Enable MQTT functions"
@@ -20,17 +25,36 @@ menu "walter-modem"
                 help
                     Enable MQTT support for the WalterModem.
             
+            if WALTER_MODEM_ENABLE_MQTT
+                menu "MQTT"
+
+                endmenu
+            endif
+
             config WALTER_MODEM_ENABLE_GNSS
                 bool "Enable GNSS functions"
                 default y
                 help
                     Enable socket ofloading functions.
             
+            if WALTER_MODEM_ENABLE_GNSS
+                menu "GNSS"
+                    
+                endmenu
+            endif
+
             config WALTER_MODEM_ENABLE_HTTP
                 bool "Enable HTTP functions"
                 default y
                 help
                     Enable HTTP ofloading functions.
+            
+            if WALTER_MODEM_ENABLE_HTTP
+                menu "HTTP"
+                    
+                endmenu
+            endif
+            
         endmenu
         menu "Pinout"
             if WALTER_MODEM_KCONFIG
@@ -90,6 +114,19 @@ menu "walter-modem"
                 default 32
                 help
                     The maximum number of pending commands. 
+            
+            config WALTER_MODEM_DEFAULT_CMD_ATTEMTS
+                int "Number of attempts to execute a command"
+                default 3
+                range 1 6
+                help
+                    The default number of attempts to execute a command.
+            
+            config WALTER_MODEM_COMMAND_MAX_ELEMS
+                int "Number of elements allowed to build an AT command."
+                default 63
+                help
+                    The maximum number of elements allowed to build an AT command.
         endmenu
         menu "modem task"
             config WALTER_MODEM_TASK_QUEUE_MAX_ITEMS

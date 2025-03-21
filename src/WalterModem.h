@@ -52,7 +52,7 @@
 #ifdef ARDUINO
 #include <Arduino.h>
 #else
-#include "sdkconfig.h
+#include "sdkconfig.h"
 #ifndef CONFIG_WALTER_MODEM_KCONFIG
 #warning "It is highly recommended to use KConfig and the idf.py menuconfig when using ESP-IDF \
 for efficient configuration management."
@@ -112,6 +112,16 @@ CONFIG_INT(WALTER_MODEM_TASK_STACK_SIZE, 4096)
 CONFIG_UINT8(WALTER_MODEM_MAX_PENDING_COMMANDS, 32)
 
 /**
+ * @brief The default number of attempts to execute a command.
+ */
+CONFIG_UINT8(WALTER_MODEM_DEFAULT_CMD_ATTEMTS,3)
+
+/**
+ * @brief The maximum number of elements allowed to build an AT command.
+*/
+#define WALTER_MODEM_COMMAND_MAX_ELEMS 63
+
+/**
  * @brief The size of an AT response buffer.
  */
 #define WALTER_MODEM_RSP_BUF_SIZE 1536
@@ -120,16 +130,6 @@ CONFIG_UINT8(WALTER_MODEM_MAX_PENDING_COMMANDS, 32)
  * @brief The number of buffers in the buffer pool.
  */
 #define WALTER_MODEM_BUFFER_POOL_SIZE 8
-
-/**
- * @brief The default number of attempts to execute a command.
- */
-#define WALTER_MODEM_DEFAULT_CMD_ATTEMTS 3
-
-/**
- * The maximum number of elements allowed to build an AT command.
-*/
-#define WALTER_MODEM_COMMAND_MAX_ELEMS 63
 
 /**
  * @brief The maximum numbers of characters of the APN. 
