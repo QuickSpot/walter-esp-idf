@@ -3,7 +3,8 @@ menu "walter-modem"
         config WALTER_MODEM_ENABLE_SOCKETS
             bool "Enable Socket functions"
             default y
-            help enable socket functions:
+            help
+                enable socket functions:
 
 
         config WALTER_MODEM_ENABLE_MQTT
