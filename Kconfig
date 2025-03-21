@@ -4,26 +4,26 @@ menu "walter-modem"
             bool "Enable Socket functions"
             default y
             help
-                enable socket functions:
+                enable socket functions.
 
 
         config WALTER_MODEM_ENABLE_MQTT
             bool "Enable MQTT functions"
             default y
             help
-                Enable MQTT support for the WalterModem:
+                Enable MQTT support for the WalterModem.
         
         config WALTER_MODEM_ENABLE_GNSS
             bool "Enable GNSS functions"
             default y
             help
-                Enable socket ofloading functions:
+                Enable socket ofloading functions.
         
         config WALTER_MODEM_ENABLE_HTTP
             bool "Enable HTTP functions"
             default y
             help
-                Enable HTTP ofloading functions:
+                Enable HTTP ofloading functions.
     endmenu
     menu "Pinout"
         config WALTER_MODEM_KCONFIG_PINOUT
@@ -34,7 +34,7 @@ menu "walter-modem"
                 int "RX"
                 default 14
                 help
-                    The RX pin on which modem data is received
+                    The RX pin on which modem data is received.
 
             config WALTER_MODEM_PIN_TX
                 int "TX"
