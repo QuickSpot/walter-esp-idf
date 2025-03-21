@@ -64,52 +64,41 @@
 #include <esp_partition.h>
 #include <esp_image_format.h>
 
-#ifndef WALTER_MODEM_KCONFIG_PINOUT
+#pragma region CONFIG
 /**
  * @brief The RX pin on which modem data is received.
  */
-#define WALTER_MODEM_PIN_RX 14
+CONFIG_INT(WALTER_MODEM_PIN_RX, 14)
 
 /**
  * @brief The TX to which modem data must be transmitted.
  */
-#define WALTER_MODEM_PIN_TX 48
+CONFIG_INT(WALTER_MODEM_PIN_TX, 48)
 
 /**
  * @brief The RTS pin on the ESP32 side.
  */
-#define WALTER_MODEM_PIN_RTS 21
+CONFIG_INT(WALTER_MODEM_PIN_RTS, 21)
 
 /**
  * @brief The CTS pin on the ESP32 size.
  */
-#define WALTER_MODEM_PIN_CTS 47
+CONFIG_INT(WALTER_MODEM_PIN_CTS,47)
 
 /**
  * @brief The active low modem reset pin.
  */
-#define WALTER_MODEM_PIN_RESET 45
+CONFIG_INT(WALTER_MODEM_PIN_RESET,45)
 
 /**
  * @brief The baud rate used to talk to the modem.
  */
-#define WALTER_MODEM_BAUD 115200
+CONFIG_INT(WALTER_MODEM_BAUD, 115200)
 
-#endif
 /**
  * @brief The maximum number of milliseconds to wait.
  */
-#define WALTER_MODEM_CMD_TIMEOUT_MS 300000
-
-/**
- * @brief The command timeout expressed in system ticks.
- */
-#define WALTER_MODEM_CMD_TIMEOUT_TICKS pdMS_TO_TICKS(WALTER_MODEM_CMD_TIMEOUT_MS)
-
-/**
- * @brief Any modem time below 1 Jan 2023 00:00:00 UTC is considered an invalid time.
- */
-#define WALTER_MODEM_MIN_VALID_TIMESTAMP 1672531200
+CONFIG_INT(WALTER_MODEM_CMD_TIMEOUT_MS, 300000)
 
 /**
  * @brief The event handlers of the Walter modem library are as lightweight as possible and are not
@@ -118,17 +107,28 @@
  * blocking operations should be performed in an event handler. To aid the user in achieving this 
  * the library prints a warning when the handler takes more than the defined number of milliseconds.
  */
-#define WALTER_MODEM_MAX_EVENT_DURATION_MS 500
+CONFIG_INT(WALTER_MODEM_MAX_EVENT_DURATION_MS, 500)
+
+/**
+ * @brief uart buffer size
+ */
+CONFIG_INT(UART_BUF_SIZE, 128)
+#pragma endregion
+
+/**
+ * @brief Any modem time below 1 Jan 2023 00:00:00 UTC is considered an invalid time.
+ */
+#define WALTER_MODEM_MIN_VALID_TIMESTAMP 1672531200
+
+/**
+ * @brief The command timeout expressed in system ticks.
+ */
+#define WALTER_MODEM_CMD_TIMEOUT_TICKS pdMS_TO_TICKS(WALTER_MODEM_CMD_TIMEOUT_MS)
 
 /**
  * @brief The length of a string literal at compile time.
  */
 #define _strLitLen(str) (sizeof(str) - 1)
-
-/**
- * @brief uart buffer size
- */
-#define UART_BUF_SIZE 128
 
 /**
  * @brief Check if a WalterModemBuffer starts with a given string literal.
@@ -255,10 +255,10 @@ cmd->state = WALTER_MODEM_CMD_STATE_COMPLETE; \
 lock.unlock(); \
 return rspResult == WALTER_MODEM_STATE_OK;
 
-/**
- * @brief Transmit all elements of a command.
- */
-static bool endOfLine;
+    /**
+     * @brief Transmit all elements of a command.
+     */
+    static bool endOfLine;
 #ifdef ARDUINO
 #define _transmitCmd(type, atCmd) { \
     ESP_LOGD((endOfLine = false, "WalterModem"), \

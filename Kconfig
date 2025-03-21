@@ -1,76 +1,76 @@
 menu "walter-modem"
-    menu "Protocols"
-        config WALTER_MODEM_ENABLE_SOCKETS
-            bool "Enable Socket functions"
+    config WALTER_MODEM_KCONFIG
+            bool "Enable Kconfig"
             default y
             help
-                enable socket functions.
-
-
-        config WALTER_MODEM_ENABLE_MQTT
-            bool "Enable MQTT functions"
-            default y
-            help
-                Enable MQTT support for the WalterModem.
-        
-        config WALTER_MODEM_ENABLE_GNSS
-            bool "Enable GNSS functions"
-            default y
-            help
-                Enable socket ofloading functions.
-        
-        config WALTER_MODEM_ENABLE_HTTP
-            bool "Enable HTTP functions"
-            default y
-            help
-                Enable HTTP ofloading functions.
-    endmenu
-    menu "Pinout"
-        config WALTER_MODEM_KCONFIG_PINOUT
-            bool "Enable pinout config"
-            default y
-        if WALTER_MODEM_KCONFIG_PINOUT
-            config WALTER_MODEM_PIN_RX
-                int "RX"
-                default 14
+                enable Kconfig for Walter Modem.
+    if WALTER_MODEM_KCONFIG
+        menu "Protocols"
+            config WALTER_MODEM_ENABLE_SOCKETS
+                bool "Enable Socket functions"
+                default y
                 help
-                    The RX pin on which modem data is received.
+                    enable socket functions.
 
-            config WALTER_MODEM_PIN_TX
-                int "TX"
-                default 48
+
+            config WALTER_MODEM_ENABLE_MQTT
+                bool "Enable MQTT functions"
+                default y
                 help
-                    The TX to which modem data must be transmitted.
+                    Enable MQTT support for the WalterModem.
             
-            config WALTER_MODEM_PIN_RTS
-                int "RTS"
-                default 21
+            config WALTER_MODEM_ENABLE_GNSS
+                bool "Enable GNSS functions"
+                default y
                 help
-                    The RTS pin on the ESP32 side.
+                    Enable socket ofloading functions.
             
-            config WALTER_MODEM_PIN_CTS
-                int "CTS"
-                default 47
+            config WALTER_MODEM_ENABLE_HTTP
+                bool "Enable HTTP functions"
+                default y
                 help
-                    The CTS pin on the ESP32 size.
+                    Enable HTTP ofloading functions.
+        endmenu
+        menu "Pinout"
+            if WALTER_MODEM_KCONFIG
+                config WALTER_MODEM_PIN_RX
+                    int "RX"
+                    default 14
+                    help
+                        The RX pin on which modem data is received.
+
+                config WALTER_MODEM_PIN_TX
+                    int "TX"
+                    default 48
+                    help
+                        The TX to which modem data must be transmitted.
                 
-            config WALTER_MODEM_PIN_RESET
-                int "Reset pin"
-                default 45
-                help
-                    The active low modem reset pin.
-        endif
-    endmenu
-    menu "UART"
-        config WALTER_MODEM_UART_CONFIG
-            bool "Enable uart config"
-            default y
-            
-        config WALTER_MODEM_BAUD
-            int "The modem BAUD rate"
-            default 115200
-            help 
-                The baud rate used to talk to the modem.
-    endmenu
+                config WALTER_MODEM_PIN_RTS
+                    int "RTS"
+                    default 21
+                    help
+                        The RTS pin on the ESP32 side.
+                
+                config WALTER_MODEM_PIN_CTS
+                    int "CTS"
+                    default 47
+                    help
+                        The CTS pin on the ESP32 size.
+                    
+                config WALTER_MODEM_PIN_RESET
+                    int "Reset pin"
+                    default 45
+                    help
+                        The active low modem reset pin.
+            endif
+        endmenu
+        menu "UART"
+            config WALTER_MODEM_BAUD
+                int "The modem BAUD rate"
+                default 115200
+                help 
+                    The baud rate used to talk to the modem.
+        endmenu
+    endif
 
 endmenu

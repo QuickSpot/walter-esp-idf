@@ -54,6 +54,17 @@
 #else
 #include "sdkconfig.h
 #endif
+
+#ifdef CONFIG_WALTER_MODEM_KCONFIG
+#define CONFIG(name, type, default_value) \
+    static constexpr type name = CONFIG_##name;
+#else
+#define CONFIG(name, type, default_value) \
+    static constexpr type name = default_value;
+#endif
+//TODO add more config types.
+#define CONFIG_INT(name,default_value) CONFIG(name, int, default_value)
+
 #include <condition_variable>
 
 #include <esp_vfs.h>
