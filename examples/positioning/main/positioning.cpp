@@ -516,7 +516,7 @@ extern "C" void app_main(void)
     return;
   }
 
-  modem.setGNSSfixHandler(fixHandler);
+  modem.setGNSSEventHandler(fixHandler);
 
   /* this loop is basically the Arduino loop function */
   for(;;) {
