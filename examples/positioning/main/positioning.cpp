@@ -360,12 +360,37 @@ bool updateGNSSAssistance()
   }
 
   if(updateEphemeris) {
-    if(!modem.updateGNSSAssistance(
-      WALTER_MODEM_GNSS_ASSISTANCE_TYPE_REALTIME_EPHEMERIS))
-    {
-      ESP_LOGI("positioning", "Could not update real-time ephemeris data");
-      return false;
-    }
+      if(!modem.updateGNSSAssistance(
+        WALTER_MODEM_GNSS_ASSISTANCE_TYPE_REALTIME_EPHEMERIS))
+      {
+          ESP_LOGI("positioning", "Could not update real-time ephemeris data");
+          return false;
+      }
+
+      // Poll until the ephemeris data becomes available
+      const int maxWaitMs = 30000; // maximum wait time of 30 seconds
+      int waitedMs = 0;
+      while (waitedMs < maxWaitMs)
+      {
+          if (!modem.getGNSSAssistanceStatus(&rsp) ||
+              rsp.type != WALTER_MODEM_RSP_DATA_TYPE_GNSS_ASSISTANCE_DATA)
+          {
+              ESP_LOGI("positioning", "Could not request GNSS assistance status");
+              return false;
+          }
+          if (rsp.data.gnssAssistance.realtimeEphemeris.available)
+          {
+              ESP_LOGI("positioning", "Ephemeris data updated successfully");
+              break;
+          }
+          vTaskDelay(pdMS_TO_TICKS(500));
+          waitedMs += 500;
+      }
+      if (waitedMs >= maxWaitMs)
+      {
+          ESP_LOGI("positioning", "Timeout waiting for ephemeris data");
+          return false;
+      }
   }
 
   if(!modem.getGNSSAssistanceStatus(&rsp) ||
