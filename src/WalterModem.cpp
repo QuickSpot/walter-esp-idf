@@ -424,8 +424,9 @@ struct WalterModemStpResponseTransferBlock stpResponseTransferBlock;
 RTC_DATA_ATTR WalterModemPDPContext _pdpCtxSetRTC[WALTER_MODEM_MAX_PDP_CTXTS] = {};
 RTC_DATA_ATTR WalterModemPDPContext _coapCtxSetRTC[WALTER_MODEM_MAX_COAP_PROFILES] = {};
 RTC_DATA_ATTR WalterModemBlueCherryState blueCherryRTC = {};
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
 RTC_DATA_ATTR WalterModemMqttTopic _mqttTopicSetRTC[WALTER_MODEM_MQTT_MAX_TOPICS] = {};
-
+#endif
 /**
  * @brief Convert a digit to a string literal.
  * 
@@ -813,6 +814,7 @@ void WalterModem::_loadRTCPdpContextSet(WalterModemPDPContext *_pdpCtxSetRTC)
     _pdpCtx = _pdpCtxSet;
 }
 
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
 WalterModemSocket* WalterModem::_socketReserve()
 {
     WalterModemSocket *sock = NULL;
@@ -848,7 +850,6 @@ WalterModemSocket* WalterModem::_socketGet(int id)
 
     return NULL;
 }
-
 void WalterModem::_socketRelease(WalterModemSocket *sock)
 {
     if(sock == NULL) {
@@ -857,7 +858,7 @@ void WalterModem::_socketRelease(WalterModemSocket *sock)
 
     sock->state = WALTER_MODEM_SOCKET_STATE_FREE;
 }
-
+#endif
 WalterModemBuffer* WalterModem::_getFreeBuffer(void)
 {
     WalterModemBuffer* chosenBuf = NULL;
@@ -1358,12 +1359,14 @@ TickType_t WalterModem::_processQueueCmd(WalterModemCmd *cmd, bool queueError)
         case WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT:
             if(cmd->state == WALTER_MODEM_CMD_STATE_NEW) {
                 /* hack for handling AT+SQNSMQTTRCVMESSAGE response */
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
                 if(cmd->type == WALTER_MODEM_CMD_TYPE_TX_WAIT &&
                    !strcmp(cmd->atCmd[0], "AT+SQNSMQTTRCVMESSAGE=0,")) {
                     _parserData.state = WALTER_MODEM_RSP_PARSER_RAW;
                     /* add 4 bytes for prepending and trailing \r\n */
                     _parserData.rawChunkSize = cmd->dataSize + 4;
                 }
+#endif
                 _transmitCmd(cmd->type, cmd->atCmd);
                 cmd->attempt = 1;
                 cmd->attemptStart = xTaskGetTickCount();
@@ -2487,6 +2490,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             _httpContextSet[profileId].connected = false;
         }
     }
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
     else if(_buffStartsWith(buff, "+SQNSH: "))
     {
         const char *rspStr = _buffStr(buff);
@@ -2498,6 +2502,9 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             _socketRelease(sock);
         }
     }
+#endif
+
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
     else if(_buffStartsWith(buff, "+SQNSMQTTONCONNECT:0,"))
     {
         const char *rspStr = _buffStr(buff);
@@ -2679,6 +2686,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             memcpy(cmd->data, rspStr + 2, cmd->dataSize);
         }
     }
+#endif
     else if(_buffStartsWithDigit(buff))
     {
         if(cmd == NULL) {
@@ -3611,17 +3619,19 @@ bool WalterModem::reset(WalterModemRsp *rsp, walterModemCb cb, void *args)
     _httpCurrentProfile = 0xff;
     _opState = WALTER_MODEM_OPSTATE_MINIMUM;
     _networkSelMode = WALTER_MODEM_NETWORK_SEL_MODE_AUTOMATIC;
-    _socket = NULL;
+
     _pdpCtx = NULL;
     _simPIN = NULL;
 
     for(int i = 0; i < WALTER_MODEM_MAX_PDP_CTXTS; ++i) {
       _pdpCtxSet[i] = {};
     }
-
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+    _socket = NULL;
     for(int i = 0; i < WALTER_MODEM_MAX_SOCKETS; ++i) {
       _socketSet[i] = {};
     }
+#endif
 
     for(int i = 0; i < WALTER_MODEM_MAX_COAP_PROFILES; ++i) {
       _coapContextSet[i] = {};
@@ -3655,8 +3665,10 @@ void WalterModem::_sleepWakeup()
     memcpy(_pdpCtxSet, _pdpCtxSetRTC, WALTER_MODEM_MAX_PDP_CTXTS * sizeof(WalterModemPDPContext));
     memcpy(_coapContextSet, _coapCtxSetRTC,
         WALTER_MODEM_MAX_COAP_PROFILES * sizeof(WalterModemCoapContext));
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
     memcpy(_mqttTopics, _mqttTopicSetRTC,
         WALTER_MODEM_MQTT_MAX_TOPICS * sizeof(WalterModemMqttTopic));
+#endif
 
     for (size_t i = 0; i < WALTER_MODEM_MAX_PDP_CTXTS; i++) {
         if(_pdpCtxSet[i].state == WALTER_MODEM_PDP_CONTEXT_STATE_ACTIVE) {
@@ -3760,8 +3772,8 @@ bool WalterModem::getIdentity(WalterModemRsp *rsp, walterModemCb cb, void *args)
 {
     _runCmd(arr("AT+CGSN=2"), "OK", rsp, cb, args);
     _returnAfterReply();
-}   
-
+}
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
 WalterModemMqttStatus WalterModem::getMqttStatus(){
     return _mqttStatus;
 }
@@ -3904,6 +3916,7 @@ bool WalterModem::mqttSubscribe(
     _runCmd(arr("AT+SQNSMQTTSUBSCRIBE=0,", _atStr(topicString), ",", _atNum(qos)), "+SQNSMQTTONSUBSCRIBE:0,", rsp, cb, args, completeHandler);
     _returnAfterReply();
 }
+#endif
 
 bool WalterModem::tlsConfigProfile(
     uint8_t profileId,
@@ -4052,7 +4065,7 @@ void WalterModem::_dispatchEvent(const WalterModemGNSSFix *fix)
     handler->gnssHandler(fix, handler->args);
     _checkEventDuration(start);
 }
-
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
 void WalterModem::_dispatchEvent(WalterModemMQTTEvent event, WalterModemMqttStatus status)
 {
     WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_MQTT;
@@ -4064,7 +4077,7 @@ void WalterModem::_dispatchEvent(WalterModemMQTTEvent event, WalterModemMqttStat
     handler->mqttHandler(event, status, handler->args);
     _checkEventDuration(start);
 }
-
+#endif
 bool WalterModem::httpConfigProfile(
     uint8_t profileId,
     const char *serverName,
@@ -4355,7 +4368,7 @@ bool WalterModem::httpDidRing(
         targetBufSize);
     _returnAfterReply();
 }
-
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
 bool WalterModem::mqttDidRing(
     const char *topic,
     uint8_t *targetBuf,
@@ -4408,7 +4421,7 @@ bool WalterModem::mqttDidRing(
         _returnAfterReply();
     }
 }
-
+#endif
 bool WalterModem::blueCherryProvision(
     const char *walterCertificate,
     const char *walterPrivateKey,
@@ -5206,7 +5219,7 @@ bool WalterModem::getPDPAddress(
     _runCmd(arr("AT+CGPADDR=", _digitStr(ctx->id)), "OK", rsp, cb, args);
     _returnAfterReply();
 }
-#ifdef CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
 bool WalterModem::createSocket(
     WalterModemRsp *rsp,
     walterModemCb cb,
@@ -5531,9 +5544,10 @@ void WalterModem::setGNSSEventHandler(walterModemGNSSEventHandler handler, void 
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_GNSS].gnssHandler = handler;
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_GNSS].args = args;
 }
-
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
 void WalterModem::setMQTTEventHandler(walterModemMQTTEventHandler handler, void *args)
 {
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_MQTT].mqttHandler = handler;
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_MQTT].args = args;
 }
+#endif

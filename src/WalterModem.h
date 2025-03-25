@@ -66,8 +66,12 @@ for efficient configuration management."
 #define CONFIG(name, type, default_value) \
     static constexpr type name = default_value;
 
-#ifndef DISABLE_SOCKETS
-    #define CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+#ifndef CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+#define CONFIG_WALTER_MODEM_ENABLE_SOCKETS 1
+#endif
+
+#ifndef CONFIG_WALTER_MODEM_ENABLE_MQTT
+#define CONFIG_WALTER_MODEM_ENABLE_MQTT 1
 #endif
 #endif
 
@@ -196,7 +200,7 @@ CONFIG_UINT8(WALTER_MODEM_MAX_HTTP_PROFILES,3)
  * @brief The maximum number of TLS profiles that the library can support.
  */
 CONFIG_UINT8(WALTER_MODEM_MAX_TLS_PROFILES, 6)
-#ifdef CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
 /**
  * @brief The maximum number of sockets.
  */
@@ -232,6 +236,7 @@ CONFIG_UINT8(WALTER_MODEM_MAX_SOCKETS, 6)
  */
 CONFIG_UINT8(WALTER_MODEM_GNSS_MAX_SATS, 32)
 
+#if CONFIG_WALTER_MODEM_ENABLE_MQTT
 /**
  * @brief The maximum number of characters in an MQTT topic.
  */
@@ -256,6 +261,7 @@ CONFIG_UINT8(WALTER_MODEM_MQTT_MIN_PREF_KEEP_ALIVE, 20)
  * @brief The maximum allowed mqtt topics to subscribe to.
  */
 CONFIG_UINT8(WALTER_MODEM_MQTT_MAX_TOPICS, 4)
+#endif
 
 /**
  * @brief The maximum number of rings that can be pending for the CoAP protocol.
@@ -740,7 +746,7 @@ typedef enum {
     WALTER_MODEM_TLS_VALIDATION_URL_AND_CA = 5
 } WalterModemTlsValidation;
 
-#ifdef CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
 /**
  * @brief The state of a socket.
  */
@@ -903,7 +909,7 @@ typedef enum {
     WALTER_MODEM_COAP_OPT_VALUE_APPLICATION_X_OBIX_BINARY = 51,
     WALTER_MODEM_COAP_OPT_VALUE_APPLICATION_CBOR = 60
 } WalterModemCoapOptValue;
-
+#if CONFIG_WALTER_MODEM_ENABLE_MQTT
 /**
  * @brief Enum containing the MQTT response codes.
  */
@@ -927,6 +933,7 @@ typedef enum {
     WALTER_MODEM_MQTT_PROXY = -16,
     WALTER_MODEM_MQTT_UNAVAILABLE = -17
 } WalterModemMqttStatus;
+#endif
 
 /**
  * @brief The possible option values for the CoAP message.
@@ -1222,7 +1229,7 @@ typedef enum
     WALTER_MODEM_SYSTEM_EVENT_STARTED,
 } WalterModemSystemEvent;
 
-
+#if CONFIG_WALTER_MODEM_ENABLE_MQTT
 /**
  * @brief This enumeration groups the different types of MQTT events.
  */
@@ -1232,7 +1239,7 @@ typedef enum
     WALTER_MODEM_MQTT_EVENT_DISCONNECTED,
     WALTER_MODEM_MQTT_EVENT_RING
 } WalterModemMQTTEvent;
-
+#endif
 /**
  * @brief Header of a network registration event handler.
  *
@@ -1273,7 +1280,7 @@ typedef void (*walterModemATEventHandler)(const char *buff, size_t len, void *ar
  * @return None.
  */
 typedef void (*walterModemGNSSEventHandler)(const WalterModemGNSSFix *fix, void *args);
-
+#if CONFIG_WALTER_MODEM_ENABLE_MQTT
 /**
  * @brief Header of an MQTT event handler
  *
@@ -1283,7 +1290,7 @@ typedef void (*walterModemGNSSEventHandler)(const WalterModemGNSSFix *fix, void 
  * @return None.
  */
 typedef void (*walterModemMQTTEventHandler)(WalterModemMQTTEvent ev, WalterModemMqttStatus status, void *args);
-
+#endi
 /**
  * @brief This structure represents an event handler and it's metadata.
  */
@@ -1311,10 +1318,12 @@ typedef struct
          */
         walterModemGNSSEventHandler gnssHandler;
 
+#if CONFIG_WALTER_MODEM_ENABLE_MQTT
         /**
          * @brief Pointer to the MQTT event handler.
          */
         walterModemMQTTEventHandler mqttHandler;
+#endif
     };
 
     /**
@@ -1543,6 +1552,7 @@ typedef struct {
     uint16_t length;
 } WalterModemCoapResponse;
 
+#if CONFIG_WALTER_MODEM_ENABLE_MQTT
 /**
  * @brief This strucure represents an incoming MQTT message.
  */
@@ -1567,6 +1577,7 @@ typedef struct {
      */
     WalterModemMqttStatus mqttStatus;
 } WalterModemMqttResponse;
+#endif
 
 /**
  * @brief This strucure represents a HTTP response.
@@ -1776,11 +1787,12 @@ union WalterModemRspData {
      * @brief CoAP response
      */
     WalterModemCoapResponse coapResponse;
-
+#if CONFIG_WALTER_MODEM_ENABLE_MQTT
     /**
      * @brief MQTT response
      */
     WalterModemMqttResponse mqttResponse;
+#endif
 };
 
 /**
@@ -2167,7 +2179,7 @@ typedef struct {
      */
     char authPass[WALTER_MODEM_PDP_AUTH_PASS_BUF_SIZE] = { 0 };
 } WalterModemPDPContext;
-#ifdef CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
 /**
  * @brief This structure represents a socket.
  */
@@ -2319,6 +2331,7 @@ typedef struct {
     uint16_t contentTypeSize;
 } WalterModemHttpContext;
 
+#if CONFIG_WALTER_MODEM_ENABLE_MQTT
 /**
  * @brief This strucure represents an incoming MQTT message.
  */
@@ -2365,6 +2378,8 @@ typedef struct {
      */
     char topic[WALTER_MODEM_MQTT_TOPIC_BUF_SIZE] = {0};
 } WalterModemMqttTopic;
+#endif
+
 /**
  * @brief This structure represents the state of the BlueCherry connection.
  */
@@ -2564,7 +2579,7 @@ class WalterModem {
          */
         static inline WalterModemPDPContext _pdpCtxSet[WALTER_MODEM_MAX_PDP_CTXTS] = {};
 
-#ifdef CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
         /**
          * @brief The set with sockets.
          */
@@ -2585,7 +2600,7 @@ class WalterModem {
          * @brief HTTP profile for which we are currently awaiting data.
          */
         static inline uint8_t _httpCurrentProfile = 0xff;
-
+#if CONFIG_WALTER_MODEM_ENABLE_MQTT
         /**
          * @brief MQTT incoming messages for subscribed topics backlog.
          */
@@ -2600,6 +2615,13 @@ class WalterModem {
          * @brief The topic that is currently in use for the completeHandler.
          */
         static inline WalterModemMqttTopic* _currentTopic = NULL;
+
+        /**
+         * @brief The latest MQTT status code received from the modem.
+         */
+        static inline WalterModemMqttStatus _mqttStatus = WALTER_MODEM_MQTT_SUCCESS;
+#endif
+
         /**
          * @brief The task in which AT commands and responses are handled.
          */
@@ -2663,7 +2685,7 @@ class WalterModem {
          * PDP context.
          */
         static inline WalterModemPDPContext *_pdpCtx = NULL;
-#ifdef CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
         /**
          * @brief The socket which is currently in use by the library or NULL when no socket is in
          * use.
@@ -2701,10 +2723,6 @@ class WalterModem {
          */
         static inline WalterModemEventHandler _eventHandlers[WALTER_MODEM_EVENT_TYPE_COUNT] = {};
 
-        /**
-         * @brief The latest MQTT status code received from the modem.
-         */
-        static inline WalterModemMqttStatus _mqttStatus = WALTER_MODEM_MQTT_SUCCESS;
         /**
          * @brief Helper to boot modem to recovery modem and start upgrade.
          *
@@ -2849,7 +2867,7 @@ class WalterModem {
          */
         static void _loadRTCPdpContextSet(WalterModemPDPContext *_pdpCtxSetRTC = NULL);
 
-#ifdef CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
         /**
          * @brief Get a socket structure which is not in use.
          * 
@@ -3264,7 +3282,7 @@ class WalterModem {
          * @return None.
          */
         static void _dispatchEvent(const WalterModemGNSSFix *fix);
-
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
         /**
          * @brief Dispatch a MQTT event.
          *
@@ -3276,6 +3294,7 @@ class WalterModem {
          * @return None
          */
         static void _dispatchEvent(WalterModemMQTTEvent event, WalterModemMqttStatus status);
+#endif
 
         /**
          * @brief Save context data in RTC memory before ESP deep sleep.
@@ -3319,6 +3338,7 @@ class WalterModem {
             uint32_t duration_seconds,
             uint32_t *actual_duration_seconds);
 
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
         /**
          * @brief This function subscribes without saving the topic in _mqttTopics and runs async. 
          * (same as mqttSubscribe)
@@ -3329,6 +3349,8 @@ class WalterModem {
             WalterModemRsp *rsp = NULL,
             walterModemCb cb = NULL,
             void *args = NULL);
+#endif
+
     public:
 #ifdef ARDUINO
         /**
@@ -3566,6 +3588,7 @@ class WalterModem {
             walterModemCb cb = NULL,
             void *args = NULL);
 
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
         /**
          * @brief returns the last received mqttStatus.
          */
@@ -3694,6 +3717,7 @@ class WalterModem {
             uint8_t *targetBuf,
             uint16_t targetBufSize,
             WalterModemRsp *rsp = NULL);
+#endif
 
         /**
          * @brief Configure a TLS profile.
@@ -4550,7 +4574,7 @@ class WalterModem {
             walterModemCb cb = NULL,
             void *args = NULL,
             int pdpCtxId = -1);
-#ifdef CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
         /**
          * @brief Create a new socket in a certain PDP context.
          * 
@@ -4910,7 +4934,8 @@ class WalterModem {
          * @return None.
          */
         static void setGNSSEventHandler(walterModemGNSSEventHandler handler, void *args = NULL);
-
+        
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
         /**
          * @brief Set the MQTT event handler.
          *
@@ -4919,6 +4944,7 @@ class WalterModem {
          * the MQTT event handler, this function must be called with a nullptr as the handler.
          */
         static void setMQTTEventHandler(walterModemMQTTEventHandler handler, void *args = NULL);
+#endif
 };
 
 #endif
