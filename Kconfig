@@ -127,6 +127,12 @@ menu "walter-modem"
                 default 63
                 help
                     The maximum number of elements allowed to build an AT command.
+            
+            config WALTER_MODEM_RSP_BUF_SIZE
+                int "The size of an AT response buffer"
+                default 1536
+                help
+                    The size of an AT response buffer.
         endmenu
         menu "modem task"
             config WALTER_MODEM_TASK_QUEUE_MAX_ITEMS
@@ -154,6 +160,18 @@ menu "walter-modem"
                         blocking operations should be performed in an event handler. To aid the user in achieving this
                         the library prints a warning when the handler takes more than the defined number of milliseconds.
             endmenu
+        endmenu
+        menu "Memory"
+            config WALTER_MODEM_BUFFER_POOL_SIZE
+                int "Buffer pool size"
+                range 4 16
+                default 8
+                help
+                    The number of buffers in the buffer pool.
+        endmenu
+        menu "PDP"
+            config WALTER_MODEM_APN_MAX_SIZE
+                int "Maximum apn "
         endmenu
     endif
 endmenu

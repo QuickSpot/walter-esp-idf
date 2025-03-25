@@ -64,7 +64,7 @@ for efficient configuration management."
     static constexpr type name = CONFIG_##name;
 #else
 #define CONFIG(name, type, default_value) \
-    static constexpr type name = default_value;
+    static constexpr type name = (defined(CONFIG_##name) ? CONFIG_##name : default_value);
 #endif
 
 #define CONFIG_INT(name, default_value) CONFIG(name, int, default_value)
@@ -90,6 +90,7 @@ for efficient configuration management."
 #include <freertos/event_groups.h>
 #include <driver/uart.h>
 
+
 /**
  * @brief The maximum number of items in the task queue.
  */
@@ -114,22 +115,22 @@ CONFIG_UINT8(WALTER_MODEM_MAX_PENDING_COMMANDS, 32)
 /**
  * @brief The default number of attempts to execute a command.
  */
-CONFIG_UINT8(WALTER_MODEM_DEFAULT_CMD_ATTEMTS,3)
+CONFIG_UINT8(WALTER_MODEM_DEFAULT_CMD_ATTEMTS, 3)
 
 /**
  * @brief The maximum number of elements allowed to build an AT command.
 */
-#define WALTER_MODEM_COMMAND_MAX_ELEMS 63
+CONFIG_UINT8(WALTER_MODEM_COMMAND_MAX_ELEMS, 63)
 
 /**
  * @brief The size of an AT response buffer.
  */
-#define WALTER_MODEM_RSP_BUF_SIZE 1536
+CONFIG_UINT32(WALTER_MODEM_RSP_BUF_SIZE, 1536)
 
 /**
  * @brief The number of buffers in the buffer pool.
  */
-#define WALTER_MODEM_BUFFER_POOL_SIZE 8
+CONFIG_UINT8(WALTER_MODEM_BUFFER_POOL_SIZE, 8)
 
 /**
  * @brief The maximum numbers of characters of the APN. 
