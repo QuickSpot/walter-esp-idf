@@ -4067,7 +4067,7 @@ void WalterModem::_dispatchEvent(const WalterModemGNSSFix *fix)
     handler->gnssHandler(fix, handler->args);
     _checkEventDuration(start);
 }
-#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+#if CONFIG_WALTER_MODEM_ENABLE_MQTT
 void WalterModem::_dispatchEvent(WalterModemMQTTEvent event, WalterModemMqttStatus status)
 {
     WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_MQTT;
