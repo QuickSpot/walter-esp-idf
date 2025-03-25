@@ -3282,7 +3282,7 @@ class WalterModem {
          * @return None.
          */
         static void _dispatchEvent(const WalterModemGNSSFix *fix);
-#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+#if CONFIG_WALTER_MODEM_ENABLE_MQTT
         /**
          * @brief Dispatch a MQTT event.
          *
@@ -3338,7 +3338,7 @@ class WalterModem {
             uint32_t duration_seconds,
             uint32_t *actual_duration_seconds);
 
-#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+#if CONFIG_WALTER_MODEM_ENABLE_MQTT
         /**
          * @brief This function subscribes without saving the topic in _mqttTopics and runs async. 
          * (same as mqttSubscribe)
@@ -3588,7 +3588,7 @@ class WalterModem {
             walterModemCb cb = NULL,
             void *args = NULL);
 
-#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+#if CONFIG_WALTER_MODEM_ENABLE_MQTT
         /**
          * @brief returns the last received mqttStatus.
          */
@@ -4935,7 +4935,7 @@ class WalterModem {
          */
         static void setGNSSEventHandler(walterModemGNSSEventHandler handler, void *args = NULL);
 
-#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+#if CONFIG_WALTER_MODEM_ENABLE_MQTT
         /**
          * @brief Set the MQTT event handler.
          *
