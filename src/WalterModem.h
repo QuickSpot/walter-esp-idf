@@ -65,8 +65,10 @@ for efficient configuration management."
 #define CONFIG(name, type, default_value) \
     static constexpr type name = CONFIG_##name;
 #else
-#define CONFIG(name, type, default_value) \
-    static constexpr type OVERRIDE__##name WEAK = (type)0; \
+#define OVERRIDE(name, type, value) \
+    static extern constexpr type OVERRIDE__##name WEAK = (type)value;
+#define CONFIG(name, type, default_value)                        \
+    static extern constexpr type OVERRIDE__##name WEAK = (type)0; \
     static constexpr type name = (OVERRIDE_##name ? OVERRIDE_##name : default_value);
 #endif
 
