@@ -58,13 +58,16 @@
 for efficient configuration management."
 #endif
 #endif
-
+#ifndef WEAK
+#define WEAK __attribute__((weak))
+#endif
 #ifdef CONFIG_WALTER_MODEM_KCONFIG
 #define CONFIG(name, type, default_value) \
     static constexpr type name = CONFIG_##name;
 #else
 #define CONFIG(name, type, default_value) \
-    static constexpr type name = (defined(CONFIG_##name) ? CONFIG_##name : default_value);
+    static constexpr type OVERRIDE__##name WEAK = (type)0; \
+    static constexpr type name = (OVERRIDE_##name ? OVERRIDE_##name : default_value);
 #endif
 
 #define CONFIG_INT(name, default_value) CONFIG(name, int, default_value)
@@ -89,7 +92,6 @@ for efficient configuration management."
 #include <freertos/FreeRTOS.h>
 #include <freertos/event_groups.h>
 #include <driver/uart.h>
-
 
 /**
  * @brief The maximum number of items in the task queue.
