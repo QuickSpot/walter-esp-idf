@@ -196,12 +196,12 @@ CONFIG_UINT8(WALTER_MODEM_MAX_HTTP_PROFILES,3)
  * @brief The maximum number of TLS profiles that the library can support.
  */
 CONFIG_UINT8(WALTER_MODEM_MAX_TLS_PROFILES, 6)
-
+#ifdef CONFIG_WALTER_MODEM_ENABLE_SOCKETS
 /**
  * @brief The maximum number of sockets.
  */
 CONFIG_UINT8(WALTER_MODEM_MAX_SOCKETS, 6)
-
+#endif
 /**
  * @brief The maximum number of characters of an operator name.
  */
