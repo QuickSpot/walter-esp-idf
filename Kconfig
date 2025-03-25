@@ -32,7 +32,29 @@ menu "walter-modem"
             
             if WALTER_MODEM_ENABLE_MQTT
                 menu "MQTT"
+                    config WALTER_MODEM_MQTT_TOPIC_MAX_SIZE
+                        int "Max topic lenght"
+                        default 127
+                        help
+                            The maximum number of characters in an MQTT topic.
+                    
+                    config WALTER_MODEM_MQTT_MAX_PENDING_RINGS
+                        int "Max pending rings"
+                        default 8
+                        help
+                            The maximum number of rings that can be pending for the MQTT protocol.
+                    
+                    config WALTER_MODEM_MQTT_MIN_PREF_KEEP_ALIVE
+                        int "minimum keep alive time"
+                        default 20
+                        help
+                            The recommended minimum for the mqtt keep alive time
 
+                    config WALTER_MODEM_MQTT_MAX_TOPICS
+                        int "max MQTT topics the modem can subscribe to"
+                        default 4
+                        help
+                            The maximum allowed mqtt topics to subscribe to.
                 endmenu
             endif
 
@@ -40,11 +62,15 @@ menu "walter-modem"
                 bool "Enable GNSS functions"
                 default y
                 help
-                    Enable socket ofloading functions.
+                    Enable GNSS ofloading functions.
             
             if WALTER_MODEM_ENABLE_GNSS
                 menu "GNSS"
-                    
+                    config WALTER_MODEM_GNSS_MAX_SATS
+                        int "Max tracked sats"
+                        default 32
+                        help
+                            The maximum number of tracked GNSS satellites.
                 endmenu
             endif
 
@@ -72,11 +98,19 @@ menu "walter-modem"
 
             if WALTER_MODEM_ENABLE_COAP
                 menu "CoAP"
-                config WALTER_MODEM_MAX_COAP_PROFILES
-                    default y
-                    range 1 3
-                    help
-                        The maximum number of CoAP profiles that the library can support.
+                    config WALTER_MODEM_MAX_COAP_PROFILES
+                        int "Max CoAP profiles"
+                        default y
+                        range 1 3
+                        help
+                            The maximum number of CoAP profiles that the library can support.
+
+                    config WALTER_MODEM_COAP_MAX_PENDING_RINGS
+                        int "Max pending CoAP rings"
+                        default 8
+                        range 4 16
+                        help
+                            The maximum number of rings that can be pending for the CoAP protocol.
                 endmenu
 
                 config WALTER_MODEM_ENABLE_BLUECHERRY
@@ -198,6 +232,18 @@ menu "walter-modem"
                 default 8
                 help
                     The number of buffers in the buffer pool.
+            
+            config ENCRYPTED_BLOCK_SIZE
+                int "Encrypted block size"
+                default 16
+                help
+                    Encrypted block size within flash.
+            
+            config SPI_SECTORS_PER_BLOCK
+                int "SPI sectors per block"
+                default 16
+                help
+                    SPI flash sectors per erase block, usually large erase block is 32k/64k.
         endmenu
         menu "PDP"
             config WALTER_MODEM_MAX_PDP_CTXTS

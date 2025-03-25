@@ -5206,7 +5206,7 @@ bool WalterModem::getPDPAddress(
     _runCmd(arr("AT+CGPADDR=", _digitStr(ctx->id)), "OK", rsp, cb, args);
     _returnAfterReply();
 }
-
+#ifdef CONFIG_WALTER_MODEM_ENABLE_SOCKETS
 bool WalterModem::createSocket(
     WalterModemRsp *rsp,
     walterModemCb cb,
@@ -5387,6 +5387,7 @@ bool WalterModem::socketSend(
 {
     return socketSend((uint8_t*) str, strlen(str), rsp, cb, args, rai, socketId);
 }
+#endif
 
 bool WalterModem::getClock(WalterModemRsp *rsp, walterModemCb cb, void *args)
 {

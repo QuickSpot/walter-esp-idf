@@ -65,6 +65,10 @@ for efficient configuration management."
 #else
 #define CONFIG(name, type, default_value) \
     static constexpr type name = default_value;
+
+#ifndef DISABLE_SOCKETS
+    #define CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+#endif
 #endif
 
 #define CONFIG_INT(name, default_value) CONFIG(name, int, default_value)
@@ -226,12 +230,12 @@ CONFIG_UINT8(WALTER_MODEM_MAX_SOCKETS, 6)
 /**
  * @brief The maximum number of tracked GNSS satellites.
  */
-#define WALTER_MODEM_GNSS_MAX_SATS 32
+CONFIG_UINT8(WALTER_MODEM_GNSS_MAX_SATS, 32)
 
 /**
  * @brief The maximum number of characters in an MQTT topic.
  */
-#define WALTER_MODEM_MQTT_TOPIC_MAX_SIZE 127
+CONFIG_UINT8(WALTER_MODEM_MQTT_TOPIC_MAX_SIZE, 127)
 
 /**
  * @brief The size of an MQTT topic buffer  
@@ -241,22 +245,22 @@ CONFIG_UINT8(WALTER_MODEM_MAX_SOCKETS, 6)
 /**
  * @brief The maximum number of rings that can be pending for the MQTT protocol.
  */
-#define WALTER_MODEM_MQTT_MAX_PENDING_RINGS 8
+CONFIG_UINT8(WALTER_MODEM_MQTT_MAX_PENDING_RINGS, 8)
 
 /**
  * @brief The recommended minimum for the mqtt keep alive time
  */
-#define WALTER_MODEM_MQTT_MIN_PREF_KEEP_ALIVE 20
+CONFIG_UINT8(WALTER_MODEM_MQTT_MIN_PREF_KEEP_ALIVE, 20)
 
 /**
  * @brief The maximum allowed mqtt topics to subscribe to.
  */
-#define WALTER_MODEM_MQTT_MAX_TOPICS 4
+CONFIG_UINT8(WALTER_MODEM_MQTT_MAX_TOPICS, 4)
 
 /**
  * @brief The maximum number of rings that can be pending for the CoAP protocol.
  */
-#define WALTER_MODEM_COAP_MAX_PENDING_RINGS 8
+CONFIG_UINT8(WALTER_MODEM_COAP_MAX_PENDING_RINGS, 8)
 
 /**
  * @brief The maximum size of an incoming protocol message payload.
@@ -271,12 +275,12 @@ CONFIG_UINT8(WALTER_MODEM_MAX_SOCKETS, 6)
 /**
  * @brief Encrypted block size within flash.
  */
-#define ENCRYPTED_BLOCK_SIZE 16
+CONFIG_UINT8(ENCRYPTED_BLOCK_SIZE, 16)
 
 /**
  * @brief SPI flash sectors per erase block, usually large erase block is 32k/64k.
  */
-#define SPI_SECTORS_PER_BLOCK 16
+CONFIG_UINT8(SPI_SECTORS_PER_BLOCK, 16)
 
 /**
  * @brief SPI flash erase block size
@@ -324,25 +328,25 @@ CONFIG_UINT8(WALTER_MODEM_MAX_SOCKETS, 6)
  */
 #define WALTER_MODEM_STP_OPERATION_TRANSFER_BLOCK 0x03
 
-    /**
-     * @brief This enum groups status codes of functions and operational components of the modem.
-     */
-    typedef enum {
-        WALTER_MODEM_STATE_OK = 0,
-        WALTER_MODEM_STATE_ERROR,
-        WALTER_MODEM_STATE_TIMEOUT,
-        WALTER_MODEM_STATE_NO_MEMORY,
-        WALTER_MODEM_STATE_NO_FREE_PDP_CONTEXT,
-        WALTER_MODEM_STATE_NO_SUCH_PDP_CONTEXT,
-        WALTER_MODEM_STATE_NO_FREE_SOCKET,
-        WALTER_MODEM_STATE_NO_SUCH_SOCKET,
-        WALTER_MODEM_STATE_NO_SUCH_PROFILE,
-        WALTER_MODEM_STATE_NOT_EXPECTING_RING,
-        WALTER_MODEM_STATE_AWAITING_RING,
-        WALTER_MODEM_STATE_AWAITING_RESPONSE,
-        WALTER_MODEM_STATE_BUSY,
-        WALTER_MODEM_STATE_NO_DATA
-    } WalterModemState;
+/**
+ * @brief This enum groups status codes of functions and operational components of the modem.
+ */
+typedef enum {
+    WALTER_MODEM_STATE_OK = 0,
+    WALTER_MODEM_STATE_ERROR,
+    WALTER_MODEM_STATE_TIMEOUT,
+    WALTER_MODEM_STATE_NO_MEMORY,
+    WALTER_MODEM_STATE_NO_FREE_PDP_CONTEXT,
+    WALTER_MODEM_STATE_NO_SUCH_PDP_CONTEXT,
+    WALTER_MODEM_STATE_NO_FREE_SOCKET,
+    WALTER_MODEM_STATE_NO_SUCH_SOCKET,
+    WALTER_MODEM_STATE_NO_SUCH_PROFILE,
+    WALTER_MODEM_STATE_NOT_EXPECTING_RING,
+    WALTER_MODEM_STATE_AWAITING_RING,
+    WALTER_MODEM_STATE_AWAITING_RESPONSE,
+    WALTER_MODEM_STATE_BUSY,
+    WALTER_MODEM_STATE_NO_DATA
+} WalterModemState;
 
 /**
  * @brief The possible states that the SIM card can be in.
@@ -707,19 +711,6 @@ typedef enum {
 } WalterModemEDRXMode;
 
 /**
- * @brief The state of a socket.
- */
-typedef enum {
-    WALTER_MODEM_SOCKET_STATE_FREE = 0,
-    WALTER_MODEM_SOCKET_STATE_RESERVED = 1,
-    WALTER_MODEM_SOCKET_STATE_CREATED = 2,
-    WALTER_MODEM_SOCKET_STATE_CONFIGURED = 3,
-    WALTER_MODEM_SOCKET_STATE_OPENED = 4,
-    WALTER_MODEM_SOCKET_STATE_LISTENING = 5,
-    WALTER_MODEM_SOCKET_STATE_CLOSED = 6
-} WalterModemSocketState;
-
-/**
  * @brief The state of a http context.
  */
 typedef enum {
@@ -749,6 +740,21 @@ typedef enum {
     WALTER_MODEM_TLS_VALIDATION_URL_AND_CA = 5
 } WalterModemTlsValidation;
 
+#ifdef CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+/**
+ * @brief The state of a socket.
+ */
+typedef enum
+{
+    WALTER_MODEM_SOCKET_STATE_FREE = 0,
+    WALTER_MODEM_SOCKET_STATE_RESERVED = 1,
+    WALTER_MODEM_SOCKET_STATE_CREATED = 2,
+    WALTER_MODEM_SOCKET_STATE_CONFIGURED = 3,
+    WALTER_MODEM_SOCKET_STATE_OPENED = 4,
+    WALTER_MODEM_SOCKET_STATE_LISTENING = 5,
+    WALTER_MODEM_SOCKET_STATE_CLOSED = 6
+} WalterModemSocketState;
+
 /**
  * @brief The protocol that us used by the socket. 
  */
@@ -767,6 +773,7 @@ typedef enum {
     WALTER_MODEM_ACCEPT_ANY_REMOTE_RX_AND_TX = 2
 } WalterModemSocketAcceptAnyRemote;
 
+#endif
 /**
  * @brief In case of an NB-IoT connection the RAI (Release Assistance Information). The RAI is used
  * to indicate to the network (MME) if there are going to be other transmissions or not.
@@ -2160,7 +2167,7 @@ typedef struct {
      */
     char authPass[WALTER_MODEM_PDP_AUTH_PASS_BUF_SIZE] = { 0 };
 } WalterModemPDPContext;
-
+#ifdef CONFIG_WALTER_MODEM_ENABLE_SOCKETS
 /**
  * @brief This structure represents a socket.
  */
@@ -2233,6 +2240,8 @@ typedef struct {
      */
     uint16_t localPort = 0;
 } WalterModemSocket;
+
+#endif
 
 /**
  * @brief This structure represents an incoming CoAP message indication.
@@ -2555,10 +2564,12 @@ class WalterModem {
          */
         static inline WalterModemPDPContext _pdpCtxSet[WALTER_MODEM_MAX_PDP_CTXTS] = {};
 
+#ifdef CONFIG_WALTER_MODEM_ENABLE_SOCKETS
         /**
          * @brief The set with sockets.
          */
         static inline WalterModemSocket _socketSet[WALTER_MODEM_MAX_SOCKETS] = {};
+#endif
 
         /**
          * @brief The set with CoAP contexts.
@@ -2652,13 +2663,13 @@ class WalterModem {
          * PDP context.
          */
         static inline WalterModemPDPContext *_pdpCtx = NULL;
-
+#ifdef CONFIG_WALTER_MODEM_ENABLE_SOCKETS
         /**
          * @brief The socket which is currently in use by the library or NULL when no socket is in
          * use.
          */
         static inline WalterModemSocket *_socket = NULL;
-
+#endif
         /**
          * @brief The GNSS fix which is currently being processed.
          */
@@ -2838,6 +2849,7 @@ class WalterModem {
          */
         static void _loadRTCPdpContextSet(WalterModemPDPContext *_pdpCtxSetRTC = NULL);
 
+#ifdef CONFIG_WALTER_MODEM_ENABLE_SOCKETS
         /**
          * @brief Get a socket structure which is not in use.
          * 
@@ -2870,6 +2882,7 @@ class WalterModem {
          * @return None.
          */
         static void _socketRelease(WalterModemSocket *sock);
+#endif
 
         /**
          * @brief Test if the new buffer line starts a raw data chunk
@@ -4537,7 +4550,7 @@ class WalterModem {
             walterModemCb cb = NULL,
             void *args = NULL,
             int pdpCtxId = -1);
-
+#ifdef CONFIG_WALTER_MODEM_ENABLE_SOCKETS
         /**
          * @brief Create a new socket in a certain PDP context.
          * 
@@ -4681,6 +4694,7 @@ class WalterModem {
             void *args = NULL,
             WalterModemRAI rai = WALTER_MODEM_RAI_NO_INFO,
             int socketId = -1);
+#endif
 
         /**
          * @brief Get the current modem time and date.
