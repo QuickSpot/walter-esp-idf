@@ -134,7 +134,7 @@ CONFIG_UINT8(WALTER_MODEM_BUFFER_POOL_SIZE, 8)
 /**
  * @brief The maximum numbers of characters of the APN. 
  */
-#define WALTER_MODEM_APN_MAX_SIZE 99
+CONFIG_UINT8(WALTER_MODEM_APN_MAX_SIZE, 99)
 
 /**
  * @brief The size of an APN buffer.
@@ -144,7 +144,7 @@ CONFIG_UINT8(WALTER_MODEM_BUFFER_POOL_SIZE, 8)
 /**
  * @brief The maximum number of characters in the string representation of the PDP address.
  */
-#define WALTER_MODEM_PDP_ADDR_MAX_SIZE 63
+CONFIG_UINT8(WALTER_MODEM_PDP_ADDR_MAX_SIZE, 63)
 
 /**
  * @brief The size of a PDP address buffer.
@@ -154,7 +154,7 @@ CONFIG_UINT8(WALTER_MODEM_BUFFER_POOL_SIZE, 8)
 /**
  * @brief The maximum number of characters of a PDP context username.
  */
-#define WALTER_MODEM_PDP_AUTH_USER_MAX_SIZE 63
+CONFIG_UINT8(WALTER_MODEM_PDP_AUTH_USER_MAX_SIZE, 63)
 
 /**
  * @brief The size of a PDP context username buffer.
@@ -163,9 +163,9 @@ CONFIG_UINT8(WALTER_MODEM_BUFFER_POOL_SIZE, 8)
     (WALTER_MODEM_PDP_AUTH_USER_MAX_SIZE + 1)
 
 /**
- * @brief The maximum number of characters of a PDP context password. 
+ * @brief The maximum number of characters of a PDP context password.
  */
-#define WALTER_MODEM_PDP_AUTH_PASS_MAX_SIZE 63
+CONFIG_UINT8(WALTER_MODEM_PDP_AUTH_PASS_MAX_SIZE, 63)
 
 /**
  * @brief The size of a PDP context password buffer.
@@ -176,27 +176,27 @@ CONFIG_UINT8(WALTER_MODEM_BUFFER_POOL_SIZE, 8)
 /**
  * @brief The maximum number of PDP contexts that the library can support.
  */
-#define WALTER_MODEM_MAX_PDP_CTXTS 8
+CONFIG_UINT8(WALTER_MODEM_MAX_PDP_CTXTS, 8)
 
 /**
  * @brief The maximum number of CoAP profiles that the library can support.
  */
-#define WALTER_MODEM_MAX_COAP_PROFILES 3
+CONFIG_UINT8(WALTER_MODEM_MAX_COAP_PROFILES, 3)
 
 /**
  * @brief The maximum number of HTTP profiles that the library can support.
  */
-#define WALTER_MODEM_MAX_HTTP_PROFILES 3
+CONFIG_UINT8(WALTER_MODEM_MAX_HTTP_PROFILES,3)
 
 /**
  * @brief The maximum number of TLS profiles that the library can support.
  */
-#define WALTER_MODEM_MAX_TLS_PROFILES 6
+CONFIG_UINT8(WALTER_MODEM_MAX_TLS_PROFILES, 6)
 
 /**
  * @brief The maximum number of sockets.
  */
-#define WALTER_MODEM_MAX_SOCKETS 6
+CONFIG_UINT8(WALTER_MODEM_MAX_SOCKETS, 6)
 
 /**
  * @brief The maximum number of characters of an operator name.
@@ -324,25 +324,25 @@ CONFIG_UINT8(WALTER_MODEM_BUFFER_POOL_SIZE, 8)
  */
 #define WALTER_MODEM_STP_OPERATION_TRANSFER_BLOCK 0x03
 
-/**
- * @brief This enum groups status codes of functions and operational components of the modem.
- */
-typedef enum {
-    WALTER_MODEM_STATE_OK = 0,
-    WALTER_MODEM_STATE_ERROR,
-    WALTER_MODEM_STATE_TIMEOUT,
-    WALTER_MODEM_STATE_NO_MEMORY,
-    WALTER_MODEM_STATE_NO_FREE_PDP_CONTEXT,
-    WALTER_MODEM_STATE_NO_SUCH_PDP_CONTEXT,
-    WALTER_MODEM_STATE_NO_FREE_SOCKET,
-    WALTER_MODEM_STATE_NO_SUCH_SOCKET,
-    WALTER_MODEM_STATE_NO_SUCH_PROFILE,
-    WALTER_MODEM_STATE_NOT_EXPECTING_RING,
-    WALTER_MODEM_STATE_AWAITING_RING,
-    WALTER_MODEM_STATE_AWAITING_RESPONSE,
-    WALTER_MODEM_STATE_BUSY,
-    WALTER_MODEM_STATE_NO_DATA
-} WalterModemState;
+    /**
+     * @brief This enum groups status codes of functions and operational components of the modem.
+     */
+    typedef enum {
+        WALTER_MODEM_STATE_OK = 0,
+        WALTER_MODEM_STATE_ERROR,
+        WALTER_MODEM_STATE_TIMEOUT,
+        WALTER_MODEM_STATE_NO_MEMORY,
+        WALTER_MODEM_STATE_NO_FREE_PDP_CONTEXT,
+        WALTER_MODEM_STATE_NO_SUCH_PDP_CONTEXT,
+        WALTER_MODEM_STATE_NO_FREE_SOCKET,
+        WALTER_MODEM_STATE_NO_SUCH_SOCKET,
+        WALTER_MODEM_STATE_NO_SUCH_PROFILE,
+        WALTER_MODEM_STATE_NOT_EXPECTING_RING,
+        WALTER_MODEM_STATE_AWAITING_RING,
+        WALTER_MODEM_STATE_AWAITING_RESPONSE,
+        WALTER_MODEM_STATE_BUSY,
+        WALTER_MODEM_STATE_NO_DATA
+    } WalterModemState;
 
 /**
  * @brief The possible states that the SIM card can be in.

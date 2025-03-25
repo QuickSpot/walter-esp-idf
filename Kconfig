@@ -15,7 +15,12 @@ menu "walter-modem"
 
             if WALTER_MODEM_ENABLE_SOCKETS
                 menu "Socket (TCP/UDP)"
-                    
+                    config WALTER_MODEM_MAX_SOCKETS
+                        int "Max socket connections"
+                        range 1 6
+                        default 6
+                        help
+                            The maximum number of sockets.
                 endmenu
             endif
 
@@ -51,10 +56,35 @@ menu "walter-modem"
             
             if WALTER_MODEM_ENABLE_HTTP
                 menu "HTTP"
-                    
+                    config WALTER_MODEM_MAX_HTTP_PROFILES
+                        int "Max http profiles"
+                        default 3
+                        help
+                            The maximum number of HTTP profiles that the library can support.
                 endmenu
             endif
             
+            config WALTER_MODEM_ENABLE_COAP
+                bool "Enable CoAP functions"
+                default y
+                help
+                    Enable CoAP ofloading functions
+
+            if WALTER_MODEM_ENABLE_COAP
+                menu "CoAP"
+                config WALTER_MODEM_MAX_COAP_PROFILES
+                    default y
+                    range 1 3
+                    help
+                        The maximum number of CoAP profiles that the library can support.
+                endmenu
+
+                config WALTER_MODEM_ENABLE_BLUECHERRY
+                    bool "Enable bluecherry"
+                    default y
+                    help
+                        Enable bluecherry functions
+            endif
         endmenu
         menu "Pinout"
             if WALTER_MODEM_KCONFIG
@@ -170,8 +200,44 @@ menu "walter-modem"
                     The number of buffers in the buffer pool.
         endmenu
         menu "PDP"
+            config WALTER_MODEM_MAX_PDP_CTXTS
+                int "Maximum pdp context count"
+                range 1 8
+                default 8
+                help
+                    The maximum number of PDP contexts that the library can support.
+
             config WALTER_MODEM_APN_MAX_SIZE
-                int "Maximum apn "
+                int "Maximum chars in APN"
+                default 99
+                range 10 99
+                help
+                    The maximum numbers of characters of the APN.
+            
+            config WALTER_MODEM_PDP_ADDR_MAX_SIZE
+                int "Max chars in pdp addr"
+                default 63
+                help
+                    The maximum number of characters in the string representation of the PDP address.
+            
+            config  WALTER_MODEM_PDP_AUTH_USER_MAX_SIZE
+                int "Max chars in pdp username"
+                default 63
+                help
+                    The maximum number of characters of a PDP context username.
+
+            config WALTER_MODEM_PDP_AUTH_PASS_MAX_SIZE
+                int "Max chars in pdp password"
+                default 63
+                help
+                    The maximum number of characters of a PDP context password.
+
+            config WALTER_MODEM_MAX_TLS_PROFILES
+                int "Max tls profiles"
+                range 1 3
+                default 3
+                help
+                    The maximum number of TLS profiles that the library can support.
         endmenu
     endif
 endmenu
