@@ -1290,7 +1290,7 @@ typedef void (*walterModemGNSSEventHandler)(const WalterModemGNSSFix *fix, void 
  * @return None.
  */
 typedef void (*walterModemMQTTEventHandler)(WalterModemMQTTEvent ev, WalterModemMqttStatus status, void *args);
-#endi
+#endif
 /**
  * @brief This structure represents an event handler and it's metadata.
  */
@@ -4934,7 +4934,7 @@ class WalterModem {
          * @return None.
          */
         static void setGNSSEventHandler(walterModemGNSSEventHandler handler, void *args = NULL);
-        
+
 #if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
         /**
          * @brief Set the MQTT event handler.
