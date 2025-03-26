@@ -1,4 +1,6 @@
 #include <WalterModem.h>
+#include <WalterDefines.h>
+
 #if CONFIG_WALTER_MODEM_ENABLE_MQTT
 WalterModemMqttStatus WalterModem::getMqttStatus()
 {
