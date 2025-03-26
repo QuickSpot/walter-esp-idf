@@ -1,5 +1,6 @@
 idf_component_register(SRCS "src/WalterModem.cpp"
                     "src/proto/WalterGNSS.cpp"
+                    "src/proto/WalterHTTP.cpp"
                     "src/proto/WalterMQTT.cpp"
                     "src/proto/WalterSocket.cpp"
                     INCLUDE_DIRS "src"
