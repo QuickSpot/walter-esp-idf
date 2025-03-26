@@ -66,12 +66,21 @@ for efficient configuration management."
 #define CONFIG(name, type, default_value) \
     static constexpr type name = default_value;
 
+/* configuration defaults for arduino or when KCONFIG is disabled */
 #ifndef CONFIG_WALTER_MODEM_ENABLE_SOCKETS
 #define CONFIG_WALTER_MODEM_ENABLE_SOCKETS 1
 #endif
 
 #ifndef CONFIG_WALTER_MODEM_ENABLE_MQTT
 #define CONFIG_WALTER_MODEM_ENABLE_MQTT 1
+#endif
+
+#ifndef CONFIG_WALTER_MODEM_ENABLE_GNSS
+#define CONFIG_WALTER_MODEM_ENABLE_GNSS 1
+#endif
+
+#ifndef CONFIG_WALTER_MODEM_ENABLE_HTTP
+#define CONFIG_WALTER_MODEM_ENABLE_HTTP 1
 #endif
 #endif
 
@@ -191,11 +200,12 @@ CONFIG_UINT8(WALTER_MODEM_MAX_PDP_CTXTS, 8)
  */
 CONFIG_UINT8(WALTER_MODEM_MAX_COAP_PROFILES, 3)
 
+#if CONFIG_WALTER_MODEM_ENABLE_HTTP
 /**
  * @brief The maximum number of HTTP profiles that the library can support.
  */
 CONFIG_UINT8(WALTER_MODEM_MAX_HTTP_PROFILES,3)
-
+#endif
 /**
  * @brief The maximum number of TLS profiles that the library can support.
  */
@@ -231,10 +241,12 @@ CONFIG_UINT8(WALTER_MODEM_MAX_SOCKETS, 6)
  */
 #define WALTER_MODEM_HOSTNAME_BUF_SIZE (WALTER_MODEM_HOSTNAME_MAX_SIZE + 1)
 
+#if CONFIG_WALTER_MODEM_ENABLE_GNSS
 /**
  * @brief The maximum number of tracked GNSS satellites.
  */
 CONFIG_UINT8(WALTER_MODEM_GNSS_MAX_SATS, 32)
+#endif
 
 #if CONFIG_WALTER_MODEM_ENABLE_MQTT
 /**
@@ -716,6 +728,7 @@ typedef enum {
     WALTER_MODEM_EDRX_RESET = 3
 } WalterModemEDRXMode;
 
+#if CONFIG_WALTER_MODEM_ENABLE_HTTP
 /**
  * @brief The state of a http context.
  */
@@ -724,6 +737,7 @@ typedef enum {
     WALTER_MODEM_HTTP_CONTEXT_STATE_EXPECT_RING,
     WALTER_MODEM_HTTP_CONTEXT_STATE_GOT_RING
 } WalterModemHttpContextState;
+#endif
 
 /**
  * @brief The TLS version.
@@ -790,6 +804,7 @@ typedef enum {
     WALTER_MODEM_RAI_ONLY_SINGLE_RXTX_EXPECTED = 2
 } WalterModemRAI;
 
+#if CONFIG_WALTER_MODEM_ENABLE_GNSS
 /**
  * @brief The GNSS location modus. When set to 'on-device location' the GNSS subsystem will compute
  * position and speed and estimate the error on these parameters.
@@ -844,6 +859,7 @@ typedef enum {
     WALTER_MODEM_GNSS_ASSISTANCE_TYPE_REALTIME_EPHEMERIS = 1,
     WALTER_MODEM_GNSS_ASSISTANCE_TYPE_PREDICTED_EPHEMERIS = 2,
 } WalterModemGNSSAssistanceType;
+#endif
 
 /**
  * @brief The possible statuses of a BlueCherry communication cycle.
@@ -1003,6 +1019,7 @@ typedef enum {
     WALTER_MODEM_COAP_SEND_RSP_CODE_PROXYING_NOT_SUPPORTED = 505
 } WalterModemCoapSendMethodRsp;
 
+#if CONFIG_WALTER_MODEM_ENABLE_HTTP
 /**
  * @brief The possible commands for a HTTP query operation.
  */
@@ -1031,6 +1048,7 @@ typedef enum {
     WALTER_MODEM_HTTP_POST_PARAM_JSON = 4,
     WALTER_MODEM_HTTP_POST_PARAM_UNSPECIFIED = 99
 } WalterModemHttpPostParam;
+#endif
 
 /**
  * @brief The possible types of BlueCherry events.
@@ -1046,6 +1064,7 @@ typedef enum {
     WALTER_MODEM_BLUECHERRY_EVENT_TYPE_MOTA_ERROR = 8
 } WalterModemBlueCherryEventType;
 
+#if CONFIG_WALTER_MODEM_ENABLE_GNSS
 /**
  * @brief This structure represents a GNSS satellite.
  */
@@ -1184,6 +1203,7 @@ typedef struct {
      */
     WalterModemGNSSAssistanceTypeDetails predictedEphemeris;
 } WalterModemGNSSAssistance;
+#endif
 
 /**
  * @brief The different types of events supported by the library.
@@ -1271,6 +1291,8 @@ typedef void (*walterModemSystemEventHandler)(WalterModemSystemEvent ev, void *a
  */
 typedef void (*walterModemATEventHandler)(const char *buff, size_t len, void *args);
 
+#if CONFIG_WALTER_MODEM_ENABLE_GNSS
+
 /**
  * @brief Header of a GNSS event handler.
  *
@@ -1280,7 +1302,10 @@ typedef void (*walterModemATEventHandler)(const char *buff, size_t len, void *ar
  * @return None.
  */
 typedef void (*walterModemGNSSEventHandler)(const WalterModemGNSSFix *fix, void *args);
+#endif
+
 #if CONFIG_WALTER_MODEM_ENABLE_MQTT
+
 /**
  * @brief Header of an MQTT event handler
  *
@@ -1312,11 +1337,12 @@ typedef struct
          * @brief Pointer to the AT event handler.
          */
         walterModemATEventHandler atHandler;
-
+#if CONFIG_WALTER_MODEM_ENABLE_GNSS
         /**
          * @brief Pointer to the GNSS event handler.
          */
         walterModemGNSSEventHandler gnssHandler;
+#endif
 
 #if CONFIG_WALTER_MODEM_ENABLE_MQTT
         /**
@@ -1579,6 +1605,7 @@ typedef struct {
 } WalterModemMqttResponse;
 #endif
 
+#if CONFIG_WALTER_MODEM_ENABLE_HTTP
 /**
  * @brief This strucure represents a HTTP response.
  */
@@ -1593,6 +1620,7 @@ typedef struct {
      */
     uint16_t contentLength;
 } WalterModemHttpResponse;
+#endif
 
 /**
  * @brief This structure groups the RSRQ and RSRP signal quality parameters.
@@ -1778,10 +1806,12 @@ union WalterModemRspData {
      */
     WalterModemBlueCherryData blueCherry;
 
+#if CONFIG_WALTER_MODEM_ENABLE_HTTP
     /**
      * @brief HTTP response
      */
     WalterModemHttpResponse httpResponse;
+#endif
 
     /**
      * @brief CoAP response
@@ -2295,6 +2325,7 @@ typedef struct {
     WalterModemCoapRing rings[WALTER_MODEM_COAP_MAX_PENDING_RINGS];
 } WalterModemCoapContext;
 
+#if CONFIG_WALTER_MODEM_ENABLE_HTTP
 /**
  * @brief This structure represents a HTTP context with it's current state info.
  */
@@ -2330,6 +2361,7 @@ typedef struct {
      */
     uint16_t contentTypeSize;
 } WalterModemHttpContext;
+#endif
 
 #if CONFIG_WALTER_MODEM_ENABLE_MQTT
 /**
@@ -2591,6 +2623,7 @@ class WalterModem {
          */
         static inline WalterModemCoapContext _coapContextSet[WALTER_MODEM_MAX_COAP_PROFILES] = {};
 
+#if CONFIG_WALTER_MODEM_ENABLE_HTTP
         /**
          * @brief The set with HTTP contexts.
          */
@@ -2600,6 +2633,8 @@ class WalterModem {
          * @brief HTTP profile for which we are currently awaiting data.
          */
         static inline uint8_t _httpCurrentProfile = 0xff;
+#endif
+
 #if CONFIG_WALTER_MODEM_ENABLE_MQTT
         /**
          * @brief MQTT incoming messages for subscribed topics backlog.
@@ -2692,10 +2727,13 @@ class WalterModem {
          */
         static inline WalterModemSocket *_socket = NULL;
 #endif
+
+#if CONFIG_WALTER_MODEM_ENABLE_GNSS
         /**
          * @brief The GNSS fix which is currently being processed.
          */
         static inline WalterModemGNSSFix _GNSSfix = {};
+#endif
 
         /*
          * @brief The current BlueCherry state.
@@ -3270,7 +3308,7 @@ class WalterModem {
          * @return None.
          */
         static void _dispatchEvent(const char *buff, size_t len);
-
+#if CONFIG_WALTER_MODEM_ENABLE_GNSS
         /**
          * @brief Dispatch a GNSS event.
          * 
@@ -3282,6 +3320,8 @@ class WalterModem {
          * @return None.
          */
         static void _dispatchEvent(const WalterModemGNSSFix *fix);
+#endif
+
 #if CONFIG_WALTER_MODEM_ENABLE_MQTT
         /**
          * @brief Dispatch a MQTT event.
@@ -3751,6 +3791,7 @@ class WalterModem {
             walterModemCb cb = NULL,
             void *args = NULL);
 
+#if CONFIG_WALTER_MODEM_ENABLE_HTTP
         /**
          * @brief Configure a HTTP profile.
          * 
@@ -3914,6 +3955,7 @@ class WalterModem {
             uint8_t *targetBuf,
             uint16_t targetBufSize,
             WalterModemRsp *rsp = NULL);
+#endif
 
         /**
          * @brief Upload BlueCherry credentials to the modem.
@@ -4736,6 +4778,7 @@ class WalterModem {
             walterModemCb cb = NULL,
             void *args = NULL);
 
+#if CONFIG_WALTER_MODEM_ENABLE_GNSS
         /**
          * @brief Configure Walter's GNSS receiver.
          * 
@@ -4816,6 +4859,7 @@ class WalterModem {
             WalterModemRsp *rsp = NULL,
             walterModemCb cb = NULL,
             void *args = NULL);
+#endif
 
         /**
          * @brief Offline update modem firmware from file on flash
@@ -4920,6 +4964,7 @@ class WalterModem {
          */
         static void setATEventHandler(walterModemATEventHandler handler = nullptr, void *args = nullptr);
 
+#if CONFIG_WALTER_MODEM_ENABLE_GNSS
         /**
          * @brief Set the GNSS event handler.
          * 
@@ -4934,6 +4979,7 @@ class WalterModem {
          * @return None.
          */
         static void setGNSSEventHandler(walterModemGNSSEventHandler handler, void *args = NULL);
+#endif
 
 #if CONFIG_WALTER_MODEM_ENABLE_MQTT
         /**

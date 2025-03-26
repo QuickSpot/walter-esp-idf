@@ -1047,7 +1047,7 @@ void WalterModem::_parseRxData(char *rxData, size_t len)
                 }
             }
             break;
-
+#if CONFIG_WALTER_MODEM_ENABLE_HTTP
         case WALTER_MODEM_RSP_PARSER_DATA_PROMPT_HTTP:
             _addATByteToBuffer(data, false);
             if(data == '>') {
@@ -1085,6 +1085,7 @@ void WalterModem::_parseRxData(char *rxData, size_t len)
             }
             _addATByteToBuffer(data, false);
             break;
+#endif
 
         case WALTER_MODEM_RSP_PARSER_END_LF:
             if(data == '\n') {
@@ -1912,6 +1913,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             }
         }
     }
+#if CONFIG_WALTER_MODEM_ENABLE_GNSS
     else if(_buffStartsWith(buff, "+LPGNSSFIXREADY: "))
     {
         uint16_t dataSize = buff->size - _strLitLen("+LPGNSSFIXREADY: ");
@@ -2099,6 +2101,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             }
         }
     }
+#endif
     else if(_buffStartsWith(buff, "+CCLK: \""))
     {
         buff->data[buff->size - 1] = '\0';
@@ -2219,6 +2222,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             }
         }
     }
+#if CONFIG_WALTER_MODEM_ENABLE_HTTP
     else if(_buffStartsWith(buff, "<<<"))   
     {
         /* <<< is start of SQNHTTPRCV answer */
@@ -2305,6 +2309,8 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             return;
         }
     }
+#endif
+
     else if(_buffStartsWith(buff, "+SQNCOAPRING: "))
     {
         const char *rspStr = _buffStr(buff);
@@ -2445,6 +2451,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             }
         }
     }
+#if CONFIG_WALTER_MODEM_ENABLE_HTTP
     else if(_buffStartsWith(buff, "+SQNHTTPCONNECT: "))
     {
         const char *rspStr = _buffStr(buff);
@@ -2490,6 +2497,8 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             _httpContextSet[profileId].connected = false;
         }
     }
+#endif
+
 #if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
     else if(_buffStartsWith(buff, "+SQNSH: "))
     {
@@ -3616,7 +3625,6 @@ bool WalterModem::reset(WalterModemRsp *rsp, walterModemCb cb, void *args)
 
     /* Also (re)initialize internal modem related library state */
     _regState = WALTER_MODEM_NETWORK_REG_NOT_SEARCHING;
-    _httpCurrentProfile = 0xff;
     _opState = WALTER_MODEM_OPSTATE_MINIMUM;
     _networkSelMode = WALTER_MODEM_NETWORK_SEL_MODE_AUTOMATIC;
 
@@ -3636,10 +3644,14 @@ bool WalterModem::reset(WalterModemRsp *rsp, walterModemCb cb, void *args)
     for(int i = 0; i < WALTER_MODEM_MAX_COAP_PROFILES; ++i) {
       _coapContextSet[i] = {};
     }
+#if CONFIG_WALTER_MODEM_ENABLE_HTTP
+    _httpCurrentProfile = 0xff;
 
     for(int i = 0; i < WALTER_MODEM_MAX_HTTP_PROFILES; ++i) {
       _httpContextSet[i] = {};
     }
+#endif
+
 #if CONFIG_WALTER_MODEM_ENABLE_MQTT
     for(int i = 0; i < WALTER_MODEM_MQTT_MAX_PENDING_RINGS; i++) {
         _mqttRings[i] = {};
@@ -4055,7 +4067,7 @@ void WalterModem::_dispatchEvent(const char *buff, size_t len)
     handler->atHandler(buff, len, handler->args);
     _checkEventDuration(start);
 }
-
+#if CONFIG_WALTER_MODEM_ENABLE_GNSS
 void WalterModem::_dispatchEvent(const WalterModemGNSSFix *fix)
 {
     WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_GNSS;
@@ -4067,6 +4079,8 @@ void WalterModem::_dispatchEvent(const WalterModemGNSSFix *fix)
     handler->gnssHandler(fix, handler->args);
     _checkEventDuration(start);
 }
+#endif
+
 #if CONFIG_WALTER_MODEM_ENABLE_MQTT
 void WalterModem::_dispatchEvent(WalterModemMQTTEvent event, WalterModemMqttStatus status)
 {
@@ -4080,6 +4094,8 @@ void WalterModem::_dispatchEvent(WalterModemMQTTEvent event, WalterModemMqttStat
     _checkEventDuration(start);
 }
 #endif
+
+#if CONFIG_WALTER_MODEM_ENABLE_HTTP
 bool WalterModem::httpConfigProfile(
     uint8_t profileId,
     const char *serverName,
@@ -4260,6 +4276,7 @@ bool WalterModem::httpSend(
 
     _returnAfterReply();
 }
+#endif
 
 bool WalterModem::coapDidRing(
     uint8_t profileId,
@@ -4308,6 +4325,7 @@ bool WalterModem::coapDidRing(
     _returnAfterReply();
 }
 
+#if CONFIG_WALTER_MODEM_ENABLE_HTTP
 bool WalterModem::httpDidRing(
     uint8_t profileId,
     uint8_t *targetBuf,
@@ -4370,6 +4388,8 @@ bool WalterModem::httpDidRing(
         targetBufSize);
     _returnAfterReply();
 }
+#endif
+
 #if CONFIG_WALTER_MODEM_ENABLE_MQTT
 bool WalterModem::mqttDidRing(
     const char *topic,
@@ -5410,6 +5430,7 @@ bool WalterModem::getClock(WalterModemRsp *rsp, walterModemCb cb, void *args)
     _returnAfterReply();
 }
 
+#if CONFIG_WALTER_MODEM_ENABLE_GNSS
 bool WalterModem::configGNSS(
     WalterModemGNSSSensMode sensMode,
     WalterModemGNSSAcqMode acqMode,
@@ -5467,6 +5488,7 @@ bool WalterModem::performGNSSAction(
     _runCmd(arr("AT+LPGNSSFIXPROG=\"", gnssActionStr(action),"\""), "OK", rsp, cb, args);
     _returnAfterReply();
 }
+#endif
 
 uint8_t WalterModem::_convertDuration(
     const uint32_t *base_times,
@@ -5540,12 +5562,13 @@ void WalterModem::setATEventHandler(walterModemATEventHandler handler, void *arg
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_AT].atHandler = handler;
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_AT].args = args;
 }
-
+#if CONFIG_WALTER_MODEM_ENABLE_GNSS
 void WalterModem::setGNSSEventHandler(walterModemGNSSEventHandler handler, void *args)
 {
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_GNSS].gnssHandler = handler;
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_GNSS].args = args;
 }
+#endif
 #if CONFIG_WALTER_MODEM_ENABLE_MQTT
 void WalterModem::setMQTTEventHandler(walterModemMQTTEventHandler handler, void *args)
 {
