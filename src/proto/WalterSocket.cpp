@@ -1,4 +1,3 @@
-#include <WalterModem.h>
 #include <WalterDefines.h>
 
 WalterModemSocket *WalterModem::_socketReserve()

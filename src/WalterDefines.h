@@ -1,4 +1,93 @@
 #ifndef WALTER_DEFINES_H
+#include "WalterModem.h"
+#include <stdint.h>
+#include <stdbool.h>
+#include <time.h>
+
+/**
+ * @brief Convert a digit to a string literal.
+ *
+ * @param val The value to convert.
+ * @return The resulting string literal or an empty string when the value is not in [0,9].
+ */
+const char *_digitStr(int val);
+
+/**
+ * @brief Convert a digit at a certain position in a number to a string literal.
+ *
+ * The position starts at 0 (the leftmost digit).
+ *
+ * @param num The number.
+ * @param pos The digit position (0-based from left).
+ * @return The string literal representing the digit, or an empty string if pos is out-of-range.
+ */
+const char *_intToStrDigit(int num, int pos);
+
+/**
+ * @brief Convert a PDP type to a string literal.
+ *
+ * @param type The PDP type.
+ * @return The resulting string literal.
+ */
+const char *_pdpTypeStr(WalterModemPDPType type);
+
+/**
+ * @brief Convert a time string to a Unix timestamp.
+ *
+ * **Note:** No time zone conversion is performed. Provide a time string in the time zone
+ * you expect and handle offsets externally.
+ *
+ * @param timeStr The time string.
+ * @param format The time format to parse. (For example, "%Y-%m-%dT%H:%M:%S")
+ * @return The Unix timestamp on success, or -1 on error.
+ */
+int64_t strTotime(const char *timeStr, const char *format);
+
+/**
+ * @brief Convert a string into an unsigned 32-bit integer.
+ *
+ * @param str The null-terminated string.
+ * @param len The length of the string, or -1 to use strlen.
+ * @param result Pointer to store the result.
+ * @param radix Conversion radix (e.g., 10).
+ * @param max Maximum allowed value (e.g., UINT32_MAX).
+ * @return true if conversion was successful; false otherwise.
+ */
+bool strToUint32(const char *str, int len, uint32_t *result, int radix, uint32_t max);
+
+/**
+ * @brief Convert a string into an unsigned 16-bit integer.
+ *
+ * @param str The null-terminated string.
+ * @param len The length of the string, or -1 to use strlen.
+ * @param result Pointer to store the result.
+ * @param radix Conversion radix (e.g., 10).
+ * @return true if conversion was successful; false otherwise.
+ */
+bool strToUint16(const char *str, int len, uint16_t *result, int radix);
+
+/**
+ * @brief Convert a string into an unsigned 8-bit integer.
+ *
+ * @param str The null-terminated string.
+ * @param len The length of the string, or -1 to use strlen.
+ * @param result Pointer to store the result.
+ * @param radix Conversion radix (e.g., 10).
+ * @return true if conversion was successful; false otherwise.
+ */
+bool strToUint8(const char *str, int len, uint8_t *result, int radix);
+
+/**
+ * @brief Convert a string into an IEEE754 float.
+ *
+ * @param str The null-terminated string.
+ * @param len The length of the string, or -1 to use strlen.
+ * @param result Pointer to store the float result.
+ * @return true if conversion was successful; false otherwise.
+ */
+bool strToFloat(const char *str, int len, float *result);
+
+
 #define WALTER_DEFINES_H
 /**
  * @brief The length of a string literal at compile time.

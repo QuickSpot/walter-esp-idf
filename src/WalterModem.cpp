@@ -43,12 +43,7 @@
  * This file contains Walter's modem library implementation.
  */
 
-#include "WalterModem.h"
 #include <WalterDefines.h>
-#include <ctime>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 #ifdef ARDUINO
 #include <Arduino.h>
@@ -148,7 +143,7 @@ RTC_DATA_ATTR WalterModemMqttTopic _mqttTopicSetRTC[WALTER_MODEM_MQTT_MAX_TOPICS
  * 
  * @return The resulting string literal or an empty string when the value is not in the [0,9] range.
  */
-static const char* _digitStr(int val) 
+const char* _digitStr(int val) 
 {
     switch(val) {
         case 0:
@@ -197,7 +192,7 @@ static const char* _digitStr(int val)
  * 
  * @return The string literal which represents the digit.
  */
-static const char* _intToStrDigit(int num, int pos)
+const char* _intToStrDigit(int num, int pos)
 {
     pos += 1;
     int pow = 1;
@@ -233,7 +228,7 @@ static const char* _intToStrDigit(int num, int pos)
  * 
  * @return The resulting string literal.
  */
-static const char* _pdpTypeStr(WalterModemPDPType type)
+const char* _pdpTypeStr(WalterModemPDPType type)
 {
     switch(type) {
         case WALTER_MODEM_PDP_TYPE_X25:
@@ -272,7 +267,7 @@ static const char* _pdpTypeStr(WalterModemPDPType type)
  * 
  * @return The unix timestamp or -1 on error. 
  */
-static int64_t strTotime(const char *timeStr, const char *format = "%Y-%m-%dT%H:%M:%S") {
+int64_t strTotime(const char *timeStr, const char *format = "%Y-%m-%dT%H:%M:%S") {
     struct tm tm{};
     if(strptime(timeStr, format, &tm) == NULL) {
         return -1;
@@ -296,7 +291,7 @@ static int64_t strTotime(const char *timeStr, const char *format = "%Y-%m-%dT%H:
  * 
  * @return True when the conversion was successful, false if the conversion failed.
  */
-static bool strToUint32(
+bool strToUint32(
     const char *str,
     int len,
     uint32_t *result,
@@ -344,7 +339,7 @@ static bool strToUint32(
  * 
  * @return True when the conversion was successful, false if the conversion failed.
  */
-static bool strToUint16(const char *str, int len, uint16_t *result, int radix = 10)
+bool strToUint16(const char *str, int len, uint16_t *result, int radix = 10)
 {
     uint32_t tmpResult = 0;
 
@@ -368,7 +363,7 @@ static bool strToUint16(const char *str, int len, uint16_t *result, int radix = 
  * 
  * @return True when the conversion was successful, false if the conversion failed.
  */
-static bool strToUint8(const char *str, int len, uint8_t *result, int radix = 10)
+bool strToUint8(const char *str, int len, uint8_t *result, int radix = 10)
 {
     uint32_t tmpResult = 0;
 
