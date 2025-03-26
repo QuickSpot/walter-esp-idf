@@ -1,0 +1,167 @@
+#include <WalterModem.h>
+#if CONFIG_WALTER_MODEM_ENABLE_MQTT
+WalterModemMqttStatus WalterModem::getMqttStatus()
+{
+    return _mqttStatus;
+}
+
+bool WalterModem::mqttConfig(
+    const char *clientId,
+    const char *userName,
+    const char *password,
+    uint8_t tlsProfileId)
+{
+    WalterModemRsp *rsp = NULL;
+    walterModemCb cb = NULL;
+    void *args = NULL;
+
+    WalterModemBuffer *stringsBuffer = _getFreeBuffer();
+    stringsBuffer->size += sprintf((char *)stringsBuffer->data,
+                                   "AT+SQNSMQTTCFG=0,\"%s\"", clientId);
+
+    if (userName && password)
+    {
+        stringsBuffer->size += sprintf(
+            (char *)stringsBuffer->data + stringsBuffer->size,
+            ",\"%s\",\"%s\"", userName, password);
+    }
+    else
+    {
+        stringsBuffer->size += sprintf(
+            (char *)stringsBuffer->data + stringsBuffer->size,
+            ",,");
+    }
+
+    if (tlsProfileId)
+    {
+        stringsBuffer->size += sprintf(
+            (char *)stringsBuffer->data + stringsBuffer->size,
+            ",%u", tlsProfileId);
+    }
+    _runCmd(arr((const char *)stringsBuffer->data), "OK", rsp, cb, args);
+    _returnAfterReply();
+}
+
+bool WalterModem::mqttDisconnect(WalterModemRsp *rsp, walterModemCb cb, void *args)
+{
+    _runCmd(arr("AT+SQNSMQTTDISCONNECT=0"), "+SQNSMQTTONDISCONNECT:0,", rsp, cb, args);
+    _returnAfterReply();
+}
+
+bool WalterModem::mqttConnect(
+    const char *serverName,
+    uint16_t port,
+    uint16_t keepAlive,
+    WalterModemRsp *rsp,
+    walterModemCb cb,
+    void *args)
+{
+
+    _runCmd(arr(
+                "AT+SQNSMQTTCONNECT=0,",
+                _atStr(serverName), ",",
+                _atNum(port), ",",
+                _atNum(keepAlive)),
+            "+SQNSMQTTONCONNECT:0,", rsp, cb, args);
+    _returnAfterReply();
+}
+
+bool WalterModem::mqttPublish(
+    const char *topicString,
+    uint8_t *data,
+    uint16_t dataSize,
+    uint8_t qos,
+    WalterModemRsp *rsp,
+    walterModemCb cb,
+    void *args)
+{
+
+    if (getNetworkRegState() != WALTER_MODEM_NETWORK_REG_REGISTERED_HOME && getNetworkRegState() != WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING)
+    {
+        ESP_LOGD("WalterModem", "network is not connected!");
+        _returnState(WALTER_MODEM_STATE_ERROR);
+    }
+
+    _runCmd(arr(
+                "AT+SQNSMQTTPUBLISH=0,",
+                _atStr(topicString), ",",
+                _atNum(qos), ",",
+                _atNum(dataSize)),
+            "+SQNSMQTTONPUBLISH:0,",
+            rsp, cb, args, NULL, NULL, WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT, data, dataSize);
+    _returnAfterReply();
+}
+
+static void mqtt_resubscribe_callback(const WalterModemRsp *rsp, void *args)
+{
+    /*This is an empty callback so the _runCmd() runs async*/
+}
+bool WalterModem::_mqttSubscribeRaw(
+    const char *topicString,
+    uint8_t qos,
+    WalterModemRsp *rsp,
+    walterModemCb cb,
+    void *args)
+{
+    _runCmd(arr("AT+SQNSMQTTSUBSCRIBE=0,", _atStr(topicString), ",", _atNum(qos)), NULL, rsp, mqtt_resubscribe_callback, args);
+    _returnState(WALTER_MODEM_STATE_OK);
+}
+
+bool WalterModem::mqttSubscribe(
+    const char *topicString,
+    uint8_t qos,
+    WalterModemRsp *rsp,
+    walterModemCb cb,
+    void *args)
+{
+
+    int index = -1;
+
+    for (size_t i = 0; i < WALTER_MODEM_MQTT_MAX_TOPICS; i++)
+    {
+        if (_mqttTopics[i].free)
+        {
+            index = i;
+            /*Reserve the topic by setting free to false*/
+            _mqttTopics[i].free = false;
+            _mqttTopics[i].qos = qos;
+            _currentTopic = &_mqttTopics[i];
+            _strncpy_s(_mqttTopics[i].topic, topicString, WALTER_MODEM_MQTT_TOPIC_BUF_SIZE);
+
+            break;
+        }
+    }
+
+    if (index < 0)
+    {
+        _currentTopic = NULL;
+        rsp->data.mqttResponse.mqttStatus = WALTER_MODEM_MQTT_UNAVAILABLE;
+        _returnState(WALTER_MODEM_STATE_ERROR);
+    }
+
+    auto completeHandler = [](WalterModemCmd *cmd, WalterModemState result)
+    {
+        if (result == WALTER_MODEM_STATE_ERROR)
+        {
+            /*If subscription was not succesfull free the topic so we can try again.*/
+            _currentTopic->free = true;
+        }
+    };
+
+    _runCmd(arr("AT+SQNSMQTTSUBSCRIBE=0,", _atStr(topicString), ",", _atNum(qos)), "+SQNSMQTTONSUBSCRIBE:0,", rsp, cb, args, completeHandler);
+    _returnAfterReply();
+}
+
+void WalterModem::_dispatchEvent(WalterModemMQTTEvent event, WalterModemMqttStatus status)
+{
+    WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_MQTT;
+    if (handler->mqttHandler == nullptr)
+    {
+        return;
+    }
+
+    auto start = std::chrono::steady_clock::now();
+    handler->mqttHandler(event, status, handler->args);
+    _checkEventDuration(start);
+}
+#endif
