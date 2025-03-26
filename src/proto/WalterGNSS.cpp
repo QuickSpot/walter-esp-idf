@@ -1,4 +1,6 @@
 #include <WalterModem.h>
+#include <WalterDefines.h>
+
 #if CONFIG_WALTER_MODEM_ENABLE_GNSS
 bool WalterModem::configGNSS(
     WalterModemGNSSSensMode sensMode,
