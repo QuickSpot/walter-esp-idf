@@ -1,5 +1,7 @@
 idf_component_register(SRCS "src/WalterModem.cpp"
-                    SRCS_RECURSIVE "src/proto"
+                    "src/proto/WalterGNSS.cpp"
+                    "src/proto/WalterMQTT.cpp"
+                    "src/proto/WalterSocket.cpp"
                     INCLUDE_DIRS "src"
                     REQUIRES fatfs esp_partition app_update spi_flash driver vfs)
 
