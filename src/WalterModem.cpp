@@ -1476,6 +1476,15 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
     if(_buffStartsWith(buff, "+CEREG: ")) {
         const char *rspStr = _buffStr(buff);
         int ceReg = atoi(rspStr + _strLitLen("+CEREG: "));
+        bool attached = ceReg == 5 || ceReg == 1;
+        for (size_t i = 0; i < WALTER_MODEM_MAX_PDP_CTXTS; i++)
+        {
+            if(_pdpCtxSet[i].state != WALTER_MODEM_PDP_CONTEXT_STATE_INACTIVE){
+                _pdpCtxSet[i].state = attached ?
+                WALTER_MODEM_PDP_CONTEXT_STATE_ATTACHED :
+                WALTER_MODEM_PDP_CONTEXT_STATE_NOT_ATTACHED;
+            }
+        }
         _regState = (WalterModemNetworkRegState) ceReg;
         _dispatchEvent(_regState);
     }
