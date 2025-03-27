@@ -1618,10 +1618,12 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             }
         }
     }
+    /*
     else if(_buffStartsWith(buff, "+CGDCONT: "))
     {
         uint16_t dataSize = buff->size - _strLitLen("+CGPADDR: ");
     }
+    */
     else if(_buffStartsWith(buff, "+CGPADDR: "))
     {
         uint16_t dataSize = buff->size - _strLitLen("+CGPADDR: ");
