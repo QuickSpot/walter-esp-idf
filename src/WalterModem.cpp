@@ -121,7 +121,7 @@ CONFIG_INT(UART_BUF_SIZE, 128)
 #define WALTER_MODEM_CMD_TIMEOUT_TICKS pdMS_TO_TICKS(WALTER_MODEM_CMD_TIMEOUT_MS)
 
 
-
+#pragma region RTC_MEMORY
 //TODO: move this inside the WalterModem class
 struct WalterModemStpRequest stpRequest;
 struct WalterModemStpResponseSessionOpen stpResponseSessionOpen;
@@ -130,9 +130,13 @@ struct WalterModemStpResponseTransferBlock stpResponseTransferBlock;
 RTC_DATA_ATTR WalterModemPDPContext _pdpCtxSetRTC[WALTER_MODEM_MAX_PDP_CTXTS] = {};
 RTC_DATA_ATTR WalterModemPDPContext _coapCtxSetRTC[WALTER_MODEM_MAX_COAP_PROFILES] = {};
 RTC_DATA_ATTR WalterModemBlueCherryState blueCherryRTC = {};
+#pragma endregion
+
 #if CONFIG_WALTER_MODEM_ENABLE_MQTT
 RTC_DATA_ATTR WalterModemMqttTopic _mqttTopicSetRTC[WALTER_MODEM_MQTT_MAX_TOPICS] = {};
 #endif
+
+#pragma region HELPER_FUNCTIONS
 /**
  * @brief Convert a digit to a string literal.
  * 
@@ -409,7 +413,431 @@ bool strToFloat(const char *str, int len, float *result)
 
     return true;
 }
+#pragma endregion
 
+#pragma region PRIVATE_METHODS
+
+
+#pragma region MODEM_UPGRADE
+
+uint16_t WalterModem::_modemFirmwareUpgradeStart(void)
+{
+    char *atCmd[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] = {NULL};
+    int len;
+
+    _rxHandlerInterrupted = true;
+
+    /* reboot to recovery */
+    vTaskDelay(pdMS_TO_TICKS(5000));
+    tickleWatchdog();
+    atCmd[0] = "AT+SMSWBOOT=3,1";
+    atCmd[1] = NULL;
+    _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
+    ESP_LOGD("WalterModem", "sent reboot to recovery command, waiting 10 seconds");
+    vTaskDelay(pdMS_TO_TICKS(10000));
+    tickleWatchdog();
+
+    /* check if booted in recovery mode */
+    atCmd[0] = "AT";
+    atCmd[1] = NULL;
+    _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
+
+    len = _uartRead(blueCherry.otaBuffer, 6);
+    blueCherry.otaBuffer[len] = 0;
+    ESP_LOGD("WalterModem", "sent AT, got %d:%s", len, blueCherry.otaBuffer);
+
+    atCmd[0] = "AT+SMLOG?";
+    atCmd[1] = NULL;
+    _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
+
+    len = _uartRead(blueCherry.otaBuffer, 25);
+    blueCherry.otaBuffer[len] = 0;
+    ESP_LOGD("WalterModem", "sent AT+SMLOG?, got %d:%s", len, blueCherry.otaBuffer);
+
+    atCmd[0] = "AT+SMOD?";
+    atCmd[1] = NULL;
+    _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
+
+    len = _uartRead(blueCherry.otaBuffer, 7);
+    blueCherry.otaBuffer[len] = 0;
+    ESP_LOGD("WalterModem", "sent AT+SMOD?, got %d:%s", len, blueCherry.otaBuffer);
+
+    /* prepare modem firmware data transfer - must wait for OK still!! */
+    atCmd[0] = "AT+SMSTPU=\"ON_THE_FLY\"";
+    atCmd[1] = NULL;
+    _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
+
+    vTaskDelay(pdMS_TO_TICKS(2000));
+    len = _uartRead(blueCherry.otaBuffer, 64);
+    blueCherry.otaBuffer[len] = 0;
+    ESP_LOGD("WalterModem", "started STP mode, got %d:%s", len, blueCherry.otaBuffer);
+
+    size_t bytesSent, bytesReceived;
+
+    stpRequest.signature = _switchEndian32(WALTER_MODEM_STP_SIGNATURE_REQUEST);
+    stpRequest.operation = WALTER_MODEM_STP_OPERATION_RESET;
+    stpRequest.sessionId = 0;
+    stpRequest.payloadLength = 0;
+    stpRequest.transactionId = 0;
+    stpRequest.headerCrc16 = 0;
+    stpRequest.payloadCrc16 = 0;
+    stpRequest.headerCrc16 = _calculateStpCrc16(&stpRequest, sizeof(stpRequest));
+
+    bytesSent = _uartWrite((uint8_t *)&stpRequest, sizeof(stpRequest));
+
+    ESP_LOGD("WalterModem",
+             "sent STP reset: tx=%d header: 0x%" PRIx32 " 0x%x 0x%x %d %" PRIu32 " 0x%x 0x%x",
+             bytesSent,
+             _switchEndian32(stpRequest.signature),
+             stpRequest.operation,
+             stpRequest.sessionId,
+             _switchEndian16(stpRequest.payloadLength),
+             _switchEndian32(stpRequest.transactionId),
+             _switchEndian16(stpRequest.headerCrc16),
+             _switchEndian16(stpRequest.payloadCrc16));
+
+    bytesReceived = _uartRead((uint8_t *)&stpRequest, sizeof(stpRequest), true);
+
+    ESP_LOGD("WalterModem",
+             "received STP reset ack: rx=%d header: 0x%" PRIx32 " 0x%x 0x%x %d %" PRIu32 " 0x%x 0x%x",
+             bytesReceived,
+             _switchEndian32(stpRequest.signature),
+             stpRequest.operation,
+             stpRequest.sessionId,
+             _switchEndian16(stpRequest.payloadLength),
+             _switchEndian32(stpRequest.transactionId),
+             _switchEndian16(stpRequest.headerCrc16),
+             _switchEndian16(stpRequest.payloadCrc16));
+
+    stpRequest.signature = _switchEndian32(WALTER_MODEM_STP_SIGNATURE_REQUEST);
+    stpRequest.operation = WALTER_MODEM_STP_OPERATION_OPEN_SESSION;
+    stpRequest.sessionId = 1;
+    stpRequest.payloadLength = 0;
+    stpRequest.transactionId = _switchEndian32(1);
+    stpRequest.headerCrc16 = 0;
+    stpRequest.payloadCrc16 = 0;
+    stpRequest.headerCrc16 = _calculateStpCrc16(&stpRequest, sizeof(stpRequest));
+
+    bytesSent = _uartWrite((uint8_t *)&stpRequest, sizeof(stpRequest));
+
+    ESP_LOGD("WalterModem",
+             "sent STP open session: tx=%d header: 0x%" PRIx32 " 0x%x 0x%x %d %" PRIu32 " 0x%x 0x%x",
+             bytesSent,
+             _switchEndian32(stpRequest.signature),
+             stpRequest.operation,
+             stpRequest.sessionId,
+             _switchEndian16(stpRequest.payloadLength),
+             _switchEndian32(stpRequest.transactionId),
+             _switchEndian16(stpRequest.headerCrc16),
+             _switchEndian16(stpRequest.payloadCrc16));
+
+    bytesReceived = _uartRead((uint8_t *)&stpRequest, sizeof(stpRequest), true);
+
+    ESP_LOGD("WalterModem",
+             "received STP open session ack: rx=%d header: 0x%" PRIx32 " 0x%x 0x%x %d %" PRIu32 " 0x%x 0x%x",
+             bytesReceived,
+             _switchEndian32(stpRequest.signature),
+             stpRequest.operation,
+             stpRequest.sessionId,
+             _switchEndian16(stpRequest.payloadLength),
+             _switchEndian32(stpRequest.transactionId),
+             _switchEndian16(stpRequest.headerCrc16),
+             _switchEndian16(stpRequest.payloadCrc16));
+
+    bytesReceived =
+        _uartRead((uint8_t *)&stpResponseSessionOpen, sizeof(stpResponseSessionOpen), true);
+
+    ESP_LOGD("WalterModem", "received STP open session ack data: rx=%d payload: %d %d %d",
+             bytesReceived,
+             stpResponseSessionOpen.success,
+             stpResponseSessionOpen.version,
+             _switchEndian16(stpResponseSessionOpen.maxTransferSize));
+
+    tickleWatchdog();
+
+    return _switchEndian16(stpResponseSessionOpen.maxTransferSize) - sizeof(stpRequest);
+}
+
+void WalterModem::_modemFirmwareUpgradeFinish(bool success)
+{
+    char *atCmd[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] = {NULL};
+    int len;
+
+    if (!success)
+    {
+        _rxHandlerInterrupted = false;
+        reset();
+        return;
+    }
+
+    /* send final STP reset command after transfer */
+    size_t bytesSent, bytesReceived;
+
+    stpRequest.signature = _switchEndian32(WALTER_MODEM_STP_SIGNATURE_REQUEST);
+    stpRequest.operation = WALTER_MODEM_STP_OPERATION_RESET;
+    stpRequest.sessionId = 0;
+    stpRequest.payloadLength = 0;
+    stpRequest.transactionId = 0;
+    stpRequest.headerCrc16 = 0;
+    stpRequest.payloadCrc16 = 0;
+    stpRequest.headerCrc16 = _calculateStpCrc16(&stpRequest, sizeof(stpRequest));
+
+    bytesSent = _uartWrite((uint8_t *)&stpRequest, sizeof(stpRequest));
+
+    ESP_LOGD("WalterModem",
+             "sent STP reset: tx=%d header: 0x%" PRIx32 " 0x%x 0x%x %d %" PRIu32 " 0x%x 0x%x",
+             bytesSent,
+             _switchEndian32(stpRequest.signature),
+             stpRequest.operation,
+             stpRequest.sessionId,
+             _switchEndian16(stpRequest.payloadLength),
+             _switchEndian32(stpRequest.transactionId),
+             _switchEndian16(stpRequest.headerCrc16),
+             _switchEndian16(stpRequest.payloadCrc16));
+
+    bytesReceived = _uartRead((uint8_t *)&stpRequest, sizeof(stpRequest), true);
+
+    ESP_LOGD("WalterModem",
+             "received STP reset ack: rx=%d header: 0x%" PRIx32 " 0x%x 0x%x %d %" PRIu32 " 0x%x 0x%x",
+             bytesReceived,
+             _switchEndian32(stpRequest.signature),
+             stpRequest.operation,
+             stpRequest.sessionId,
+             _switchEndian16(stpRequest.payloadLength),
+             _switchEndian32(stpRequest.transactionId),
+             _switchEndian16(stpRequest.headerCrc16),
+             _switchEndian16(stpRequest.payloadCrc16));
+
+    /* send AT and retry until we get OK */
+    for (;;)
+    {
+        vTaskDelay(pdMS_TO_TICKS(5000));
+
+        atCmd[0] = "AT";
+        atCmd[1] = NULL;
+        _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
+
+        /* reuse otaBuffer which is guaranteed to be 4K */
+        len = _uartRead(blueCherry.otaBuffer, 32);
+        blueCherry.otaBuffer[len] = 0;
+        ESP_LOGD("WalterModem", "sent AT, got %d:%s", len, blueCherry.otaBuffer);
+
+        if (!strcmp((char *)blueCherry.otaBuffer, "\r\nOK\r\n"))
+        {
+            break;
+        }
+    }
+
+    /* we got OK so ready to boot into new firmware; switch back to FFF mode */
+    atCmd[0] = "AT+SMSWBOOT=1,0";
+    atCmd[1] = NULL;
+    _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
+
+    len = _uartRead(blueCherry.otaBuffer, 16);
+    blueCherry.otaBuffer[len] = 0;
+    ESP_LOGD("WalterModem", "switched modem to FFF mode, got %d:%s", len, blueCherry.otaBuffer);
+
+    /* now reboot into new firmware */
+    atCmd[0] = "AT^RESET";
+    atCmd[1] = NULL;
+    _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
+    ESP_LOGD("WalterModem", "sent reset command, waiting 10 seconds");
+    vTaskDelay(pdMS_TO_TICKS(10000));
+
+    len = _uartRead(blueCherry.otaBuffer, 64);
+    blueCherry.otaBuffer[len] = 0;
+    ESP_LOGD("WalterModem", "assuming modem boot complete; got %d:%s", len, blueCherry.otaBuffer);
+
+    /* check if we are back in fff mode and check update status */
+    atCmd[0] = "AT+SMLOG?";
+    atCmd[1] = NULL;
+    _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
+
+    len = _uartRead(blueCherry.otaBuffer, 64);
+    blueCherry.otaBuffer[len] = 0;
+    ESP_LOGD("WalterModem", "AT+SMLOG? got %d:%s", len, blueCherry.otaBuffer);
+
+    atCmd[0] = "AT+SMOD?";
+    atCmd[1] = NULL;
+    _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
+
+    len = _uartRead(blueCherry.otaBuffer, 64);
+    blueCherry.otaBuffer[len] = 0;
+    ESP_LOGD("WalterModem", "AT+SMOD? got %d:%s", len, blueCherry.otaBuffer);
+
+    atCmd[0] = "AT+SMUPGRADE?";
+    atCmd[1] = NULL;
+    _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
+
+    len = _uartRead(blueCherry.otaBuffer, 64);
+    blueCherry.otaBuffer[len] = 0;
+    ESP_LOGD("WalterModem", "AT+SMUPGRADE? got %d:%s", len, blueCherry.otaBuffer);
+
+    _rxHandlerInterrupted = false;
+}
+
+void WalterModem::_modemFirmwareUpgradeBlock(size_t blockSize, uint32_t transactionId)
+{
+    size_t bytesSent, bytesReceived;
+
+    /* STP transfer block command: specify block size */
+    stpRequestTransferBlockCmd.blockSize = _switchEndian16(blockSize);
+    stpRequest.signature = _switchEndian32(WALTER_MODEM_STP_SIGNATURE_REQUEST);
+    stpRequest.operation = WALTER_MODEM_STP_OPERATION_TRANSFER_BLOCK_COMMAND;
+    stpRequest.sessionId = 1;
+    stpRequest.payloadLength = _switchEndian16(sizeof(stpRequestTransferBlockCmd));
+    stpRequest.transactionId = _switchEndian32(transactionId);
+    stpRequest.headerCrc16 = 0;
+    stpRequest.payloadCrc16 =
+        _calculateStpCrc16(&stpRequestTransferBlockCmd, sizeof(stpRequestTransferBlockCmd));
+    stpRequest.headerCrc16 = _calculateStpCrc16(&stpRequest, sizeof(stpRequest));
+
+    bytesSent = _uartWrite((uint8_t *)&stpRequest, sizeof(stpRequest));
+
+    ESP_LOGD("WalterModem",
+             "sent STP transfer block command: tx=%d header: 0x%" PRIx32 " 0x%x 0x%x %d %" PRIu32 " 0x%x 0x%x",
+             bytesSent,
+             _switchEndian32(stpRequest.signature),
+             stpRequest.operation,
+             stpRequest.sessionId,
+             _switchEndian16(stpRequest.payloadLength),
+             _switchEndian32(stpRequest.transactionId),
+             _switchEndian16(stpRequest.headerCrc16),
+             _switchEndian16(stpRequest.payloadCrc16));
+
+    bytesSent =
+        _uartWrite((uint8_t *)&stpRequestTransferBlockCmd, sizeof(stpRequestTransferBlockCmd));
+
+    ESP_LOGD("WalterModem", "sent STP transfer block command data: sent=%d payload: %d",
+             bytesSent, _switchEndian16(stpRequestTransferBlockCmd.blockSize));
+
+    bytesReceived = _uartRead((uint8_t *)&stpRequest, sizeof(stpRequest), true);
+
+    ESP_LOGD("WalterModem",
+             "received STP transfer block command ack: rx=%d header: "
+             "0x%" PRIx32 " 0x%x 0x%x %d %" PRIu32 " 0x%x 0x%x",
+             bytesReceived,
+             _switchEndian32(stpRequest.signature),
+             stpRequest.operation,
+             stpRequest.sessionId,
+             _switchEndian16(stpRequest.payloadLength),
+             _switchEndian32(stpRequest.transactionId),
+             _switchEndian16(stpRequest.headerCrc16),
+             _switchEndian16(stpRequest.payloadCrc16));
+
+    /* transfer block: actual data transfer */
+    stpRequest.signature = _switchEndian32(WALTER_MODEM_STP_SIGNATURE_REQUEST);
+    stpRequest.operation = WALTER_MODEM_STP_OPERATION_TRANSFER_BLOCK;
+    stpRequest.sessionId = 1;
+    stpRequest.payloadLength = _switchEndian16(blockSize);
+    stpRequest.transactionId = _switchEndian32(transactionId + 1);
+    stpRequest.headerCrc16 = 0;
+    stpRequest.payloadCrc16 = _calculateStpCrc16(blueCherry.otaBuffer, blockSize);
+    stpRequest.headerCrc16 = _calculateStpCrc16(&stpRequest, sizeof(stpRequest));
+
+    bytesSent = _uartWrite((uint8_t *)&stpRequest, sizeof(stpRequest));
+
+    ESP_LOGD("WalterModem",
+             "sent STP transfer block: tx=%d header: 0x%" PRIx32 " 0x%x 0x%x %d %" PRIu32 " 0x%x 0x%x",
+             bytesSent,
+             _switchEndian32(stpRequest.signature),
+             stpRequest.operation,
+             stpRequest.sessionId,
+             _switchEndian16(stpRequest.payloadLength),
+             _switchEndian32(stpRequest.transactionId),
+             _switchEndian16(stpRequest.headerCrc16),
+             _switchEndian16(stpRequest.payloadCrc16));
+
+    bytesSent = _uartWrite(blueCherry.otaBuffer, blockSize);
+
+    ESP_LOGD("WalterModem",
+             "sent STP transfer block data: tx=%d payload: %d bytes data from flash dup file",
+             bytesSent, blockSize);
+
+    bytesReceived = _uartRead((uint8_t *)&stpRequest, sizeof(stpRequest), true);
+
+    ESP_LOGD("WalterModem",
+             "received STP transfer block ack: rx=%d header: "
+             "0x%" PRIx32 " 0x%x 0x%x %d %" PRIu32 " 0x%x 0x%x",
+             bytesReceived,
+             _switchEndian32(stpRequest.signature),
+             stpRequest.operation,
+             stpRequest.sessionId,
+             _switchEndian16(stpRequest.payloadLength),
+             _switchEndian32(stpRequest.transactionId),
+             _switchEndian16(stpRequest.headerCrc16),
+             _switchEndian16(stpRequest.payloadCrc16));
+
+    bytesReceived =
+        _uartRead((uint8_t *)&stpResponseTransferBlock, sizeof(stpResponseTransferBlock), true);
+
+    ESP_LOGD("WalterModem", "received STP transfer block ack data: received=%d payload: %d",
+             bytesReceived, _switchEndian16(stpResponseTransferBlock.residue));
+}
+#pragma endregion
+
+#pragma region UART
+size_t WalterModem::_uartRead(
+    uint8_t *buf,
+    int readSize,
+    bool tryHard)
+{
+    size_t totalBytesRead = 0;
+
+#ifdef ARDUINO
+    do
+    {
+        totalBytesRead += _uart->readBytes(buf, readSize - totalBytesRead);
+    } while (tryHard && totalBytesRead < readSize);
+#else
+    do
+    {
+        int bytesRead = uart_read_bytes(_uartNo, buf, readSize - totalBytesRead,
+                                        WALTER_MODEM_CMD_TIMEOUT_TICKS);
+        if (bytesRead < 0)
+        {
+            break;
+        }
+        totalBytesRead += bytesRead;
+    } while (tryHard && totalBytesRead < readSize);
+#endif
+
+    return totalBytesRead;
+}
+
+size_t WalterModem::_uartWrite(uint8_t *buf, int writeSize)
+{
+#ifdef ARDUINO
+    writeSize = _uart->write(buf, writeSize);
+    _uart->flush();
+#else
+    writeSize = uart_write_bytes(_uartNo, buf, writeSize);
+    uart_wait_tx_done(_uartNo, pdMS_TO_TICKS(10));
+#endif
+
+    return writeSize;
+}
+
+uint16_t WalterModem::_calculateStpCrc16(const void *input, size_t length)
+{
+    uint16_t crc = 0;
+    const uint8_t *data = (const uint8_t*) input;
+
+    while(length-- > 0) {
+        crc = (uint16_t) ((0xff & (crc >> 8)) | (crc << 8));
+        crc ^= (uint16_t) *data++;
+        crc ^= (uint16_t) ((crc & 0xff) >> 4);
+        crc ^= (uint16_t) (crc << 12);
+        crc ^= (uint16_t) ((uint8_t) (crc & 0xff) << 5);
+    }
+
+    /* ESP32 is little-endian but Monarch chip is big-endian */
+    return _switchEndian16(crc);
+}
+
+#pragma endregion
+
+#pragma region CMD_POOL_QUEUE
 WalterModemCmd* WalterModem::_cmdPoolGet()
 {
     for(size_t i = 0; i < WALTER_MODEM_MAX_PENDING_COMMANDS; ++i) {
@@ -454,7 +882,9 @@ bool WalterModem::_cmdQueuePut(WalterModemCmd *cmd)
     }
     return true;
 }
+#pragma endregion
 
+#pragma region PDP_CONTEXT
 WalterModemPDPContext* WalterModem::_pdpContextReserve()
 {
     WalterModemPDPContext *ctx = NULL;
@@ -519,6 +949,51 @@ void WalterModem::_loadRTCPdpContextSet(WalterModemPDPContext *_pdpCtxSetRTC)
 
     _pdpCtx = _pdpCtxSet;
 }
+#pragma endregion
+
+#pragma region CMD_PROCESSING
+
+uint16_t WalterModem::_extractRawBufferChunkSize()
+{
+    if (_parserData.buf == NULL || !_parserData.buf->size)
+    {
+        return 0;
+    }
+
+    // TODO: add cases to parse SQNSRING length
+
+    /* parse +SQNCOAPRCV raw data chunk size */
+    if (_parserData.buf->size > _strLitLen("+SQNCOAPRCV: ") && _parserData.buf->data[0] == '+' && _parserData.buf->data[1] == 'S' && _parserData.buf->data[2] == 'Q' && _parserData.buf->data[3] == 'N' && _parserData.buf->data[4] == 'C' && _parserData.buf->data[5] == 'O' && _parserData.buf->data[6] == 'A' && _parserData.buf->data[7] == 'P' && _parserData.buf->data[8] == 'R' && _parserData.buf->data[9] == 'C' && _parserData.buf->data[10] == 'V' && _parserData.buf->data[11] == ':' && _parserData.buf->data[12] == ' ')
+    {
+        uint8_t nrCommasSeen = 0;
+        short i = _strLitLen("+SQNCOAPRCV: ");
+        for (; i < _parserData.buf->size && nrCommasSeen < 6; i++)
+        {
+            if (_parserData.buf->data[i] == ',')
+            {
+                nrCommasSeen++;
+            }
+        }
+
+        if (nrCommasSeen == 6)
+        {
+            uint16_t chunkSize = 0;
+            for (; i < _parserData.buf->size; i++)
+            {
+                chunkSize *= 10;
+                chunkSize += (_parserData.buf->data[i] - '0');
+            }
+
+            return chunkSize + _strLitLen("\r\nOK\r\n") + (chunkSize ? _strLitLen("\r\n") : 0);
+        }
+        else
+        {
+            return _strLitLen("\r\nOK\r\n");
+        }
+    }
+
+    return 0;
+}
 
 WalterModemBuffer* WalterModem::_getFreeBuffer(void)
 {
@@ -560,52 +1035,6 @@ void WalterModem::_addATByteToBuffer(char data, bool raw)
     }
 }
 
-uint16_t WalterModem::_extractRawBufferChunkSize()
-{
-    if(_parserData.buf == NULL || !_parserData.buf->size) {
-        return 0;
-    }
-
-    //TODO: add cases to parse SQNSRING length
-
-    /* parse +SQNCOAPRCV raw data chunk size */
-    if(_parserData.buf->size > _strLitLen("+SQNCOAPRCV: ")
-            && _parserData.buf->data[0] == '+'
-            && _parserData.buf->data[1] == 'S'
-            && _parserData.buf->data[2] == 'Q'
-            && _parserData.buf->data[3] == 'N'
-            && _parserData.buf->data[4] == 'C'
-            && _parserData.buf->data[5] == 'O'
-            && _parserData.buf->data[6] == 'A'
-            && _parserData.buf->data[7] == 'P'
-            && _parserData.buf->data[8] == 'R'
-            && _parserData.buf->data[9] == 'C'
-            && _parserData.buf->data[10] == 'V'
-            && _parserData.buf->data[11] == ':'
-            && _parserData.buf->data[12] == ' ') {
-        uint8_t nrCommasSeen = 0;
-        short i = _strLitLen("+SQNCOAPRCV: ");
-        for(; i < _parserData.buf->size && nrCommasSeen < 6; i++) {
-            if(_parserData.buf->data[i] == ',') {
-                nrCommasSeen++;
-            }
-        }
-
-        if(nrCommasSeen == 6) {
-            uint16_t chunkSize = 0;
-            for(; i < _parserData.buf->size; i++) {
-                chunkSize *= 10;
-                chunkSize += (_parserData.buf->data[i] - '0');
-            }
-
-            return chunkSize + _strLitLen("\r\nOK\r\n") + (chunkSize ? _strLitLen("\r\n") : 0);
-        } else {
-            return _strLitLen("\r\nOK\r\n");
-        }
-    }
-
-    return 0;
-}
 
 void WalterModem::_queueRxBuffer()
 {
@@ -626,41 +1055,6 @@ void WalterModem::_queueRxBuffer()
 
         _parserData.buf = NULL;
     }
-}
-
-size_t WalterModem::_uartRead(uint8_t *buf, int readSize, bool tryHard)
-{
-    size_t totalBytesRead = 0;
-
-#ifdef ARDUINO
-    do {
-        totalBytesRead += _uart->readBytes(buf, readSize - totalBytesRead);
-    } while(tryHard && totalBytesRead < readSize);
-#else
-    do {
-       int bytesRead = uart_read_bytes(_uartNo, buf, readSize - totalBytesRead,
-            WALTER_MODEM_CMD_TIMEOUT_TICKS);
-       if(bytesRead < 0) {
-           break;
-       }
-       totalBytesRead += bytesRead;
-    } while(tryHard && totalBytesRead < readSize);
-#endif
-
-    return totalBytesRead;
-}
-
-size_t WalterModem::_uartWrite(uint8_t *buf, int writeSize)
-{
-#ifdef ARDUINO
-    writeSize = _uart->write(buf, writeSize);
-    _uart->flush();
-#else
-    writeSize = uart_write_bytes(_uartNo, buf, writeSize);
-    uart_wait_tx_done(_uartNo, pdMS_TO_TICKS(10));
-#endif
-
-    return writeSize;
 }
 
 void WalterModem::_parseRxData(char *rxData, size_t len)
@@ -846,6 +1240,7 @@ void WalterModem::_handleRxData(void *params)
 }
 #endif
 
+
 void WalterModem::_queueProcessingTask(void *args)
 {
     /* init watchdog for internal queue processing task */
@@ -920,6 +1315,9 @@ void WalterModem::_queueProcessingTask(void *args)
         }
     }
 }
+#pragma endregion
+
+#pragma region QUEUE_CMD_RSP_PROCESSING
 
 WalterModemCmd* WalterModem::_addQueueCmd(
     const char *atCmd[WALTER_MODEM_COMMAND_MAX_ELEMS + 1],
@@ -2389,6 +2787,9 @@ after_processing_logic:
     buff->free = true;
 }
 
+#pragma endregion
+
+#pragma region OTA
 bool WalterModem::_processOtaInitializeEvent(uint8_t *data, uint16_t len)
 {
     if(!blueCherry.otaBuffer || len != sizeof(uint32_t)) {
@@ -2549,7 +2950,9 @@ bool WalterModem::_processOtaFinishEvent(void)
 
     return false;
 }
+#pragma endregion
 
+#pragma region MOTA
 bool WalterModem::_motaFormatAndMount(void)
 {
     esp_err_t result;
@@ -2651,375 +3054,6 @@ bool WalterModem::_processMotaChunkEvent(uint8_t *data, uint16_t len)
     return false;
 }
 
-uint16_t WalterModem::_calculateStpCrc16(const void *input, size_t length)
-{
-    uint16_t crc = 0;
-    const uint8_t *data = (const uint8_t*) input;
-
-    while(length-- > 0) {
-        crc = (uint16_t) ((0xff & (crc >> 8)) | (crc << 8));
-        crc ^= (uint16_t) *data++;
-        crc ^= (uint16_t) ((crc & 0xff) >> 4);
-        crc ^= (uint16_t) (crc << 12);
-        crc ^= (uint16_t) ((uint8_t) (crc & 0xff) << 5);
-    }
-
-    /* ESP32 is little-endian but Monarch chip is big-endian */
-    return _switchEndian16(crc);
-}
-
-uint16_t WalterModem::_modemFirmwareUpgradeStart(void)
-{
-    char *atCmd[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] = { NULL };
-    int len;
-
-    _rxHandlerInterrupted = true;
-
-    /* reboot to recovery */
-    vTaskDelay(pdMS_TO_TICKS(5000));
-    tickleWatchdog();
-    atCmd[0] = "AT+SMSWBOOT=3,1";
-    atCmd[1] = NULL;
-    _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
-    ESP_LOGD("WalterModem", "sent reboot to recovery command, waiting 10 seconds");
-    vTaskDelay(pdMS_TO_TICKS(10000));
-    tickleWatchdog();
-
-    /* check if booted in recovery mode */
-    atCmd[0] = "AT";
-    atCmd[1] = NULL;
-    _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
-
-    len = _uartRead(blueCherry.otaBuffer, 6);
-    blueCherry.otaBuffer[len] = 0;
-    ESP_LOGD("WalterModem", "sent AT, got %d:%s", len, blueCherry.otaBuffer);
-
-    atCmd[0] = "AT+SMLOG?";
-    atCmd[1] = NULL;
-    _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
-
-    len = _uartRead(blueCherry.otaBuffer, 25);
-    blueCherry.otaBuffer[len] = 0;
-    ESP_LOGD("WalterModem", "sent AT+SMLOG?, got %d:%s", len, blueCherry.otaBuffer);
-
-    atCmd[0] = "AT+SMOD?";
-    atCmd[1] = NULL;
-    _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
-
-    len = _uartRead(blueCherry.otaBuffer, 7);
-    blueCherry.otaBuffer[len] = 0;
-    ESP_LOGD("WalterModem", "sent AT+SMOD?, got %d:%s", len, blueCherry.otaBuffer);
-
-    /* prepare modem firmware data transfer - must wait for OK still!! */
-    atCmd[0] = "AT+SMSTPU=\"ON_THE_FLY\"";
-    atCmd[1] = NULL;
-    _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
-
-    vTaskDelay(pdMS_TO_TICKS(2000));
-    len = _uartRead(blueCherry.otaBuffer, 64);
-    blueCherry.otaBuffer[len] = 0;
-    ESP_LOGD("WalterModem", "started STP mode, got %d:%s", len, blueCherry.otaBuffer);
-
-    size_t bytesSent, bytesReceived;
-
-    stpRequest.signature = _switchEndian32(WALTER_MODEM_STP_SIGNATURE_REQUEST);
-    stpRequest.operation = WALTER_MODEM_STP_OPERATION_RESET;
-    stpRequest.sessionId = 0;
-    stpRequest.payloadLength = 0;
-    stpRequest.transactionId = 0;
-    stpRequest.headerCrc16 = 0;
-    stpRequest.payloadCrc16 = 0;
-    stpRequest.headerCrc16 = _calculateStpCrc16(&stpRequest, sizeof(stpRequest));
-
-    bytesSent = _uartWrite((uint8_t*) &stpRequest, sizeof(stpRequest));
-
-    ESP_LOGD("WalterModem",
-        "sent STP reset: tx=%d header: 0x%"PRIx32" 0x%x 0x%x %d %"PRIu32" 0x%x 0x%x",
-        bytesSent,
-        _switchEndian32(stpRequest.signature),
-        stpRequest.operation,
-        stpRequest.sessionId,
-        _switchEndian16(stpRequest.payloadLength),
-        _switchEndian32(stpRequest.transactionId),
-        _switchEndian16(stpRequest.headerCrc16),
-        _switchEndian16(stpRequest.payloadCrc16));
-
-    bytesReceived = _uartRead((uint8_t*) &stpRequest, sizeof(stpRequest), true);
-
-    ESP_LOGD("WalterModem",
-        "received STP reset ack: rx=%d header: 0x%"PRIx32" 0x%x 0x%x %d %"PRIu32" 0x%x 0x%x",
-        bytesReceived,
-        _switchEndian32(stpRequest.signature),
-        stpRequest.operation,
-        stpRequest.sessionId,
-        _switchEndian16(stpRequest.payloadLength),
-        _switchEndian32(stpRequest.transactionId),
-        _switchEndian16(stpRequest.headerCrc16),
-        _switchEndian16(stpRequest.payloadCrc16));
-
-    stpRequest.signature = _switchEndian32(WALTER_MODEM_STP_SIGNATURE_REQUEST);
-    stpRequest.operation = WALTER_MODEM_STP_OPERATION_OPEN_SESSION;
-    stpRequest.sessionId = 1;
-    stpRequest.payloadLength = 0;
-    stpRequest.transactionId = _switchEndian32(1);
-    stpRequest.headerCrc16 = 0;
-    stpRequest.payloadCrc16 = 0;
-    stpRequest.headerCrc16 = _calculateStpCrc16(&stpRequest, sizeof(stpRequest));
-
-    bytesSent = _uartWrite((uint8_t*) &stpRequest, sizeof(stpRequest));
-
-    ESP_LOGD("WalterModem",
-        "sent STP open session: tx=%d header: 0x%"PRIx32" 0x%x 0x%x %d %"PRIu32" 0x%x 0x%x",
-        bytesSent,
-        _switchEndian32(stpRequest.signature),
-        stpRequest.operation,
-        stpRequest.sessionId,
-        _switchEndian16(stpRequest.payloadLength),
-        _switchEndian32(stpRequest.transactionId),
-        _switchEndian16(stpRequest.headerCrc16),
-        _switchEndian16(stpRequest.payloadCrc16));
-
-    bytesReceived = _uartRead((uint8_t*) &stpRequest, sizeof(stpRequest), true);
-
-    ESP_LOGD("WalterModem",
-        "received STP open session ack: rx=%d header: 0x%"PRIx32" 0x%x 0x%x %d %"PRIu32" 0x%x 0x%x",
-        bytesReceived,
-        _switchEndian32(stpRequest.signature),
-        stpRequest.operation,
-        stpRequest.sessionId,
-        _switchEndian16(stpRequest.payloadLength),
-        _switchEndian32(stpRequest.transactionId),
-        _switchEndian16(stpRequest.headerCrc16),
-        _switchEndian16(stpRequest.payloadCrc16));
-
-    bytesReceived =
-        _uartRead((uint8_t*) &stpResponseSessionOpen, sizeof(stpResponseSessionOpen), true);
-
-    ESP_LOGD("WalterModem", "received STP open session ack data: rx=%d payload: %d %d %d",
-        bytesReceived,
-        stpResponseSessionOpen.success,
-        stpResponseSessionOpen.version,
-        _switchEndian16(stpResponseSessionOpen.maxTransferSize));
-
-    tickleWatchdog();
-
-    return _switchEndian16(stpResponseSessionOpen.maxTransferSize) - sizeof(stpRequest);
-}
-
-void WalterModem::_modemFirmwareUpgradeFinish(bool success)
-{
-    char *atCmd[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] = { NULL };
-    int len;
-
-    if(!success) {
-        _rxHandlerInterrupted = false;
-        reset();
-        return;
-    }
-
-    /* send final STP reset command after transfer */
-    size_t bytesSent, bytesReceived;
-
-    stpRequest.signature = _switchEndian32(WALTER_MODEM_STP_SIGNATURE_REQUEST);
-    stpRequest.operation = WALTER_MODEM_STP_OPERATION_RESET;
-    stpRequest.sessionId = 0;
-    stpRequest.payloadLength = 0;
-    stpRequest.transactionId = 0;
-    stpRequest.headerCrc16 = 0;
-    stpRequest.payloadCrc16 = 0;
-    stpRequest.headerCrc16 = _calculateStpCrc16(&stpRequest, sizeof(stpRequest));
-
-    bytesSent = _uartWrite((uint8_t*) &stpRequest, sizeof(stpRequest));
-
-    ESP_LOGD("WalterModem",
-        "sent STP reset: tx=%d header: 0x%"PRIx32" 0x%x 0x%x %d %"PRIu32" 0x%x 0x%x",
-        bytesSent,
-        _switchEndian32(stpRequest.signature),
-        stpRequest.operation,
-        stpRequest.sessionId,
-        _switchEndian16(stpRequest.payloadLength),
-        _switchEndian32(stpRequest.transactionId),
-        _switchEndian16(stpRequest.headerCrc16),
-        _switchEndian16(stpRequest.payloadCrc16));
-
-    bytesReceived = _uartRead((uint8_t*) &stpRequest, sizeof(stpRequest), true);
-
-    ESP_LOGD("WalterModem",
-        "received STP reset ack: rx=%d header: 0x%"PRIx32" 0x%x 0x%x %d %"PRIu32" 0x%x 0x%x",
-        bytesReceived,
-        _switchEndian32(stpRequest.signature),
-        stpRequest.operation,
-        stpRequest.sessionId,
-        _switchEndian16(stpRequest.payloadLength),
-        _switchEndian32(stpRequest.transactionId),
-        _switchEndian16(stpRequest.headerCrc16),
-        _switchEndian16(stpRequest.payloadCrc16));
-
-    /* send AT and retry until we get OK */
-    for(;;) {
-        vTaskDelay(pdMS_TO_TICKS(5000));
-
-        atCmd[0] = "AT";
-        atCmd[1] = NULL;
-        _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
-
-        /* reuse otaBuffer which is guaranteed to be 4K */
-        len = _uartRead(blueCherry.otaBuffer, 32);
-        blueCherry.otaBuffer[len] = 0;
-        ESP_LOGD("WalterModem", "sent AT, got %d:%s", len, blueCherry.otaBuffer);
-
-        if(!strcmp((char*) blueCherry.otaBuffer, "\r\nOK\r\n")) {
-            break;
-        }
-    }
-
-    /* we got OK so ready to boot into new firmware; switch back to FFF mode */
-    atCmd[0] = "AT+SMSWBOOT=1,0";
-    atCmd[1] = NULL;
-    _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
-
-    len = _uartRead(blueCherry.otaBuffer, 16);
-    blueCherry.otaBuffer[len] = 0;
-    ESP_LOGD("WalterModem", "switched modem to FFF mode, got %d:%s", len, blueCherry.otaBuffer);
-
-    /* now reboot into new firmware */
-    atCmd[0] = "AT^RESET";
-    atCmd[1] = NULL;
-    _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
-    ESP_LOGD("WalterModem", "sent reset command, waiting 10 seconds");
-    vTaskDelay(pdMS_TO_TICKS(10000));
-
-    len = _uartRead(blueCherry.otaBuffer, 64);
-    blueCherry.otaBuffer[len] = 0;
-    ESP_LOGD("WalterModem", "assuming modem boot complete; got %d:%s", len, blueCherry.otaBuffer);
-
-    /* check if we are back in fff mode and check update status */
-    atCmd[0] = "AT+SMLOG?";
-    atCmd[1] = NULL;
-    _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
-
-    len = _uartRead(blueCherry.otaBuffer, 64);
-    blueCherry.otaBuffer[len] = 0;
-    ESP_LOGD("WalterModem", "AT+SMLOG? got %d:%s", len, blueCherry.otaBuffer);
-
-    atCmd[0] = "AT+SMOD?";
-    atCmd[1] = NULL;
-    _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
-
-    len = _uartRead(blueCherry.otaBuffer, 64);
-    blueCherry.otaBuffer[len] = 0;
-    ESP_LOGD("WalterModem", "AT+SMOD? got %d:%s", len, blueCherry.otaBuffer);
-
-    atCmd[0] = "AT+SMUPGRADE?";
-    atCmd[1] = NULL;
-    _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
-
-    len = _uartRead(blueCherry.otaBuffer, 64);
-    blueCherry.otaBuffer[len] = 0;
-    ESP_LOGD("WalterModem", "AT+SMUPGRADE? got %d:%s", len, blueCherry.otaBuffer);
-
-    _rxHandlerInterrupted = false;
-}
-
-void WalterModem::_modemFirmwareUpgradeBlock(size_t blockSize, uint32_t transactionId)
-{
-    size_t bytesSent, bytesReceived;
-
-    /* STP transfer block command: specify block size */
-    stpRequestTransferBlockCmd.blockSize = _switchEndian16(blockSize);
-    stpRequest.signature = _switchEndian32(WALTER_MODEM_STP_SIGNATURE_REQUEST);
-    stpRequest.operation = WALTER_MODEM_STP_OPERATION_TRANSFER_BLOCK_COMMAND;
-    stpRequest.sessionId = 1;
-    stpRequest.payloadLength = _switchEndian16(sizeof(stpRequestTransferBlockCmd));
-    stpRequest.transactionId = _switchEndian32(transactionId);
-    stpRequest.headerCrc16 = 0;
-    stpRequest.payloadCrc16 =
-        _calculateStpCrc16(&stpRequestTransferBlockCmd, sizeof(stpRequestTransferBlockCmd));
-    stpRequest.headerCrc16 = _calculateStpCrc16(&stpRequest, sizeof(stpRequest));
-
-    bytesSent = _uartWrite((uint8_t*) &stpRequest, sizeof(stpRequest));
-
-    ESP_LOGD("WalterModem",
-        "sent STP transfer block command: tx=%d header: 0x%"PRIx32" 0x%x 0x%x %d %"PRIu32" 0x%x 0x%x",
-        bytesSent,
-        _switchEndian32(stpRequest.signature),
-        stpRequest.operation,
-        stpRequest.sessionId,
-        _switchEndian16(stpRequest.payloadLength),
-        _switchEndian32(stpRequest.transactionId),
-        _switchEndian16(stpRequest.headerCrc16),
-        _switchEndian16(stpRequest.payloadCrc16));
-
-    bytesSent =
-        _uartWrite((uint8_t*) &stpRequestTransferBlockCmd, sizeof(stpRequestTransferBlockCmd));
-
-    ESP_LOGD("WalterModem", "sent STP transfer block command data: sent=%d payload: %d",
-        bytesSent, _switchEndian16(stpRequestTransferBlockCmd.blockSize));
-
-    bytesReceived = _uartRead((uint8_t*) &stpRequest, sizeof(stpRequest), true);
-
-    ESP_LOGD("WalterModem",
-        "received STP transfer block command ack: rx=%d header: "
-        "0x%"PRIx32" 0x%x 0x%x %d %"PRIu32" 0x%x 0x%x",
-        bytesReceived,
-        _switchEndian32(stpRequest.signature),
-        stpRequest.operation,
-        stpRequest.sessionId,
-        _switchEndian16(stpRequest.payloadLength),
-        _switchEndian32(stpRequest.transactionId),
-        _switchEndian16(stpRequest.headerCrc16),
-        _switchEndian16(stpRequest.payloadCrc16));
-
-    /* transfer block: actual data transfer */
-    stpRequest.signature = _switchEndian32(WALTER_MODEM_STP_SIGNATURE_REQUEST);
-    stpRequest.operation = WALTER_MODEM_STP_OPERATION_TRANSFER_BLOCK;
-    stpRequest.sessionId = 1;
-    stpRequest.payloadLength = _switchEndian16(blockSize);
-    stpRequest.transactionId = _switchEndian32(transactionId + 1);
-    stpRequest.headerCrc16 = 0;
-    stpRequest.payloadCrc16 = _calculateStpCrc16(blueCherry.otaBuffer, blockSize);
-    stpRequest.headerCrc16 = _calculateStpCrc16(&stpRequest, sizeof(stpRequest));
-
-    bytesSent = _uartWrite((uint8_t*) &stpRequest, sizeof(stpRequest));
-
-    ESP_LOGD("WalterModem",
-        "sent STP transfer block: tx=%d header: 0x%"PRIx32" 0x%x 0x%x %d %"PRIu32" 0x%x 0x%x",
-        bytesSent,
-        _switchEndian32(stpRequest.signature),
-        stpRequest.operation,
-        stpRequest.sessionId,
-        _switchEndian16(stpRequest.payloadLength),
-        _switchEndian32(stpRequest.transactionId),
-        _switchEndian16(stpRequest.headerCrc16),
-        _switchEndian16(stpRequest.payloadCrc16));
-
-    bytesSent = _uartWrite(blueCherry.otaBuffer, blockSize);
-
-    ESP_LOGD("WalterModem",
-        "sent STP transfer block data: tx=%d payload: %d bytes data from flash dup file",
-        bytesSent, blockSize);
-
-    bytesReceived = _uartRead((uint8_t*) &stpRequest, sizeof(stpRequest), true);
-
-    ESP_LOGD("WalterModem",
-        "received STP transfer block ack: rx=%d header: "
-        "0x%"PRIx32" 0x%x 0x%x %d %"PRIu32" 0x%x 0x%x",
-        bytesReceived,
-        _switchEndian32(stpRequest.signature),
-        stpRequest.operation,
-        stpRequest.sessionId,
-        _switchEndian16(stpRequest.payloadLength),
-        _switchEndian32(stpRequest.transactionId),
-        _switchEndian16(stpRequest.headerCrc16),
-        _switchEndian16(stpRequest.payloadCrc16));
-
-    bytesReceived =
-        _uartRead((uint8_t*) &stpResponseTransferBlock, sizeof(stpResponseTransferBlock), true);
-
-    ESP_LOGD("WalterModem", "received STP transfer block ack data: received=%d payload: %d",
-        bytesReceived, _switchEndian16(stpResponseTransferBlock.residue));
-}
-
 bool WalterModem::_processMotaFinishEvent(void)
 {
     char *atCmd[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] = { NULL };
@@ -3075,36 +3109,6 @@ bool WalterModem::_processMotaFinishEvent(void)
     }
 }
 
-bool WalterModem::_processBlueCherryEvent(uint8_t *data, uint8_t len)
-{
-    switch(data[0]) {
-        case WALTER_MODEM_BLUECHERRY_EVENT_TYPE_OTA_INITIALIZE:
-            return _processOtaInitializeEvent(data + 1, len - 1);
-
-        case WALTER_MODEM_BLUECHERRY_EVENT_TYPE_OTA_CHUNK:
-            return _processOtaChunkEvent(data + 1, len - 1);
-
-        case WALTER_MODEM_BLUECHERRY_EVENT_TYPE_OTA_FINISH:
-            return _processOtaFinishEvent();
-
-        case WALTER_MODEM_BLUECHERRY_EVENT_TYPE_MOTA_INITIALIZE:
-            return _processMotaInitializeEvent(data + 1, len - 1);
-
-        case WALTER_MODEM_BLUECHERRY_EVENT_TYPE_MOTA_CHUNK:
-            return _processMotaChunkEvent(data + 1, len - 1);
-
-        case WALTER_MODEM_BLUECHERRY_EVENT_TYPE_MOTA_FINISH:
-            return _processMotaFinishEvent();
-
-        default:
-            ESP_LOGD("WalterModem", "Error: invalid BlueCherry event type 0x%x from cloud server",
-                data[0]);
-            return true;
-    }
-
-    return true;
-}
-
 void WalterModem::offlineMotaUpgrade(uint8_t *otaBuffer)
 {
     if(_wl_handle == WL_INVALID_HANDLE) {
@@ -3141,6 +3145,152 @@ void WalterModem::offlineMotaUpgrade(uint8_t *otaBuffer)
         }
     }
 }
+#pragma endregion
+
+#pragma region TLS
+bool WalterModem::tlsWriteCredential(
+    bool isPrivateKey,
+    uint8_t slotIdx,
+    const char *credential)
+{
+    WalterModemRsp *rsp = NULL;
+    walterModemCb cb = NULL;
+    void *args = NULL;
+
+    const char *keyType = isPrivateKey ? "privatekey" : "certificate";
+
+    _runCmd(arr(
+        "AT+SQNSNVW=",
+        _atStr(keyType), ",",
+        _atNum(slotIdx), ",",
+        _atNum(strlen(credential))),
+        "OK", rsp, cb, args, NULL, NULL, WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT,
+        (uint8_t*) credential, strlen(credential));
+
+    _returnAfterReply();
+}
+
+bool WalterModem::_tlsIsCredentialPresent(bool isPrivateKey, uint8_t slotIdx)
+{
+    WalterModemRsp *rsp = NULL;
+    walterModemCb cb = NULL;
+    void *args = NULL;
+
+    const char *keyType = isPrivateKey ? "privatekey" : "certificate";
+
+    _runCmd(arr("AT+SQNSNVR=", _atStr(keyType), ",", _atNum(slotIdx)), "+SQNSNVR: ", rsp, cb, args);
+    _returnAfterReply();
+}
+
+char WalterModem::_getLuhnChecksum(const char *imei)
+{
+    int sum = 0;
+
+    for(int i = 13; i >= 0; --i) {
+        int digit = imei[i] - '0';
+
+        if((13 - i) % 2 == 0) {
+            int double_digit = digit * 2;
+            if (double_digit > 9) {
+                double_digit -= 9;
+            }
+            sum += double_digit;
+        } else {
+            sum += digit;
+        }
+    }
+
+    return (char) (((10 - (sum % 10)) % 10) + '0');
+}
+#pragma endregion
+
+#pragma region EVENTS
+void WalterModem::_checkEventDuration(
+    const std::chrono::time_point<std::chrono::steady_clock>& start)
+{
+    auto end = std::chrono::steady_clock::now();
+    auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    if (elapsedTime > WALTER_MODEM_MAX_EVENT_DURATION_MS) {
+        ESP_LOGW("WalterModem","The event handler took %lldms, preferred max is %dms",
+            static_cast<long long>(elapsedTime), WALTER_MODEM_MAX_EVENT_DURATION_MS);
+    }
+}
+
+void WalterModem::_dispatchEvent(WalterModemNetworkRegState state)
+{
+    WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_REGISTRATION;
+    if(handler->regHandler == nullptr) {
+        return;
+    }
+
+    auto start = std::chrono::steady_clock::now();
+    handler->regHandler(state, handler->args);
+    _checkEventDuration(start);
+}
+
+void WalterModem::_dispatchEvent(WalterModemSystemEvent event)
+{
+    WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_SYSTEM;
+    if(handler->sysHandler == nullptr) {
+        return;
+    }
+
+    auto start = std::chrono::steady_clock::now();
+    handler->sysHandler(event, handler->args);
+    _checkEventDuration(start);
+}
+
+void WalterModem::_dispatchEvent(const char *buff, size_t len)
+{
+    WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_AT;
+    if(handler->atHandler == nullptr) {
+        return;
+    }
+
+    auto start = std::chrono::steady_clock::now();
+    handler->atHandler(buff, len, handler->args);
+    _checkEventDuration(start);
+}
+
+#pragma endregion
+
+#pragma region MODEM_SLEEP
+void WalterModem::_sleepPrepare()
+{
+    memcpy(_pdpCtxSetRTC, _pdpCtxSet, WALTER_MODEM_MAX_PDP_CTXTS * sizeof(WalterModemPDPContext));
+    memcpy(_coapCtxSetRTC, _coapContextSet,
+        WALTER_MODEM_MAX_COAP_PROFILES * sizeof(WalterModemCoapContext));
+#if CONFIG_WALTER_MODEM_ENABLE_MQTT
+    memcpy(_mqttTopicSetRTC, _mqttTopics,
+        WALTER_MODEM_MQTT_MAX_TOPICS *sizeof(WalterModemMqttTopic));
+#endif
+    blueCherryRTC = blueCherry;
+}
+
+void WalterModem::_sleepWakeup()
+{
+    memcpy(_pdpCtxSet, _pdpCtxSetRTC, WALTER_MODEM_MAX_PDP_CTXTS * sizeof(WalterModemPDPContext));
+    memcpy(_coapContextSet, _coapCtxSetRTC,
+        WALTER_MODEM_MAX_COAP_PROFILES * sizeof(WalterModemCoapContext));
+#if CONFIG_WALTER_MODEM_ENABLE_MQTT
+    memcpy(_mqttTopics, _mqttTopicSetRTC,
+        WALTER_MODEM_MQTT_MAX_TOPICS * sizeof(WalterModemMqttTopic));
+#endif
+
+    for (size_t i = 0; i < WALTER_MODEM_MAX_PDP_CTXTS; i++) {
+        if(_pdpCtxSet[i].state == WALTER_MODEM_PDP_CONTEXT_STATE_ACTIVE) {
+            _pdpCtx = _pdpCtxSet + i;
+        }
+    }
+    
+
+    blueCherry = blueCherryRTC;
+}
+
+#pragma endregion
+
+#pragma endregion
 
 #ifdef ARDUINO
 bool WalterModem::begin(HardwareSerial *uart, uint8_t watchdogTimeout)
@@ -3323,38 +3473,6 @@ bool WalterModem::reset(WalterModemRsp *rsp, walterModemCb cb, void *args)
     _returnAfterReply();
 }
 
-void WalterModem::_sleepPrepare()
-{
-    memcpy(_pdpCtxSetRTC, _pdpCtxSet, WALTER_MODEM_MAX_PDP_CTXTS * sizeof(WalterModemPDPContext));
-    memcpy(_coapCtxSetRTC, _coapContextSet,
-        WALTER_MODEM_MAX_COAP_PROFILES * sizeof(WalterModemCoapContext));
-#if CONFIG_WALTER_MODEM_ENABLE_MQTT
-    memcpy(_mqttTopicSetRTC, _mqttTopics,
-        WALTER_MODEM_MQTT_MAX_TOPICS *sizeof(WalterModemMqttTopic));
-#endif
-    blueCherryRTC = blueCherry;
-}
-
-void WalterModem::_sleepWakeup()
-{
-    memcpy(_pdpCtxSet, _pdpCtxSetRTC, WALTER_MODEM_MAX_PDP_CTXTS * sizeof(WalterModemPDPContext));
-    memcpy(_coapContextSet, _coapCtxSetRTC,
-        WALTER_MODEM_MAX_COAP_PROFILES * sizeof(WalterModemCoapContext));
-#if CONFIG_WALTER_MODEM_ENABLE_MQTT
-    memcpy(_mqttTopics, _mqttTopicSetRTC,
-        WALTER_MODEM_MQTT_MAX_TOPICS * sizeof(WalterModemMqttTopic));
-#endif
-
-    for (size_t i = 0; i < WALTER_MODEM_MAX_PDP_CTXTS; i++) {
-        if(_pdpCtxSet[i].state == WALTER_MODEM_PDP_CONTEXT_STATE_ACTIVE) {
-            _pdpCtx = _pdpCtxSet + i;
-        }
-    }
-    
-
-    blueCherry = blueCherryRTC;
-}
-
 void WalterModem::sleep(uint32_t sleepTime, bool lightSleep)
 {
     if(lightSleep) {
@@ -3494,97 +3612,6 @@ bool WalterModem::tlsConfigProfile(
     _returnAfterReply();
 }
 
-bool WalterModem::tlsWriteCredential(
-    bool isPrivateKey,
-    uint8_t slotIdx,
-    const char *credential)
-{
-    WalterModemRsp *rsp = NULL;
-    walterModemCb cb = NULL;
-    void *args = NULL;
-
-    const char *keyType = isPrivateKey ? "privatekey" : "certificate";
-
-    _runCmd(arr(
-        "AT+SQNSNVW=",
-        _atStr(keyType), ",",
-        _atNum(slotIdx), ",",
-        _atNum(strlen(credential))),
-        "OK", rsp, cb, args, NULL, NULL, WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT,
-        (uint8_t*) credential, strlen(credential));
-
-    _returnAfterReply();
-}
-
-char WalterModem::_getLuhnChecksum(const char *imei)
-{
-    int sum = 0;
-
-    for(int i = 13; i >= 0; --i) {
-        int digit = imei[i] - '0';
-
-        if((13 - i) % 2 == 0) {
-            int double_digit = digit * 2;
-            if (double_digit > 9) {
-                double_digit -= 9;
-            }
-            sum += double_digit;
-        } else {
-            sum += digit;
-        }
-    }
-
-    return (char) (((10 - (sum % 10)) % 10) + '0');
-}
-
-void WalterModem::_checkEventDuration(
-    const std::chrono::time_point<std::chrono::steady_clock>& start)
-{
-    auto end = std::chrono::steady_clock::now();
-    auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-
-    if (elapsedTime > WALTER_MODEM_MAX_EVENT_DURATION_MS) {
-        ESP_LOGW("WalterModem","The event handler took %lldms, preferred max is %dms",
-            static_cast<long long>(elapsedTime), WALTER_MODEM_MAX_EVENT_DURATION_MS);
-    }
-}
-
-void WalterModem::_dispatchEvent(WalterModemNetworkRegState state)
-{
-    WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_REGISTRATION;
-    if(handler->regHandler == nullptr) {
-        return;
-    }
-
-    auto start = std::chrono::steady_clock::now();
-    handler->regHandler(state, handler->args);
-    _checkEventDuration(start);
-}
-
-void WalterModem::_dispatchEvent(WalterModemSystemEvent event)
-{
-    WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_SYSTEM;
-    if(handler->sysHandler == nullptr) {
-        return;
-    }
-
-    auto start = std::chrono::steady_clock::now();
-    handler->sysHandler(event, handler->args);
-    _checkEventDuration(start);
-}
-
-void WalterModem::_dispatchEvent(const char *buff, size_t len)
-{
-    WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_AT;
-    if(handler->atHandler == nullptr) {
-        return;
-    }
-
-    auto start = std::chrono::steady_clock::now();
-    handler->atHandler(buff, len, handler->args);
-    _checkEventDuration(start);
-}
-
 bool WalterModem::blueCherryProvision(
     const char *walterCertificate,
     const char *walterPrivateKey,
@@ -3614,18 +3641,6 @@ bool WalterModem::blueCherryProvision(
     }
 
     _returnState(result);
-}
-
-bool WalterModem::_tlsIsCredentialPresent(bool isPrivateKey, uint8_t slotIdx)
-{
-    WalterModemRsp *rsp = NULL;
-    walterModemCb cb = NULL;
-    void *args = NULL;
-
-    const char *keyType = isPrivateKey ? "privatekey" : "certificate";
-
-    _runCmd(arr("AT+SQNSNVR=", _atStr(keyType), ",", _atNum(slotIdx)), "+SQNSNVR: ", rsp, cb, args);
-    _returnAfterReply();
 }
 
 bool WalterModem::_blueCherryIsProvisioned()

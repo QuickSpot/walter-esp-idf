@@ -1,4 +1,6 @@
 #include <WalterDefines.h>
+
+#if CONFIG_WALTER_MODEM_ENABLE_COAP
 #pragma region PUBLIC_METHODS
 bool WalterModem::coapDidRing(
     uint8_t profileId,
@@ -96,7 +98,11 @@ bool WalterModem::coapCreateContext(
     _returnAfterReply();
 }
 
-bool WalterModem::coapClose(uint8_t profileId, WalterModemRsp *rsp, walterModemCb cb, void *args)
+bool WalterModem::coapClose(
+    uint8_t profileId,
+    WalterModemRsp *rsp,
+    walterModemCb cb, 
+    void *args)
 {
     if(profileId == 0) {
         _returnState(WALTER_MODEM_STATE_ERROR);
@@ -113,7 +119,8 @@ bool WalterModem::coapClose(uint8_t profileId, WalterModemRsp *rsp, walterModemC
     _returnAfterReply();
 }
 
-bool WalterModem::coapGetContextStatus(uint8_t profileId)
+bool WalterModem::coapGetContextStatus(
+    uint8_t profileId)
 {
     if(profileId >= WALTER_MODEM_MAX_COAP_PROFILES) {
         return false;
@@ -203,3 +210,4 @@ bool WalterModem::coapSendData(
     _returnAfterReply();
 }
 #pragma endregion
+#endif

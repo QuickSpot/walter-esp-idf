@@ -110,7 +110,7 @@ for efficient configuration management."
 #include <freertos/FreeRTOS.h>
 #include <freertos/event_groups.h>
 #include <driver/uart.h>
-
+#pragma region CONFIGURATION_CONSTANTS
 /**
  * @brief The maximum number of items in the task queue.
  */
@@ -308,7 +308,7 @@ CONFIG_UINT8(SPI_SECTORS_PER_BLOCK, 16)
  * @brief SPI flash erase block size
  */
 #define SPI_FLASH_BLOCK_SIZE (SPI_SECTORS_PER_BLOCK * SPI_FLASH_SEC_SIZE)
-
+#pragma endregion
 /**
  * @brief Get the character '0' or '1' at offset n in a byte.
  */
@@ -319,7 +319,7 @@ CONFIG_UINT8(SPI_SECTORS_PER_BLOCK, 16)
  */
 #define BINBYTESTR(x) (char[9]){BITCHAR(x, 7), BITCHAR(x, 6), BITCHAR(x, 5), BITCHAR(x, 4), \
                                 BITCHAR(x, 3), BITCHAR(x, 2), BITCHAR(x, 1), BITCHAR(x, 0), '\0'}
-
+#pragma region STP_CONSTANTS
 /**
  * @brief The Sequans STP protocol signature request.
  */
@@ -349,7 +349,8 @@ CONFIG_UINT8(SPI_SECTORS_PER_BLOCK, 16)
  * @brief The Sequans STP write block command.
  */
 #define WALTER_MODEM_STP_OPERATION_TRANSFER_BLOCK 0x03
-
+#pragma endregion
+#pragma region ENUMS
 /**
  * @brief This enum groups status codes of functions and operational components of the modem.
  */
@@ -1264,6 +1265,8 @@ typedef enum
     WALTER_MODEM_MQTT_EVENT_RING
 } WalterModemMQTTEvent;
 #endif
+#pragma endregion
+#pragma region EVENT_HANDLER_CALLBACKS
 /**
  * @brief Header of a network registration event handler.
  *
@@ -1320,6 +1323,8 @@ typedef void (*walterModemGNSSEventHandler)(const WalterModemGNSSFix *fix, void 
  */
 typedef void (*walterModemMQTTEventHandler)(WalterModemMQTTEvent ev, WalterModemMqttStatus status, void *args);
 #endif
+#pragma endregion
+#pragma region STRUCTS
 /**
  * @brief This structure represents an event handler and it's metadata.
  */
@@ -2558,13 +2563,14 @@ struct WalterModemStpRequestTransferBlockCmd {
 struct WalterModemStpResponseTransferBlock {
     uint16_t residue;
 };
-
+#pragma endregion
 /**
  * @brief The WalterModem class allows you to use the Sequans Monarch 2 modem and positioning
  * functionality.
  */
 class WalterModem {
     private:
+        #pragma region STATIC_VARS
         /**
          * @brief This flag is set to true when the modem is initialized.
          */
@@ -2764,7 +2770,11 @@ class WalterModem {
          * @brief Array to keep track of external event handlers.
          */
         static inline WalterModemEventHandler _eventHandlers[WALTER_MODEM_EVENT_TYPE_COUNT] = {};
+        #pragma endregion
 
+        #pragma region PRIVATE_METHODS
+        /* start private methods */
+        #pragma region MODEM_UPGRADE
         /**
          * @brief Helper to boot modem to recovery modem and start upgrade.
          *
@@ -2790,7 +2800,9 @@ class WalterModem {
          * @return None.
          */
         static void _modemFirmwareUpgradeBlock(size_t blockSize, uint32_t transactionId);
+        #pragma endregion
 
+        #pragma region UART
         /**
          * @brief Helper to abstract away UART RX difference between the IDF and Arduino.
          * 
@@ -2820,7 +2832,9 @@ class WalterModem {
          * @return The resulting checksum.
          */
         static uint16_t _calculateStpCrc16(const void *input, size_t length);
+        #pragma endregion
 
+        #pragma region CMD_POOL_QUEUE
         /**
          * @brief Get a command from the command pool.
          * 
@@ -2850,7 +2864,9 @@ class WalterModem {
          * @return True on success, false when the queue is full.
          */
         static bool _cmdQueuePut(WalterModemCmd *cmd);
+        #pragma endregion
 
+        #pragma region PDP_CONTEXT
         /**
          * @brief Get a PDP context structure which is not in use.
          * 
@@ -2908,7 +2924,9 @@ class WalterModem {
          * @return None.
          */
         static void _loadRTCPdpContextSet(WalterModemPDPContext *_pdpCtxSetRTC = NULL);
-
+        #pragma endregion
+        
+        #pragma region SOCKETS
 #if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
         /**
          * @brief Get a socket structure which is not in use.
@@ -2943,7 +2961,9 @@ class WalterModem {
          */
         static void _socketRelease(WalterModemSocket *sock);
 #endif
+        #pragma endregion
 
+        #pragma region CMD_PROCESSING
         /**
          * @brief Test if the new buffer line starts a raw data chunk
          *
@@ -3027,7 +3047,9 @@ class WalterModem {
          * @return None.
          */
         static void _queueProcessingTask(void *args);
+        #pragma endregion
 
+        #pragma region QUEUE_CMD_RSP_PROCESSING
         /**
          * @brief Add a command to the command queue.
          * 
@@ -3112,7 +3134,8 @@ class WalterModem {
          * @return None.
          */
         static void _processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *rsp);
-    
+        #pragma endregion
+
         /**
          * @brief Process an incoming BlueCherry event.
          *
@@ -3126,6 +3149,7 @@ class WalterModem {
          */
         static bool _processBlueCherryEvent(uint8_t *data, uint8_t len);
 
+        #pragma region OTA
         /**
          * @brief Process OTA init event
          *
@@ -3139,6 +3163,16 @@ class WalterModem {
          * too large for partitioning.
          */
         static bool _processOtaInitializeEvent(uint8_t *data, uint16_t len);
+
+        /**
+         * @brief Write a flash sector to flash, erasing the block first if on an as of yet
+         * uninitialized block
+         *
+         * @param None.
+         *
+         * @return True if succeeded, false if not.
+         */
+        static bool _otaBufferToFlash(void);
 
         /**
          * @brief Process OTA chunk event
@@ -3155,16 +3189,6 @@ class WalterModem {
         static bool _processOtaChunkEvent(uint8_t *data, uint16_t len);
 
         /**
-         * @brief Write a flash sector to flash, erasing the block first if on an as of yet
-         * uninitialized block
-         *
-         * @param None.
-         *
-         * @return True if succeeded, false if not.
-         */
-        static bool _otaBufferToFlash(void);
-
-        /**
          * @brief Process an OTA finish event.
          *
          * This function verifies the exact announced size has been flashed, could verify the
@@ -3175,7 +3199,9 @@ class WalterModem {
          * corresponding image.
          */
         static bool _processOtaFinishEvent(void);
-        
+        #pragma endregion
+
+        #pragma region MOTA
         /**
          * @brief Format and mount the 'ffat' partition in order to receive a modem firmware update. 
          * 
@@ -3222,7 +3248,9 @@ class WalterModem {
          * @return True on success, false on error.
          */
         static bool _processMotaFinishEvent(void);
-
+        #pragma endregion
+        
+        #pragma region TLS
         /**
          * @brief Upload key or certificate to modem NVRAM.
          *
@@ -3262,7 +3290,9 @@ class WalterModem {
          * @return The Luhn checksum as an ASCII character.
          */
         static char _getLuhnChecksum(const char *imei);
+        #pragma endregion
         
+        #pragma region EVENTS
         /**
          * @brief Check the execution time of an application layer event handler.
          * 
@@ -3339,7 +3369,9 @@ class WalterModem {
          */
         static void _dispatchEvent(WalterModemMQTTEvent event, WalterModemMqttStatus status);
 #endif
-
+        #pragma endregion
+        
+        #pragma region MODEM_SLEEP
         /**
          * @brief Save context data in RTC memory before ESP deep sleep.
          *
@@ -3359,7 +3391,7 @@ class WalterModem {
          * @return None.
          */
         static void _sleepWakeup();
-        
+        #pragma endregion
         /**
          * @brief Converts a given duration to encoded uint8_t according to the base_times.
          *
@@ -3394,7 +3426,7 @@ class WalterModem {
             walterModemCb cb = NULL,
             void *args = NULL);
 #endif
-
+        #pragma endregion
     public:
 #ifdef ARDUINO
         /**
