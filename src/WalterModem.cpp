@@ -889,6 +889,7 @@ void WalterModem::_pdpContextRead()
     walterModemCb cb = nullptr;
     void *args = nullptr;
     _runCmd(arr("AT+CGDCONT"),"OK", rsp, cb, args, NULL, NULL, WALTER_MODEM_CMD_TYPE_WAIT);
+    _returnAfterReply();
 }
 
 WalterModemPDPContext* WalterModem::_pdpContextGet(int id)
@@ -4044,9 +4045,9 @@ bool WalterModem::setPDPContextActive(
 
     _runCmd(arr(
         "AT+CGACT=",
-        _atBool(active)),
+        _atBool(active),
         ",",
-        _digitStr(ctx->id),
+        _digitStr(ctx->id)),
         "OK", rsp, cb, args, completeHandler, ctx);
     _returnAfterReply();
 }
