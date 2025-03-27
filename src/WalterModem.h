@@ -362,8 +362,8 @@ CONFIG_UINT8(SPI_SECTORS_PER_BLOCK, 16)
 #include <spi_flash_mmap.h>
 #endif
 
-#include <freertos/semphr.h>
 #include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 #include <freertos/event_groups.h>
 #include <driver/uart.h>
 #pragma region ENUMS
@@ -881,6 +881,7 @@ typedef enum {
 } WalterModemGNSSAssistanceType;
 #endif
 
+#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
 /**
  * @brief The possible statuses of a BlueCherry communication cycle.
  */
@@ -892,6 +893,7 @@ typedef enum {
     WALTER_MODEM_BLUECHERRY_STATUS_PENDING_MESSAGES,
     WALTER_MODEM_BLUECHERRY_STATUS_TIMED_OUT
 } WalterModemBlueCherryStatus;
+#endif
 
 /**
  * @brief The possible option codes for the CoAP message.
@@ -1070,6 +1072,7 @@ typedef enum {
 } WalterModemHttpPostParam;
 #endif
 
+#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
 /**
  * @brief The possible types of BlueCherry events.
  */
@@ -1083,6 +1086,7 @@ typedef enum {
     WALTER_MODEM_BLUECHERRY_EVENT_TYPE_MOTA_FINISH = 7,
     WALTER_MODEM_BLUECHERRY_EVENT_TYPE_MOTA_ERROR = 8
 } WalterModemBlueCherryEventType;
+#endif
 
 #if CONFIG_WALTER_MODEM_ENABLE_GNSS
 /**
@@ -1490,6 +1494,7 @@ typedef struct {
     char svn[3];
 } WalterModemIdentity;
 
+#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
 /**
  * @brief This structure contains one of possibly multiple BlueCherry messages delivered in a CoAP
  * datagram. 
@@ -1535,6 +1540,8 @@ typedef struct {
      */
     WalterModemBlueCherryMessage messages[16];
 } WalterModemBlueCherryData;
+#endif
+
 
 /**
  * @brief This strucure represents the data in a walter coap message received.
@@ -1824,11 +1831,12 @@ union WalterModemRspData {
      * @brief The modem identity.
      */
     WalterModemIdentity identity;
-
+#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
     /**
      * @brief The BlueCherry data 
      */
     WalterModemBlueCherryData blueCherry;
+#endif
 
 #if CONFIG_WALTER_MODEM_ENABLE_HTTP
     /**
@@ -2436,6 +2444,7 @@ typedef struct {
 } WalterModemMqttTopic;
 #endif
 
+#if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
 /**
  * @brief This structure represents the state of the BlueCherry connection.
  */
@@ -2542,6 +2551,7 @@ typedef struct {
      */
     const esp_partition_t *otaPartition = NULL;
 } WalterModemBlueCherryState;
+#endif
 
 /**
  * @brief This structure represents a Sequans STP request packet.
@@ -2763,10 +2773,13 @@ class WalterModem {
         static inline WalterModemGNSSFix _GNSSfix = {};
 #endif
 #pragma endregion
+
+#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
         /*
          * @brief The current BlueCherry state.
          */
         static inline WalterModemBlueCherryState blueCherry;
+#endif
 
 #pragma region MOTA
 #if CONFIG_WALTER_MODEM_ENABLE_MOTA
@@ -2797,6 +2810,7 @@ class WalterModem {
 #pragma region PRIVATE_METHODS
         /* start private methods */
 #pragma region MODEM_UPGRADE
+#if CONFIG_WALTER_MODEM_ENABLE_MOTA
         /**
          * @brief Helper to boot modem to recovery modem and start upgrade.
          *
@@ -2822,6 +2836,7 @@ class WalterModem {
          * @return None.
          */
         static void _modemFirmwareUpgradeBlock(size_t blockSize, uint32_t transactionId);
+#endif
 #pragma endregion
 
 #pragma region UART
@@ -3136,6 +3151,7 @@ class WalterModem {
         static void _processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *rsp);
 #pragma endregion
 
+#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
         /**
          * @brief Process an incoming BlueCherry event.
          *
@@ -3148,6 +3164,7 @@ class WalterModem {
          * @return Whether we should emit an error BC event on next sync.
          */
         static bool _processBlueCherryEvent(uint8_t *data, uint8_t len);
+#endif
 
 #pragma region OTA
 #if CONFIG_WALTER_MODEM_ENABLE_OTA
@@ -4006,6 +4023,7 @@ class WalterModem {
 #pragma endregion
 
 #pragma region BLUE_CHERRY
+#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
         /**
          * @brief Upload BlueCherry credentials to the modem.
          *
@@ -4136,6 +4154,7 @@ class WalterModem {
             WalterModemRsp *rsp = NULL,
             walterModemCb cb = NULL,
             void *args = NULL);
+#endif
 #pragma endregion
 
 #pragma region COAP
@@ -4969,6 +4988,7 @@ class WalterModem {
             void *args = NULL);
 #endif
 #pragma endregion
+#if CONFIG_WALTER_MODEM_ENABLE_MOTA
         /**
          * @brief Offline update modem firmware from file on flash
          *
@@ -4982,7 +5002,7 @@ class WalterModem {
          * SPI_FLASH_SEC_SIZE = 4K
          */
         static void offlineMotaUpgrade(uint8_t *otaBuffer);
-
+#endif
 #pragma region EVENT_HANDLERS
         /**
          * @brief Set the network registration event handler.
