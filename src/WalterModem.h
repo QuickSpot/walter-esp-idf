@@ -2870,16 +2870,9 @@ class WalterModem {
 
 #pragma region PDP_CONTEXT
         /**
-         * @brief Get a PDP context structure which is not in use.
-         * 
-         * This function will search for a PDP context structure which can be used to save and
-         * register a new PDP context structure with. The returned PDP context will automatically be
-         * assigned with a free PDP context identifier.
-         * 
-         * @return Pointer to a PDP which is not yet in use or NULL when all contexts are in use.
+         * @brief this function reads all the active PDP contexts
          */
-        static WalterModemPDPContext* _pdpContextReserve();
-
+        static void _pdpContextRead();
         /**
          * @brief Get a reference to the PDP context with the given id.
          * 
@@ -4630,7 +4623,8 @@ class WalterModem {
             walterModemCb cb = NULL,
             void *args = NULL,
             WalterModemPDPType type = WALTER_MODEM_PDP_TYPE_IP,
-            const char *pdpAddress = NULL, 
+            const char *pdpAddress = NULL,
+            const uint8_t ctxId = 1,
             WalterModemPDPHeaderCompression headerComp = WALTER_MODEM_PDP_HCOMP_OFF, 
             WalterModemPDPDataCompression dataComp = WALTER_MODEM_PDP_DCOMP_OFF,
             WalterModemPDPIPv4AddrAllocMethod ipv4AllocMethod = WALTER_MODEM_PDP_IPV4_ALLOC_NAS,

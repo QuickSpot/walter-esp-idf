@@ -883,24 +883,9 @@ bool WalterModem::_cmdQueuePut(WalterModemCmd *cmd)
 #pragma endregion
 
 #pragma region PDP_CONTEXT
-WalterModemPDPContext* WalterModem::_pdpContextReserve()
+void WalterModem::_pdpContextRead()
 {
-    WalterModemPDPContext *ctx = NULL;
-
-    for(int i = 0; i < WALTER_MODEM_MAX_PDP_CTXTS; ++i) {
-        if(_pdpCtxSet[i].state == WALTER_MODEM_PDP_CONTEXT_STATE_FREE) {
-            ctx = _pdpCtxSet + i;
-            ctx->state = WALTER_MODEM_PDP_CONTEXT_STATE_RESERVED;
-            ctx->id = i + 1;
-            break;
-        }
-    }
-
-    if(ctx != NULL) {
-        _pdpCtx = ctx;
-    }
-
-    return ctx;
+    _runCmd("AT+CGDCONT","OK",NULL,NULL,NULL,WALTER_MODEM_CMD_TYPE_WAIT);
 }
 
 WalterModemPDPContext* WalterModem::_pdpContextGet(int id)
@@ -1628,6 +1613,10 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
                 cmd->rsp->data.simCardID.euiccid[offset++] = buff->data[i];
             }
         }
+    }
+    else if(_buffStartsWith(buff, "+CGDCONT: "))
+    {
+        uint16_t dataSize = buff->size - _strLitLen("+CGPADDR: ");
     }
     else if(_buffStartsWith(buff, "+CGPADDR: "))
     {
@@ -3924,7 +3913,8 @@ bool WalterModem::createPDPContext(
     walterModemCb cb,
     void *args,
     WalterModemPDPType type,
-    const char *pdpAddress, 
+    const char *pdpAddress,
+    const uint8_t ctxId,
     WalterModemPDPHeaderCompression headerComp,
     WalterModemPDPDataCompression dataComp,
     WalterModemPDPIPv4AddrAllocMethod ipv4AllocMethod,
@@ -3937,7 +3927,7 @@ bool WalterModem::createPDPContext(
     bool useLocalAddrInd,
     bool useNASNonIPMTUDiscovery)
 {
-    WalterModemPDPContext *ctx = _pdpContextReserve();
+    WalterModemPDPContext *ctx = _pdpContextGet(ctxId);
     if(ctx == NULL) {
         _returnState(WALTER_MODEM_STATE_NO_FREE_PDP_CONTEXT);
     }
