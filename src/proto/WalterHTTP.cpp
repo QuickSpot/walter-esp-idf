@@ -1,5 +1,6 @@
 #include <WalterDefines.h>
 #if CONFIG_WALTER_MODEM_ENABLE_HTTP
+#pragma region PUBLIC_METHODS
 bool WalterModem::httpConfigProfile(
     uint8_t profileId,
     const char *serverName,
@@ -246,4 +247,5 @@ bool WalterModem::httpDidRing(
         targetBufSize);
     _returnAfterReply();
 }
+#pragma endregion
 #endif

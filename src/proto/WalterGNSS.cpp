@@ -1,6 +1,21 @@
 #include <WalterDefines.h>
 
 #if CONFIG_WALTER_MODEM_ENABLE_GNSS
+#pragma region PRIVATE_METHODS
+void WalterModem::_dispatchEvent(const WalterModemGNSSFix *fix)
+{
+    WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_GNSS;
+    if (handler->gnssHandler == nullptr) {
+        return;
+    }
+
+    auto start = std::chrono::steady_clock::now();
+    handler->gnssHandler(fix, handler->args);
+    _checkEventDuration(start);
+}
+#pragma endregion
+
+#pragma region PUBLIC_METHODS
 bool WalterModem::configGNSS(
     WalterModemGNSSSensMode sensMode,
     WalterModemGNSSAcqMode acqMode,
@@ -61,15 +76,10 @@ bool WalterModem::performGNSSAction(
     _returnAfterReply();
 }
 
-void WalterModem::_dispatchEvent(const WalterModemGNSSFix *fix)
+void WalterModem::setGNSSEventHandler(walterModemGNSSEventHandler handler, void *args)
 {
-    WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_GNSS;
-    if (handler->gnssHandler == nullptr) {
-        return;
-    }
-
-    auto start = std::chrono::steady_clock::now();
-    handler->gnssHandler(fix, handler->args);
-    _checkEventDuration(start);
+    _eventHandlers[WALTER_MODEM_EVENT_TYPE_GNSS].gnssHandler = handler;
+    _eventHandlers[WALTER_MODEM_EVENT_TYPE_GNSS].args = args;
 }
+#pragma endregion
 #endif

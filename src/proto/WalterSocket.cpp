@@ -1,4 +1,5 @@
 #include <WalterDefines.h>
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
 #pragma region PRIVATE_METHODS
 WalterModemSocket *WalterModem::_socketReserve()
 {
@@ -246,3 +247,4 @@ bool WalterModem::socketSend(
 }
 
 #pragma endregion
+#endif
