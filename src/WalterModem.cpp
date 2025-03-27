@@ -885,7 +885,10 @@ bool WalterModem::_cmdQueuePut(WalterModemCmd *cmd)
 #pragma region PDP_CONTEXT
 void WalterModem::_pdpContextRead()
 {
-    _runCmd("AT+CGDCONT","OK",NULL,NULL,NULL,WALTER_MODEM_CMD_TYPE_WAIT);
+    WalterModemRsp *rsp = nullptr;
+    walterModemCb cb = nullptr;
+    void *args = nullptr;
+    _runCmd(arr("AT+CGDCONT"),"OK", rsp, cb, args, NULL, NULL, WALTER_MODEM_CMD_TYPE_WAIT);
 }
 
 WalterModemPDPContext* WalterModem::_pdpContextGet(int id)
