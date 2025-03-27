@@ -892,8 +892,8 @@ WalterModemPDPContext* WalterModem::_pdpContextGet(int id)
     if(id >= WALTER_MODEM_MAX_PDP_CTXTS) {
         return NULL;
     }
-
-    return _pdpCtxSet[id];
+    _pdpCtx = _pdpCtxSet[id]
+    return _pdpCtx;
 }
 
 void WalterModem::_saveRTCPdpContextSet(WalterModemPDPContext *_pdpCtxSetRTC)
