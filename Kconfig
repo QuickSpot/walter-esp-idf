@@ -119,6 +119,17 @@ menu "walter-modem"
                     help
                         Enable bluecherry functions
             endif
+
+            config WALTER_MODEM_ENABLE_BLUE_CHERRY
+                bool "Enable Blue cherry functions"
+                default y
+                help
+                    Disable bluecherry for walterModem
+            if WALTER_MODEM_ENABLE_BLUE_CHERRY
+            menu "Bluecherry"
+                comment "nothing here yet"
+            endmenu
+            endif
         endmenu
         menu "Pinout"
             if WALTER_MODEM_KCONFIG
@@ -285,5 +296,6 @@ menu "walter-modem"
                 help
                     The maximum number of TLS profiles that the library can support.
         endmenu
+        
     endif
 endmenu
