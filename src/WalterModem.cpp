@@ -3389,6 +3389,8 @@ bool WalterModem::begin(uart_port_t uartNo, uint8_t watchdogTimeout)
         return false;
     }
 
+    _pdpContextRead();
+    
     _initialized = true;
     return true;
 }
