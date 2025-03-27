@@ -1569,8 +1569,8 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         for (size_t i = 0; i < WALTER_MODEM_MAX_PDP_CTXTS; i++)
         {
             if(_pdpCtxSet[i].state != WALTER_MODEM_PDP_CONTEXT_STATE_INACTIVE){
-                _pdpCtxSet[i].state == attached ?
-                WALTER_MODEM_PDP_CONTEXT_STATE_ATTACHED : 
+                _pdpCtxSet[i].state = attached ?
+                WALTER_MODEM_PDP_CONTEXT_STATE_ATTACHED :
                 WALTER_MODEM_PDP_CONTEXT_STATE_NOT_ATTACHED;
             }
         }
