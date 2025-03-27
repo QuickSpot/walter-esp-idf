@@ -181,16 +181,7 @@ extern "C" void app_main(void)
     ESP_LOGI("socket_test", "Could not create PDP context");
     return;
   }
-  /* Authenticate the PDP context */
-  /*
-
-  if(modem.authenticatePDPContext()) {
-    ESP_LOGI("socket_test", "Authenticated the PDP context");
-  } else {
-    ESP_LOGI("socket_test", "Could not authenticate the PDP context");
-    return;
-  }
-*/
+  
   /* Set the operational state to full */
   if(modem.setOpState(WALTER_MODEM_OPSTATE_FULL)) {
     ESP_LOGI("socket_test", "Successfully set operational state to FULL");
