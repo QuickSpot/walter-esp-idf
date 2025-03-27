@@ -64,8 +64,7 @@ bool WalterModem::performGNSSAction(
 void WalterModem::_dispatchEvent(const WalterModemGNSSFix *fix)
 {
     WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_GNSS;
-    if (handler->gnssHandler == nullptr)
-    {
+    if (handler->gnssHandler == nullptr) {
         return;
     }
 

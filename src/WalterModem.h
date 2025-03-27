@@ -82,6 +82,10 @@ for efficient configuration management."
 #ifndef CONFIG_WALTER_MODEM_ENABLE_HTTP
 #define CONFIG_WALTER_MODEM_ENABLE_HTTP 1
 #endif
+
+#ifndef CONFIG_WALTER_MODEM_ENABLE_COAP
+#define CONFIG_WALTER_MODEM_ENABLE_COAP 1
+#endif
 #endif
 
 #define CONFIG_INT(name, default_value) CONFIG(name, int, default_value)

@@ -1,5 +1,5 @@
 #include <WalterDefines.h>
-
+#pragma region PRIVATE_METHODS
 WalterModemSocket *WalterModem::_socketReserve()
 {
     WalterModemSocket *sock = NULL;
@@ -51,6 +51,9 @@ void WalterModem::_socketRelease(WalterModemSocket *sock)
     sock->state = WALTER_MODEM_SOCKET_STATE_FREE;
 }
 
+#pragma endregion
+
+#pragma region PUBLIC_METHODS
 bool WalterModem::createSocket(
     WalterModemRsp *rsp,
     walterModemCb cb,
@@ -241,3 +244,5 @@ bool WalterModem::socketSend(
 {
     return socketSend((uint8_t *)str, strlen(str), rsp, cb, args, rai, socketId);
 }
+
+#pragma endregion
