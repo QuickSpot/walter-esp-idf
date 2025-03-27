@@ -564,8 +564,9 @@ typedef enum {
  */
 typedef enum {
     WALTER_MODEM_PDP_CONTEXT_STATE_INACTIVE = 0,
-    WALTER_MODEM_PDP_CONTEXT_STATE_NOT_ATTACHED = 1,
-    WALTER_MODEM_PDP_CONTEXT_STATE_ATTACHED = 2
+    WALTER_MODEM_PDP_CONTEXT_STATE_ACTIVE = 1,
+    WALTER_MODEM_PDP_CONTEXT_STATE_NOT_ATTACHED = 2,
+    WALTER_MODEM_PDP_CONTEXT_STATE_ATTACHED = 3
 } WalterModemPDPContextState;
 
 /**
@@ -2231,7 +2232,7 @@ typedef struct {
      * @brief PDP context id to use.
      */
     int pdpContextId = 1;
-    
+
     /**
      * @brief The socket identifier.
      */
