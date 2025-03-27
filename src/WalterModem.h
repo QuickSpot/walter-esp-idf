@@ -564,7 +564,7 @@ typedef enum {
  */
 typedef enum {
     WALTER_MODEM_PDP_CONTEXT_STATE_INACTIVE = 0,
-    WALTER_MODEM_PDP_CONTEXT_STATE_ACTIVE = 1,
+    WALTER_MODEM_PDP_CONTEXT_STATE_NOT_ATTACHED = 1,
     WALTER_MODEM_PDP_CONTEXT_STATE_ATTACHED = 2
 } WalterModemPDPContextState;
 
@@ -2111,7 +2111,7 @@ typedef struct {
     /**
      * @brief The state of the PDP context.
      */
-    WalterModemPDPContextState state = WALTER_MODEM_PDP_CONTEXT_STATE_FREE;
+    WalterModemPDPContextState state = WALTER_MODEM_PDP_CONTEXT_STATE_INACTIVE;
 
     /**
      * @brief The ID of this PDP data context.
@@ -2873,17 +2873,6 @@ class WalterModem {
          * @return Pointer to the PDP context with the given id or NULL.
          */
         static WalterModemPDPContext* _pdpContextGet(int id = -1);
-
-        /**
-         * @brief Release a PDP context structure back to the pool.
-         * 
-         * This function will release the PDP context back to the set.
-         * 
-         * @param ctx The context to release.
-         * 
-         * @return None.
-         */
-        static void _pdpContextRelease(WalterModemPDPContext *ctx);
 
         /**
          * @brief Save the PDP context to RTC memory
@@ -4668,7 +4657,7 @@ class WalterModem {
             void *args = NULL);
 
         /**
-         * @brief Attach to or detach the currently active PDP context.
+         * @brief Attach the defined PDP contexts.
          * 
          * This function will attach to or detach from a packet domain service.
          * 

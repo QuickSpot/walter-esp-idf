@@ -883,15 +883,6 @@ bool WalterModem::_cmdQueuePut(WalterModemCmd *cmd)
 #pragma endregion
 
 #pragma region PDP_CONTEXT
-bool WalterModem::_pdpContextRead()
-{
-    WalterModemRsp *rsp = nullptr;
-    walterModemCb cb = nullptr;
-    void *args = nullptr;
-    _runCmd(arr("AT+CGDCONT"),"OK", rsp, cb, args, NULL, NULL, WALTER_MODEM_CMD_TYPE_WAIT);
-    _returnAfterReply();
-}
-
 WalterModemPDPContext* WalterModem::_pdpContextGet(int id)
 {
     if(id < 0) {
@@ -903,15 +894,6 @@ WalterModemPDPContext* WalterModem::_pdpContextGet(int id)
     }
 
     return _pdpCtxSet[id];
-}
-
-void WalterModem::_pdpContextRelease(WalterModemPDPContext *ctx)
-{
-    if(ctx == NULL) {
-        return;
-    }
-
-    ctx->state = WALTER_MODEM_PDP_CONTEXT_STATE_FREE;
 }
 
 void WalterModem::_saveRTCPdpContextSet(WalterModemPDPContext *_pdpCtxSetRTC)
@@ -1579,6 +1561,20 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         } else if(_dataStrIs(buff, "+CPIN: ", "PH-CORP PUK")) {
             cmd->rsp->data.simState = WALTER_MODEM_SIM_STATE_CORPORATE_PUK_REQUIRED;
         }
+    }
+    else if(_buffStartsWith(buff, "+CGATT: "))
+    {
+        const char *rspStr = _buffStr(buff);
+        int attached = atoi(rspStr + _strLitLen("+CGATT: "));
+        for (size_t i = 0; i < WALTER_MODEM_MAX_PDP_CTXTS; i++)
+        {
+            if(_pdpCtxSet[i].state != WALTER_MODEM_PDP_CONTEXT_STATE_INACTIVE){
+                _pdpCtxSet[i].state == attached ?
+                WALTER_MODEM_PDP_CONTEXT_STATE_ATTACHED : 
+                WALTER_MODEM_PDP_CONTEXT_STATE_NOT_ATTACHED;
+            }
+        }
+        
     }
     else if(_buffStartsWith(buff, "+SQNCCID: ") && cmd != NULL)
     {
@@ -3929,6 +3925,8 @@ bool WalterModem::definePDPContext(
         _returnState(WALTER_MODEM_STATE_NO_FREE_PDP_CONTEXT);
     }
 
+    ctx->state = WALTER_MODEM_PDP_CONTEXT_STATE_NOT_ATTACHED;
+
     ctx->type = type;
     _strncpy_s(ctx->apn, apn, WALTER_MODEM_APN_MAX_SIZE);
     _strncpy_s(ctx->pdpAddress, pdpAddress, WALTER_MODEM_PDP_ADDR_MAX_SIZE);
@@ -4049,15 +4047,7 @@ bool WalterModem::attachPDPContext(
     walterModemCb cb,
     void *args)
 {
-    auto completeHandler = [](WalterModemCmd *cmd, WalterModemState result) 
-    {
-        if(result == WALTER_MODEM_STATE_OK) {
-            WalterModemPDPContext *ctx = _pdpContextGet();
-            ctx->state = WALTER_MODEM_PDP_CONTEXT_STATE_ATTACHED;
-        }
-    };
-
-    _runCmd(arr("AT+CGATT=", _atBool(attach)), "OK", rsp, cb, args, completeHandler);
+    _runCmd(arr("AT+CGATT=", _atBool(attach)), "OK", rsp, cb, args, NULL, NULL, WALTER_MODEM_CMD_TYPE_TX_WAIT);
     _returnAfterReply();
 }
 
