@@ -1,6 +1,6 @@
 #include <WalterDefines.h>
 
-#if CONFIG_WALTER_MODEM_ENABLE_COAP
+#if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
 #pragma region PRIVATE_METHODS
 bool WalterModem::_processBlueCherryEvent(uint8_t *data, uint8_t len)
 {

@@ -416,8 +416,6 @@ bool strToFloat(const char *str, int len, float *result)
 #pragma endregion
 
 #pragma region PRIVATE_METHODS
-
-
 #pragma region MODEM_UPGRADE
 
 uint16_t WalterModem::_modemFirmwareUpgradeStart(void)
@@ -3292,6 +3290,8 @@ void WalterModem::_sleepWakeup()
 
 #pragma endregion
 
+#pragma region PUBLIC_METHODS
+#pragma region BEGIN
 #ifdef ARDUINO
 bool WalterModem::begin(HardwareSerial *uart, uint8_t watchdogTimeout)
 #else
@@ -3403,6 +3403,8 @@ bool WalterModem::begin(uart_port_t uartNo, uint8_t watchdogTimeout)
     _initialized = true;
     return true;
 }
+#pragma endregion
+
 #pragma region GENERAL
 void WalterModem::tickleWatchdog(void)
 {
@@ -3635,6 +3637,8 @@ bool WalterModem::setOpState(
     _returnAfterReply();
 }
 #pragma endregion
+
+#pragma region RADIO
 bool WalterModem::getRAT(WalterModemRsp *rsp, walterModemCb cb, void *args)
 {
     if(_ratType != WALTER_MODEM_RAT_UNKNOWN) {
@@ -3740,7 +3744,9 @@ bool WalterModem::setRadioBands(
     _runCmd(arr((const char*) stringsbuffer->data), "OK", rsp, cb, args);
     _returnAfterReply();
 }
+#pragma endregion
 
+#pragma region SIM_MANAGEMENT
 bool WalterModem::getSIMState(WalterModemRsp *rsp, walterModemCb cb, void *args)
 {
     _runCmd({"AT+CPIN?"}, "OK", rsp, cb, args);
@@ -3770,6 +3776,7 @@ bool WalterModem::unlockSIM(WalterModemRsp *rsp, walterModemCb cb, void *args, c
     _runCmd(arr("AT+CPIN=", _simPIN), "OK", rsp, cb, args);
     _returnAfterReply();
 }
+#pragma endregion
 
 bool WalterModem::setNetworkSelectionMode(
     WalterModemNetworkSelMode mode,
@@ -3798,6 +3805,7 @@ bool WalterModem::setNetworkSelectionMode(
     }
 }
 
+#pragma region POWER_SAVING
 bool WalterModem::configPSM(
     WalterModemPSMMode mode,
     const char *reqTAU,
@@ -3851,6 +3859,62 @@ bool WalterModem::configEDRX(
     }
 }
 
+uint8_t WalterModem::_convertDuration(
+    const uint32_t *base_times,
+    size_t base_times_len,
+    uint32_t duration_seconds,
+    uint32_t *actual_duration_seconds)
+{
+    uint32_t smallest_modulo = UINT32_MAX;
+    uint8_t final_base = 0;
+    uint8_t final_mult = 0;
+
+    for (uint8_t base = 0; base < base_times_len; ++base) {
+        uint32_t multiplier = duration_seconds / base_times[base];
+        if (multiplier == 0 || multiplier > 31) {
+            continue;
+        }
+
+        uint32_t modulo = duration_seconds % base_times[base];
+        if (modulo < smallest_modulo) {
+            final_base = base;
+            final_mult = multiplier;
+        }
+    }
+
+    if (actual_duration_seconds) {
+        *actual_duration_seconds = (uint32_t)final_base * (uint32_t)final_mult;
+    }
+
+    return  (final_base << 5) | final_mult;
+}
+
+uint8_t WalterModem::durationToTAU(
+    uint32_t seconds,
+    uint32_t minutes,
+    uint32_t hours,
+    uint32_t *actual_duration_seconds)
+{
+    static const uint32_t base_times[] = { 600, 3600, 36000, 2, 30, 60, 1152000 };
+    uint32_t duration_seconds = seconds + (60 * minutes) + (60 * 60 * hours);
+
+    return _convertDuration(base_times,7,duration_seconds,actual_duration_seconds);
+}
+
+uint8_t WalterModem::durationToActiveTime(
+    uint32_t seconds,
+    uint32_t minutes,
+    uint32_t *actual_duration_seconds) 
+{
+    static const uint32_t base_times[] = { 2, 60, 360 };
+    uint32_t duration_seconds = seconds + (60 * minutes);
+    
+    return _convertDuration(base_times,3, duration_seconds,actual_duration_seconds);
+}
+
+#pragma endregion
+
+#pragma region PDP_CONTEXT
 bool WalterModem::createPDPContext(
     const char *apn,
     WalterModemPDPAuthProtocol authProto,
@@ -3861,7 +3925,7 @@ bool WalterModem::createPDPContext(
     void *args,
     WalterModemPDPType type,
     const char *pdpAddress, 
-    WalterModemPDPHeaderCompression headerComp, 
+    WalterModemPDPHeaderCompression headerComp,
     WalterModemPDPDataCompression dataComp,
     WalterModemPDPIPv4AddrAllocMethod ipv4AllocMethod,
     WalterModemPDPRequestType requestType,
@@ -4024,6 +4088,7 @@ bool WalterModem::getPDPAddress(
     _runCmd(arr("AT+CGPADDR=", _digitStr(ctx->id)), "OK", rsp, cb, args);
     _returnAfterReply();
 }
+#pragma endregion
 
 bool WalterModem::getClock(WalterModemRsp *rsp, walterModemCb cb, void *args)
 {
@@ -4031,59 +4096,7 @@ bool WalterModem::getClock(WalterModemRsp *rsp, walterModemCb cb, void *args)
     _returnAfterReply();
 }
 
-uint8_t WalterModem::_convertDuration(
-    const uint32_t *base_times,
-    size_t base_times_len,
-    uint32_t duration_seconds,
-    uint32_t *actual_duration_seconds)
-{
-    uint32_t smallest_modulo = UINT32_MAX;
-    uint8_t final_base = 0;
-    uint8_t final_mult = 0;
-
-    for (uint8_t base = 0; base < base_times_len; ++base) {
-        uint32_t multiplier = duration_seconds / base_times[base];
-        if (multiplier == 0 || multiplier > 31) {
-            continue;
-        }
-
-        uint32_t modulo = duration_seconds % base_times[base];
-        if (modulo < smallest_modulo) {
-            final_base = base;
-            final_mult = multiplier;
-        }
-    }
-
-    if (actual_duration_seconds) {
-        *actual_duration_seconds = (uint32_t)final_base * (uint32_t)final_mult;
-    }
-
-    return  (final_base << 5) | final_mult;
-}
-
-uint8_t WalterModem::durationToTAU(
-    uint32_t seconds,
-    uint32_t minutes,
-    uint32_t hours,
-    uint32_t *actual_duration_seconds)
-{
-    static const uint32_t base_times[] = { 600, 3600, 36000, 2, 30, 60, 1152000 };
-    uint32_t duration_seconds = seconds + (60 * minutes) + (60 * 60 * hours);
-
-    return _convertDuration(base_times,7,duration_seconds,actual_duration_seconds);
-}
-
-uint8_t WalterModem::durationToActiveTime(
-    uint32_t seconds,
-    uint32_t minutes,
-    uint32_t *actual_duration_seconds) 
-{
-    static const uint32_t base_times[] = { 2, 60, 360 };
-    uint32_t duration_seconds = seconds + (60 * minutes);
-    
-    return _convertDuration(base_times,3, duration_seconds,actual_duration_seconds);
-}
-
+#pragma region EVENT_HANDLERS
 void WalterModem::setRegistrationEventHandler(
     walterModemRegistrationEventHandler handler,
     void *args)
@@ -4103,3 +4116,5 @@ void WalterModem::setATEventHandler(walterModemATEventHandler handler, void *arg
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_AT].atHandler = handler;
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_AT].args = args;
 }
+#pragma endregion
+#pragma endregion

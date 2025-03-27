@@ -58,7 +58,7 @@
 for efficient configuration management."
 #endif
 #endif
-
+#pragma region CONFIG_MACRO
 #ifdef CONFIG_WALTER_MODEM_KCONFIG
 #define CONFIG(name, type, default_value) \
     static constexpr type name = CONFIG_##name;
@@ -98,6 +98,7 @@ for efficient configuration management."
 #define CONFIG_INT16(name, default_value) CONFIG(name, int16_t, default_value)
 #define CONFIG_INT32(name, default_value) CONFIG(name, int32_t, default_value)
 #define CONFIG_INT64(name, default_value) CONFIG(name, int64_t, default_value)
+#pragma endregion
 
 #include <condition_variable>
 
@@ -2570,6 +2571,7 @@ struct WalterModemStpResponseTransferBlock {
  */
 class WalterModem {
     private:
+
 #pragma region STATIC_VARS
         /**
          * @brief This flag is set to true when the modem is initialized.
@@ -2772,9 +2774,9 @@ class WalterModem {
         static inline WalterModemEventHandler _eventHandlers[WALTER_MODEM_EVENT_TYPE_COUNT] = {};
 #pragma endregion
 
-        #pragma region PRIVATE_METHODS
+#pragma region PRIVATE_METHODS
         /* start private methods */
-        #pragma region MODEM_UPGRADE
+#pragma region MODEM_UPGRADE
         /**
          * @brief Helper to boot modem to recovery modem and start upgrade.
          *
@@ -2800,9 +2802,9 @@ class WalterModem {
          * @return None.
          */
         static void _modemFirmwareUpgradeBlock(size_t blockSize, uint32_t transactionId);
-        #pragma endregion
+#pragma endregion
 
-        #pragma region UART
+#pragma region UART
         /**
          * @brief Helper to abstract away UART RX difference between the IDF and Arduino.
          * 
@@ -2832,9 +2834,9 @@ class WalterModem {
          * @return The resulting checksum.
          */
         static uint16_t _calculateStpCrc16(const void *input, size_t length);
-        #pragma endregion
+#pragma endregion
 
-        #pragma region CMD_POOL_QUEUE
+#pragma region CMD_POOL_QUEUE
         /**
          * @brief Get a command from the command pool.
          * 
@@ -2864,9 +2866,9 @@ class WalterModem {
          * @return True on success, false when the queue is full.
          */
         static bool _cmdQueuePut(WalterModemCmd *cmd);
-        #pragma endregion
+#pragma endregion
 
-        #pragma region PDP_CONTEXT
+#pragma region PDP_CONTEXT
         /**
          * @brief Get a PDP context structure which is not in use.
          * 
@@ -2924,9 +2926,9 @@ class WalterModem {
          * @return None.
          */
         static void _loadRTCPdpContextSet(WalterModemPDPContext *_pdpCtxSetRTC = NULL);
-        #pragma endregion
+#pragma endregion
         
-        #pragma region SOCKETS
+#pragma region SOCKETS
 #if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
         /**
          * @brief Get a socket structure which is not in use.
@@ -2961,9 +2963,9 @@ class WalterModem {
          */
         static void _socketRelease(WalterModemSocket *sock);
 #endif
-        #pragma endregion
+#pragma endregion
 
-        #pragma region CMD_PROCESSING
+#pragma region CMD_PROCESSING
         /**
          * @brief Test if the new buffer line starts a raw data chunk
          *
@@ -3047,9 +3049,9 @@ class WalterModem {
          * @return None.
          */
         static void _queueProcessingTask(void *args);
-        #pragma endregion
+#pragma endregion
 
-        #pragma region QUEUE_CMD_RSP_PROCESSING
+#pragma region QUEUE_CMD_RSP_PROCESSING
         /**
          * @brief Add a command to the command queue.
          * 
@@ -3134,7 +3136,7 @@ class WalterModem {
          * @return None.
          */
         static void _processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *rsp);
-        #pragma endregion
+#pragma endregion
 
         /**
          * @brief Process an incoming BlueCherry event.
@@ -3149,7 +3151,7 @@ class WalterModem {
          */
         static bool _processBlueCherryEvent(uint8_t *data, uint8_t len);
 
-        #pragma region OTA
+#pragma region OTA
         /**
          * @brief Process OTA init event
          *
@@ -3199,9 +3201,9 @@ class WalterModem {
          * corresponding image.
          */
         static bool _processOtaFinishEvent(void);
-        #pragma endregion
+#pragma endregion
 
-        #pragma region MOTA
+#pragma region MOTA
         /**
          * @brief Format and mount the 'ffat' partition in order to receive a modem firmware update. 
          * 
@@ -3248,9 +3250,9 @@ class WalterModem {
          * @return True on success, false on error.
          */
         static bool _processMotaFinishEvent(void);
-        #pragma endregion
+#pragma endregion
         
-        #pragma region TLS
+#pragma region TLS
         /**
          * @brief Upload key or certificate to modem NVRAM.
          *
@@ -3290,9 +3292,9 @@ class WalterModem {
          * @return The Luhn checksum as an ASCII character.
          */
         static char _getLuhnChecksum(const char *imei);
-        #pragma endregion
+#pragma endregion
         
-        #pragma region EVENTS
+#pragma region EVENTS
         /**
          * @brief Check the execution time of an application layer event handler.
          * 
@@ -3369,9 +3371,9 @@ class WalterModem {
          */
         static void _dispatchEvent(WalterModemMQTTEvent event, WalterModemMqttStatus status);
 #endif
-        #pragma endregion
+#pragma endregion
         
-        #pragma region MODEM_SLEEP
+#pragma region MODEM_SLEEP
         /**
          * @brief Save context data in RTC memory before ESP deep sleep.
          *
@@ -3426,8 +3428,11 @@ class WalterModem {
             walterModemCb cb = NULL,
             void *args = NULL);
 #endif
-        #pragma endregion
+#pragma endregion
+
     public:
+#pragma region PUBLIC_METHODS
+#pragma region BEGIN
 #ifdef ARDUINO
         /**
          * @brief Initialize the modem.
@@ -3469,8 +3474,9 @@ class WalterModem {
          */
         static bool begin(uart_port_t uartNo, uint8_t watchdogTimeout = 0);
 #endif
-
-        #pragma region GENERAL
+        #pragma endregion
+        
+#pragma region GENERAL
         /**
          * @brief Tickle watchdog
          *
@@ -3665,9 +3671,9 @@ class WalterModem {
             WalterModemRsp *rsp = NULL,
             walterModemCb cb = NULL,
             void *args = NULL);
-        #pragma endregion
+#pragma endregion
 
-        #pragma region MQTT
+#pragma region MQTT
 #if CONFIG_WALTER_MODEM_ENABLE_MQTT
         /**
          * @brief returns the last received mqttStatus.
@@ -3798,7 +3804,7 @@ class WalterModem {
             uint16_t targetBufSize,
             WalterModemRsp *rsp = NULL);
 #endif
-        #pragma endregion
+#pragma endregion
         /**
          * @brief Configure a TLS profile.
          *
@@ -4494,6 +4500,7 @@ class WalterModem {
             walterModemCb cb = NULL, 
             void *args = NULL);
 
+#pragma region POWER_SAVING
         /**
          * @brief Configure Power Saving Mode Setting.
          * 
@@ -4541,6 +4548,50 @@ class WalterModem {
             WalterModemRsp *rsp = NULL,
             walterModemCb cb = NULL,
             void *args = NULL);
+
+        /**
+         * @brief Encode a TAU duration for use in PSM configuration.
+         *
+         * This function will encode a given duration into the nearest duration that can be encoded
+         * according to  the 3GPP specification for use in timer T3412 (TAU)
+         *
+         * @warning This function is an approximation because of the encoding used over the wire.
+         *
+         * @param seconds Duration in seconds
+         * @param minutes Duration in minutes
+         * @param hours  Duration in hours
+         * @param actual_duration_seconds Optional pointer in which the actual requested duration
+         * can be saved.
+         *
+         * @return The interval encoded into the 3GPP standard format.
+         */
+        static uint8_t durationToTAU(
+            uint32_t seconds = 0,
+            uint32_t minutes = 0,
+            uint32_t hours = 0,
+            uint32_t *actual_duration_seconds = nullptr);
+
+        /**
+         * @brief Converts a given duration of seconds, minutes to a reqActive approximation
+         *
+         * This function will encode a given duration into the nearest duration that can be encoded
+         * according to  the 3GPP specification for use in timer T3324 (active time).
+         *
+         * @warning This function is an approximation because it uses a multiplier internally.
+         *
+         * @param seconds Duration in seconds
+         * @param minutes Duration in minutes
+         * @param actual_duration_seconds Optional pointer in which the actual requested duration
+         * can be saved.
+         *
+         * @return The duration encoded into the 3GPP standard format.
+         */
+        static uint8_t durationToActiveTime(
+            uint32_t seconds = 0,
+            uint32_t minutes = 0,
+            uint32_t *actual_duration_seconds = nullptr);
+#pragma endregion
+
 #pragma region PDP_CONTEXT
         /**
          * @brief Create a new packet data protocol (PDP) context.
@@ -4931,48 +4982,7 @@ class WalterModem {
          */
         static void offlineMotaUpgrade(uint8_t *otaBuffer);
 
-        /**
-         * @brief Encode a TAU duration for use in PSM configuration.
-         *
-         * This function will encode a given duration into the nearest duration that can be encoded
-         * according to  the 3GPP specification for use in timer T3412 (TAU)
-         *
-         * @warning This function is an approximation because of the encoding used over the wire.
-         *
-         * @param seconds Duration in seconds
-         * @param minutes Duration in minutes
-         * @param hours  Duration in hours
-         * @param actual_duration_seconds Optional pointer in which the actual requested duration
-         * can be saved.
-         *
-         * @return The interval encoded into the 3GPP standard format.
-         */
-        static uint8_t durationToTAU(
-            uint32_t seconds = 0,
-            uint32_t minutes = 0,
-            uint32_t hours = 0,
-            uint32_t *actual_duration_seconds = nullptr);
-
-        /**
-         * @brief Converts a given duration of seconds, minutes to a reqActive approximation
-         *
-         * This function will encode a given duration into the nearest duration that can be encoded
-         * according to  the 3GPP specification for use in timer T3324 (active time).
-         *
-         * @warning This function is an approximation because it uses a multiplier internally.
-         *
-         * @param seconds Duration in seconds
-         * @param minutes Duration in minutes
-         * @param actual_duration_seconds Optional pointer in which the actual requested duration
-         * can be saved.
-         *
-         * @return The duration encoded into the 3GPP standard format.
-         */
-        static uint8_t durationToActiveTime(
-            uint32_t seconds = 0,
-            uint32_t minutes = 0,
-            uint32_t *actual_duration_seconds = nullptr);
-
+#pragma region EVENT_HANDLERS
         /**
          * @brief Set the network registration event handler.
          * 
@@ -5047,6 +5057,9 @@ class WalterModem {
          */
         static void setMQTTEventHandler(walterModemMQTTEventHandler handler, void *args = NULL);
 #endif
+#pragma endregion
+
+#pragma endregion
 };
 
 #endif
