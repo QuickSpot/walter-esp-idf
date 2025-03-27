@@ -2570,7 +2570,7 @@ struct WalterModemStpResponseTransferBlock {
  */
 class WalterModem {
     private:
-        #pragma region STATIC_VARS
+#pragma region STATIC_VARS
         /**
          * @brief This flag is set to true when the modem is initialized.
          */
@@ -2770,7 +2770,7 @@ class WalterModem {
          * @brief Array to keep track of external event handlers.
          */
         static inline WalterModemEventHandler _eventHandlers[WALTER_MODEM_EVENT_TYPE_COUNT] = {};
-        #pragma endregion
+#pragma endregion
 
         #pragma region PRIVATE_METHODS
         /* start private methods */
@@ -3469,6 +3469,8 @@ class WalterModem {
          */
         static bool begin(uart_port_t uartNo, uint8_t watchdogTimeout = 0);
 #endif
+
+        #pragma region GENERAL
         /**
          * @brief Tickle watchdog
          *
@@ -3663,7 +3665,9 @@ class WalterModem {
             WalterModemRsp *rsp = NULL,
             walterModemCb cb = NULL,
             void *args = NULL);
+        #pragma endregion
 
+        #pragma region MQTT
 #if CONFIG_WALTER_MODEM_ENABLE_MQTT
         /**
          * @brief returns the last received mqttStatus.
@@ -3794,7 +3798,7 @@ class WalterModem {
             uint16_t targetBufSize,
             WalterModemRsp *rsp = NULL);
 #endif
-
+        #pragma endregion
         /**
          * @brief Configure a TLS profile.
          *
@@ -3827,6 +3831,7 @@ class WalterModem {
             walterModemCb cb = NULL,
             void *args = NULL);
 
+#pragma region HTTP
 #if CONFIG_WALTER_MODEM_ENABLE_HTTP
         /**
          * @brief Configure a HTTP profile.
@@ -3992,7 +3997,9 @@ class WalterModem {
             uint16_t targetBufSize,
             WalterModemRsp *rsp = NULL);
 #endif
+#pragma endregion
 
+#pragma region BLUE_CHERRY
         /**
          * @brief Upload BlueCherry credentials to the modem.
          *
@@ -4026,7 +4033,7 @@ class WalterModem {
          *
          * @return True when provisioned, false if not.
          */
-        static bool _blueCherryIsProvisioned();
+        static bool blueCherryIsProvisioned();
 
         /**
          * @brief Initialize BlueCherry MQTT <-> CoAP bridge.
@@ -4123,7 +4130,9 @@ class WalterModem {
             WalterModemRsp *rsp = NULL,
             walterModemCb cb = NULL,
             void *args = NULL);
+#pragma endregion
 
+#pragma region COAP
         /**
          * @brief Create a CoAP context.
          * 
@@ -4270,7 +4279,9 @@ class WalterModem {
             uint8_t *targetBuf,
             uint16_t targetBufSize,
             WalterModemRsp *rsp = NULL);
+#pragma endregion
 
+#pragma region MODEM_STATE
         /**
          * @brief Get the network registration state.
          * 
@@ -4314,7 +4325,9 @@ class WalterModem {
             WalterModemRsp *rsp = NULL,
             walterModemCb cb = NULL,
             void *args = NULL);
+#pragma endregion
 
+#pragma region RADIO
         /**
          * @brief Get the selected RAT (Radio Access Technology).
          * 
@@ -4381,7 +4394,9 @@ class WalterModem {
             WalterModemRsp *rsp = NULL,
             walterModemCb cb = NULL,
             void *args = NULL);
+#pragma endregion
 
+#pragma region SIM_MANAGEMENT
         /**
          * @brief Get the SIM state.
          * 
@@ -4454,6 +4469,7 @@ class WalterModem {
             walterModemCb cb = NULL,
             void *args = NULL,
             const char *pin = NULL);
+#pragma endregion
 
         /**
          * @brief Set the network selection mode.
@@ -4525,7 +4541,7 @@ class WalterModem {
             WalterModemRsp *rsp = NULL,
             walterModemCb cb = NULL,
             void *args = NULL);
-
+#pragma region PDP_CONTEXT
         /**
          * @brief Create a new packet data protocol (PDP) context.
          * 
@@ -4652,6 +4668,9 @@ class WalterModem {
             walterModemCb cb = NULL,
             void *args = NULL,
             int pdpCtxId = -1);
+#pragma endregion
+
+#pragma region SOCKETS
 #if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
         /**
          * @brief Create a new socket in a certain PDP context.
@@ -4797,7 +4816,7 @@ class WalterModem {
             WalterModemRAI rai = WALTER_MODEM_RAI_NO_INFO,
             int socketId = -1);
 #endif
-
+#pragma endregion
         /**
          * @brief Get the current modem time and date.
          * 
@@ -4814,6 +4833,7 @@ class WalterModem {
             walterModemCb cb = NULL,
             void *args = NULL);
 
+#pragma region GNSS
 #if CONFIG_WALTER_MODEM_ENABLE_GNSS
         /**
          * @brief Configure Walter's GNSS receiver.
@@ -4896,7 +4916,7 @@ class WalterModem {
             walterModemCb cb = NULL,
             void *args = NULL);
 #endif
-
+#pragma endregion
         /**
          * @brief Offline update modem firmware from file on flash
          *
