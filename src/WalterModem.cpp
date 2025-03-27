@@ -883,7 +883,7 @@ bool WalterModem::_cmdQueuePut(WalterModemCmd *cmd)
 #pragma endregion
 
 #pragma region PDP_CONTEXT
-void WalterModem::_pdpContextRead()
+bool WalterModem::_pdpContextRead()
 {
     WalterModemRsp *rsp = nullptr;
     walterModemCb cb = nullptr;
@@ -1618,12 +1618,10 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             }
         }
     }
-    /*
     else if(_buffStartsWith(buff, "+CGDCONT: "))
     {
         uint16_t dataSize = buff->size - _strLitLen("+CGPADDR: ");
     }
-    */
     else if(_buffStartsWith(buff, "+CGPADDR: "))
     {
         uint16_t dataSize = buff->size - _strLitLen("+CGPADDR: ");

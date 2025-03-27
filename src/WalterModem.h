@@ -2872,7 +2872,7 @@ class WalterModem {
         /**
          * @brief this function reads all the active PDP contexts
          */
-        static void _pdpContextRead();
+        static bool _pdpContextRead();
         /**
          * @brief Get a reference to the PDP context with the given id.
          * 
