@@ -1,5 +1,9 @@
 #include <WalterDefines.h>
-
+#if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
+    #if !CONFIG_WALTER_MODEM_ENABLE_OTA || !CONFIG_WALTER_MODEM_ENABLE_MOTA
+        #error Bluecherry cannot be enabled with OTA or MOTA disabled.
+    #endif
+#endif
 #if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
 #pragma region PRIVATE_METHODS
 bool WalterModem::_processBlueCherryEvent(uint8_t *data, uint8_t len)

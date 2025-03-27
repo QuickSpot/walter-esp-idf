@@ -86,6 +86,18 @@ for efficient configuration management."
 #ifndef CONFIG_WALTER_MODEM_ENABLE_COAP
 #define CONFIG_WALTER_MODEM_ENABLE_COAP 1
 #endif
+
+#ifndef CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+#define CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY 1
+#endif
+
+#ifndef CONFIG_WALTER_MODEM_ENABLE_MOTA
+#define CONFIG_WALTER_MODEM_ENABLE_MOTA 1
+#endif
+
+#ifndef CONFIG_WALTER_MODEM_ENABLE_OTA
+#define CONFIG_WALTER_MODEM_ENABLE_OTA 1
+#endif
 #endif
 
 #define CONFIG_INT(name, default_value) CONFIG(name, int, default_value)
@@ -100,17 +112,6 @@ for efficient configuration management."
 #define CONFIG_INT64(name, default_value) CONFIG(name, int64_t, default_value)
 #pragma endregion
 
-#include <condition_variable>
-
-#include <esp_vfs.h>
-#include <esp_system.h>
-#include <esp_vfs_fat.h>
-#include <esp_partition.h>
-#include <spi_flash_mmap.h>
-#include <freertos/semphr.h>
-#include <freertos/FreeRTOS.h>
-#include <freertos/event_groups.h>
-#include <driver/uart.h>
 #pragma region CONFIGURATION_CONSTANTS
 /**
  * @brief The maximum number of items in the task queue.
@@ -351,6 +352,20 @@ CONFIG_UINT8(SPI_SECTORS_PER_BLOCK, 16)
  */
 #define WALTER_MODEM_STP_OPERATION_TRANSFER_BLOCK 0x03
 #pragma endregion
+
+#include <condition_variable>
+
+#if CONFIG_WALTER_MODEM_ENABLE_MOTA || CONFIG_WALTER_MODEM_ENABLE_MOTA
+#include <esp_vfs.h>
+#include <esp_vfs_fat.h>
+#include <esp_partition.h>
+#include <spi_flash_mmap.h>
+#endif
+
+#include <freertos/semphr.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/event_groups.h>
+#include <driver/uart.h>
 #pragma region ENUMS
 /**
  * @brief This enum groups status codes of functions and operational components of the modem.
@@ -2724,6 +2739,8 @@ class WalterModem {
          */
         static inline WalterModemOperator _operator = {};
 
+#pragma region CONTEXTS
+
         /**
          * @brief The PDP context which is currently in use by the library or NULL when no PDP
          * context is in use. In use doesn't mean that the context is activated yet it is just a
@@ -2745,12 +2762,14 @@ class WalterModem {
          */
         static inline WalterModemGNSSFix _GNSSfix = {};
 #endif
-
+#pragma endregion
         /*
          * @brief The current BlueCherry state.
          */
         static inline WalterModemBlueCherryState blueCherry;
 
+#pragma region MOTA
+#if CONFIG_WALTER_MODEM_ENABLE_MOTA
         /*
          * @brief FAT partition mount handle (used for modem firmware upgrade)
          */
@@ -2766,7 +2785,9 @@ class WalterModem {
          * read the raw UART data directly.
          */
         static inline bool _rxHandlerInterrupted = false;
-
+#endif
+#pragma endregion
+        
         /**
          * @brief Array to keep track of external event handlers.
          */
@@ -3129,6 +3150,7 @@ class WalterModem {
         static bool _processBlueCherryEvent(uint8_t *data, uint8_t len);
 
 #pragma region OTA
+#if CONFIG_WALTER_MODEM_ENABLE_OTA
         /**
          * @brief Process OTA init event
          *
@@ -3178,6 +3200,7 @@ class WalterModem {
          * corresponding image.
          */
         static bool _processOtaFinishEvent(void);
+#endif
 #pragma endregion
 
 #pragma region MOTA

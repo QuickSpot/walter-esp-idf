@@ -2779,6 +2779,7 @@ after_processing_logic:
 #pragma endregion
 
 #pragma region OTA
+#if CONFIG_WALTER_MODEM_ENABLE_OTA
 bool WalterModem::_processOtaInitializeEvent(uint8_t *data, uint16_t len)
 {
     if(!blueCherry.otaBuffer || len != sizeof(uint32_t)) {
@@ -2939,9 +2940,11 @@ bool WalterModem::_processOtaFinishEvent(void)
 
     return false;
 }
+#endif
 #pragma endregion
 
 #pragma region MOTA
+#if CONFIG_WALTER_MODEM_ENABLE_MOTA
 bool WalterModem::_motaFormatAndMount(void)
 {
     esp_err_t result;
@@ -3134,6 +3137,7 @@ void WalterModem::offlineMotaUpgrade(uint8_t *otaBuffer)
         }
     }
 }
+#endif
 #pragma endregion
 
 #pragma region TLS
