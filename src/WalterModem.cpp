@@ -898,14 +898,11 @@ WalterModemPDPContext* WalterModem::_pdpContextGet(int id)
         return _pdpCtx;
     }
 
-    for(int i = 0; i < WALTER_MODEM_MAX_PDP_CTXTS; ++i) {
-        if(_pdpCtxSet[i].state != WALTER_MODEM_PDP_CONTEXT_STATE_FREE && _pdpCtxSet[i].id == id) {
-            _pdpCtx = _pdpCtxSet + i;
-            return _pdpCtxSet + i;
-        }
+    if(id >= WALTER_MODEM_MAX_PDP_CTXTS) {
+        return NULL;
     }
 
-    return NULL;
+    return _pdpCtxSet[id];
 }
 
 void WalterModem::_pdpContextRelease(WalterModemPDPContext *ctx)
@@ -1617,10 +1614,6 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
                 cmd->rsp->data.simCardID.euiccid[offset++] = buff->data[i];
             }
         }
-    }
-    else if(_buffStartsWith(buff, "+CGDCONT: "))
-    {
-        uint16_t dataSize = buff->size - _strLitLen("+CGPADDR: ");
     }
     else if(_buffStartsWith(buff, "+CGPADDR: "))
     {
@@ -3392,8 +3385,6 @@ bool WalterModem::begin(uart_port_t uartNo, uint8_t watchdogTimeout)
     if(!configCEREGReports()) {
         return false;
     }
-
-    _pdpContextRead();
     
     _initialized = true;
     return true;
@@ -3910,7 +3901,7 @@ uint8_t WalterModem::durationToActiveTime(
 #pragma endregion
 
 #pragma region PDP_CONTEXT
-bool WalterModem::createPDPContext(
+bool WalterModem::definePDPContext(
     const char *apn,
     WalterModemPDPAuthProtocol authProto,
     const char *authUser,

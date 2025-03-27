@@ -563,11 +563,9 @@ typedef enum {
  * @brief This enumeration represents the different states a PDP context can be in.
  */
 typedef enum {
-    WALTER_MODEM_PDP_CONTEXT_STATE_FREE = 0,
-    WALTER_MODEM_PDP_CONTEXT_STATE_RESERVED = 1,
-    WALTER_MODEM_PDP_CONTEXT_STATE_INACTIVE = 2,
-    WALTER_MODEM_PDP_CONTEXT_STATE_ACTIVE = 3,
-    WALTER_MODEM_PDP_CONTEXT_STATE_ATTACHED = 4
+    WALTER_MODEM_PDP_CONTEXT_STATE_INACTIVE = 0,
+    WALTER_MODEM_PDP_CONTEXT_STATE_ACTIVE = 1,
+    WALTER_MODEM_PDP_CONTEXT_STATE_ATTACHED = 2
 } WalterModemPDPContextState;
 
 /**
@@ -2235,11 +2233,6 @@ typedef struct {
     int id = 1;
 
     /**
-     * @brief The PDP context id in which the socket is created.
-     */
-    uint8_t pdpContextId = 1;
-
-    /**
      * @brief Maximum transmission unit used by the TCP/UDP/IP stack.
      */
     uint16_t mtu = 300;
@@ -2869,10 +2862,6 @@ class WalterModem {
 #pragma endregion
 
 #pragma region PDP_CONTEXT
-        /**
-         * @brief this function reads all the active PDP contexts
-         */
-        static bool _pdpContextRead();
         /**
          * @brief Get a reference to the PDP context with the given id.
          * 
@@ -4614,7 +4603,7 @@ class WalterModem {
          * 
          * @return True on success, false otherwise.
          */
-        static bool createPDPContext(
+        static bool definePDPContext(
             const char *apn = NULL,
             WalterModemPDPAuthProtocol authProto = WALTER_MODEM_PDP_AUTH_PROTO_NONE,
             const char *authUser = NULL,
