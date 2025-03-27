@@ -2228,6 +2228,11 @@ typedef struct {
     WalterModemSocketState state = WALTER_MODEM_SOCKET_STATE_FREE;
 
     /**
+     * @brief PDP context id to use.
+     */
+    int pdpContextId = 1;
+    
+    /**
      * @brief The socket identifier.
      */
     int id = 1;
