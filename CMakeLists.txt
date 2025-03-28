@@ -1,5 +1,7 @@
 set(REQUIRED_COMPONENTS driver)  # driver is always Required
 
+message(STATUS "WalterModem:")
+
 if(CONFIG_WALTER_MODEM_ENABLE_SOCKETS STREQUAL "y")
     message(STATUS "SOCKETS enabled: true")
 else()
