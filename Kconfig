@@ -297,17 +297,18 @@ menu "walter-modem"
         endmenu
    
         menu "Firmware upgrade"
+        if WALTER_MODEM_ENABLE_BLUE_CHERRY
+            comment "Blue cherry has been enabled MOTA & OTA have been forced on!"
+        endif
         config WALTER_MODEM_ENABLE_MOTA
             bool "Enable MOTA functionality (Modem firmware)"
             default y
-            depends on WALTER_MODEM_ENABLE_BLUE_CHERRY
             help
                 Enable Modem firmware upgrade functions.
 
         config WALTER_MODEM_ENABLE_OTA
             bool "Enable OTA functionality (ESP32 firmware)"
             default y
-            depends on WALTER_MODEM_ENABLE_BLUE_CHERRY
             help
                 Enable ESP32 firmware upgrade functions.
         endmenu
