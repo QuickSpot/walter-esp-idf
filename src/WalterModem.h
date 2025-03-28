@@ -752,17 +752,6 @@ typedef enum {
     WALTER_MODEM_EDRX_RESET = 3
 } WalterModemEDRXMode;
 
-#if CONFIG_WALTER_MODEM_ENABLE_HTTP
-/**
- * @brief The state of a http context.
- */
-typedef enum {
-    WALTER_MODEM_HTTP_CONTEXT_STATE_IDLE,
-    WALTER_MODEM_HTTP_CONTEXT_STATE_EXPECT_RING,
-    WALTER_MODEM_HTTP_CONTEXT_STATE_GOT_RING
-} WalterModemHttpContextState;
-#endif
-
 /**
  * @brief The TLS version.
  */
@@ -1050,6 +1039,15 @@ typedef enum {
 
 #pragma region HTTP
 #if CONFIG_WALTER_MODEM_ENABLE_HTTP
+/**
+ * @brief The state of a http context.
+ */
+typedef enum
+{
+    WALTER_MODEM_HTTP_CONTEXT_STATE_IDLE,
+    WALTER_MODEM_HTTP_CONTEXT_STATE_EXPECT_RING,
+    WALTER_MODEM_HTTP_CONTEXT_STATE_GOT_RING
+} WalterModemHttpContextState;
 /**
  * @brief The possible commands for a HTTP query operation.
  */
