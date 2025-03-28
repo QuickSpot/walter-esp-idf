@@ -309,7 +309,8 @@ menu "walter-modem"
                 default y  # Automatically set to true
                 help
                     Enable ESP32 firmware upgrade functions.
-
+        endif
+        
         if !WALTER_MODEM_ENABLE_BLUE_CHERRY
             menu "Firmware upgrade"
             config WALTER_MODEM_ENABLE_MOTA
