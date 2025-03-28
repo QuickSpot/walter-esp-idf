@@ -40,10 +40,11 @@
  *
  * @section DESCRIPTION
  *
- * This file contains the headers of Walter's modem library.
+ * This file contains the headers and common defines of Walter's modem library.
  */
 
 #ifndef WALTER_DEFINES_H
+#define WALTER_DEFINES_H
 #include "WalterModem.h"
 #include <stdint.h>
 #include <stdbool.h>

@@ -1443,6 +1443,7 @@ TickType_t WalterModem::_processQueueCmd(WalterModemCmd *cmd, bool queueError)
     return WALTER_MODEM_CMD_TIMEOUT_TICKS;
 }
 
+#if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
 static void coap_received_from_bluecherry(const WalterModemRsp *rsp, void *args)
 {
     WalterModemBlueCherryState *blueCherry = (WalterModemBlueCherryState*) args;
@@ -1470,6 +1471,7 @@ static void coap_received_from_bluecherry(const WalterModemRsp *rsp, void *args)
             rsp->data.coapResponse.methodRsp == WALTER_MODEM_COAP_SEND_RSP_CODE_CONTINUE;
     }
 }
+#endif
 
 void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
 {
