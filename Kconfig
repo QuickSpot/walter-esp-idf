@@ -112,7 +112,7 @@ menu "walter-modem"
                         help
                             The maximum number of rings that can be pending for the CoAP protocol.
                 endmenu
-                
+
                 config WALTER_MODEM_ENABLE_BLUE_CHERRY
                     bool "Enable Blue cherry functions"
                     default y
@@ -121,8 +121,16 @@ menu "walter-modem"
                 
                 if WALTER_MODEM_ENABLE_BLUE_CHERRY
                     menu "Bluecherry"
-                        comment "nothing here yet"
+                        comment "Mota and OTA functions are force on when bluecherry is enabled"
                     endmenu
+                    config WALTER_MODEM_ENABLE_MOTA
+                        bool
+                        default y
+                
+
+                    config WALTER_MODEM_ENABLE_OTA
+                        bool
+                        default y
                 endif
             endif
 
