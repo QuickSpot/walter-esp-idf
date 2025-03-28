@@ -126,13 +126,18 @@ CONFIG_INT(UART_BUF_SIZE, 128)
 
 
 #pragma region RTC_MEMORY
-//TODO: move this inside the WalterModem class
+#if WALTER_MODEM_ENABLE_MOTA
 struct WalterModemStpRequest stpRequest;
 struct WalterModemStpResponseSessionOpen stpResponseSessionOpen;
 struct WalterModemStpRequestTransferBlockCmd stpRequestTransferBlockCmd;
 struct WalterModemStpResponseTransferBlock stpResponseTransferBlock;
+#endif
+
 RTC_DATA_ATTR WalterModemPDPContext _pdpCtxSetRTC[WALTER_MODEM_MAX_PDP_CTXTS] = {};
+#if WALTER_MODEM_ENABLE_COAP
 RTC_DATA_ATTR WalterModemCoAPContext _coapCtxSetRTC[WALTER_MODEM_MAX_COAP_PROFILES] = {};
+#endif
+
 #if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
 RTC_DATA_ATTR WalterModemBlueCherryState blueCherryRTC = {};
 #endif
@@ -2595,7 +2600,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             #endif
             }
         }
-#endif
+    #endif
     #pragma endregion
 
     #pragma region SOCKETS
