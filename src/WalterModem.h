@@ -2326,11 +2326,12 @@ union WalterModemRspData {
      */
     WalterModemHttpResponse httpResponse;
 #endif
-
+#if CONFIG_WALTER_MODEM_ENABLE_COAP
     /**
      * @brief CoAP response
      */
     WalterModemCoapResponse coapResponse;
+#endif
 #if CONFIG_WALTER_MODEM_ENABLE_MQTT
     /**
      * @brief MQTT response
@@ -2717,10 +2718,12 @@ class WalterModem {
         static inline WalterModemSocket _socketSet[WALTER_MODEM_MAX_SOCKETS] = {};
 #endif
 
+#if CONFIG_WALTER_MODEM_ENABLE_COAP
         /**
          * @brief The set with CoAP contexts.
          */
         static inline WalterModemCoapContext _coapContextSet[WALTER_MODEM_MAX_COAP_PROFILES] = {};
+#endif
 
 #if CONFIG_WALTER_MODEM_ENABLE_HTTP
         /**
@@ -4226,6 +4229,7 @@ class WalterModem {
 #pragma endregion
 
 #pragma region COAP
+#if CONFIG_WALTER_MODEM_ENABLE_COAP
         /**
          * @brief Create a CoAP context.
          * 
@@ -4372,6 +4376,7 @@ class WalterModem {
             uint8_t *targetBuf,
             uint16_t targetBufSize,
             WalterModemRsp *rsp = NULL);
+#endif
 #pragma endregion
 
 #pragma region SOCKETS
