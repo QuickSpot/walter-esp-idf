@@ -135,7 +135,7 @@ struct WalterModemStpResponseTransferBlock stpResponseTransferBlock;
 
 RTC_DATA_ATTR WalterModemPDPContext _pdpCtxSetRTC[WALTER_MODEM_MAX_PDP_CTXTS] = {};
 #if CONFIG_WALTER_MODEM_ENABLE_COAP
-RTC_DATA_ATTR WalterModemCoAPContext _coapCtxSetRTC[WALTER_MODEM_MAX_COAP_PROFILES] = {};
+RTC_DATA_ATTR WalterModemCoapContext _coapCtxSetRTC[WALTER_MODEM_MAX_COAP_PROFILES] = {};
 #endif
 
 #if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
