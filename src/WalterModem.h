@@ -2721,32 +2721,6 @@ class WalterModem {
          */
         static inline WalterModemPDPContext _pdpCtxSet[WALTER_MODEM_MAX_PDP_CTXTS] = {};
 
-#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
-        /**
-         * @brief The set with sockets.
-         */
-        static inline WalterModemSocket _socketSet[WALTER_MODEM_MAX_SOCKETS] = {};
-#endif
-
-#if CONFIG_WALTER_MODEM_ENABLE_COAP
-        /**
-         * @brief The set with CoAP contexts.
-         */
-        static inline WalterModemCoapContext _coapContextSet[WALTER_MODEM_MAX_COAP_PROFILES] = {};
-#endif
-
-#if CONFIG_WALTER_MODEM_ENABLE_HTTP
-        /**
-         * @brief The set with HTTP contexts.
-         */
-        static inline WalterModemHttpContext _httpContextSet[WALTER_MODEM_MAX_HTTP_PROFILES] = {};
-
-        /**
-         * @brief HTTP profile for which we are currently awaiting data.
-         */
-        static inline uint8_t _httpCurrentProfile = 0xff;
-#endif
-
 #if CONFIG_WALTER_MODEM_ENABLE_MQTT
         /**
          * @brief MQTT incoming messages for subscribed topics backlog.
@@ -2834,6 +2808,33 @@ class WalterModem {
          * PDP context.
          */
         static inline WalterModemPDPContext *_pdpCtx = NULL;
+
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+        /**
+         * @brief The set with sockets.
+         */
+        static inline WalterModemSocket _socketSet[WALTER_MODEM_MAX_SOCKETS] = {};
+#endif
+
+#if CONFIG_WALTER_MODEM_ENABLE_COAP
+        /**
+         * @brief The set with CoAP contexts.
+         */
+        static inline WalterModemCoapContext _coapContextSet[WALTER_MODEM_MAX_COAP_PROFILES] = {};
+#endif
+
+#if CONFIG_WALTER_MODEM_ENABLE_HTTP
+        /**
+         * @brief The set with HTTP contexts.
+         */
+        static inline WalterModemHttpContext _httpContextSet[WALTER_MODEM_MAX_HTTP_PROFILES] = {};
+
+        /**
+         * @brief HTTP profile for which we are currently awaiting data.
+         */
+        static inline uint8_t _httpCurrentProfile = 0xff;
+#endif
+
 #if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
         /**
          * @brief The socket which is currently in use by the library or NULL when no socket is in
