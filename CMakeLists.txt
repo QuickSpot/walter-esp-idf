@@ -43,9 +43,10 @@ if(CONFIG_WALTER_MODEM_ENABLE_MOTA  STREQUAL "y" OR CONFIG_WALTER_MODEM_ENABLE_O
     list(APPEND REQUIRED_COMPONENTS fatfs esp_partition app_update spi_flash vfs)
 endif()
 
-# Join list elements with spaces (explode the list)
-string(REPLACE ";" " " EXPLODED_COMPONENTS "${REQUIRED_COMPONENTS}")
-message(STATUS "Required components: ${EXPLODED_COMPONENTS}")
+# Output the components for debugging purposes
+foreach(component IN LISTS REQUIRED_COMPONENTS)
+    message(STATUS "Required component: ${component}")
+endforeach()
 
 idf_component_register(SRCS "src/WalterModem.cpp"
                     "src/proto/WalterBlueCherry.cpp"
