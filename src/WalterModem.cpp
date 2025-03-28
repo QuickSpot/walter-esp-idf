@@ -3306,7 +3306,10 @@ void WalterModem::_sleepPrepare()
     memcpy(_mqttTopicSetRTC, _mqttTopics,
         WALTER_MODEM_MQTT_MAX_TOPICS *sizeof(WalterModemMqttTopic));
 #endif
+
+#if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
     blueCherryRTC = blueCherry;
+#endif
 }
 
 void WalterModem::_sleepWakeup()
@@ -3324,9 +3327,10 @@ void WalterModem::_sleepWakeup()
             _pdpCtx = _pdpCtxSet + i;
         }
     }
-    
 
+#if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
     blueCherry = blueCherryRTC;
+#endif
 }
 
 #pragma endregion
