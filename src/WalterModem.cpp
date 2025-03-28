@@ -2808,7 +2808,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
 #endif
     #pragma endregion
 
-    else if(_buffStartsWithDigit(buff))
+    if(_buffStartsWithDigit(buff))
     {
         if(cmd == NULL) {
             buff->free = true;
@@ -2824,13 +2824,17 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         cmd->rsp->data.imsi[offset++] = '\0';
     }
 
+/* Disable the unused label warning here so compiler is not angry! */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-label"
+
 after_processing_logic:
-    if(cmd == NULL ||
-       cmd->type == WALTER_MODEM_CMD_TYPE_TX ||
-       cmd->state == WALTER_MODEM_CMD_STATE_FREE ||
-       cmd->atRsp == NULL ||
-       cmd->atRspLen > buff->size ||
-       memcmp(cmd->atRsp, buff->data, cmd->atRspLen) != 0)
+    if (cmd == NULL ||
+        cmd->type == WALTER_MODEM_CMD_TYPE_TX ||
+        cmd->state == WALTER_MODEM_CMD_STATE_FREE ||
+        cmd->atRsp == NULL ||
+        cmd->atRspLen > buff->size ||
+        memcmp(cmd->atRsp, buff->data, cmd->atRspLen) != 0)
     {
         buff->free = true;
         return;
@@ -2838,6 +2842,8 @@ after_processing_logic:
 
     _finishQueueCmd(cmd, result);
     buff->free = true;
+
+#pragma GCC diagnostic pop
 }
 
 #pragma endregion
@@ -3524,9 +3530,12 @@ bool WalterModem::reset(WalterModemRsp *rsp, walterModemCb cb, void *args)
     }
 #endif
 
+#if CONFIG_WALTER_MODEM_ENABLE_COAP
     for(int i = 0; i < WALTER_MODEM_MAX_COAP_PROFILES; ++i) {
-      _coapContextSet[i] = {};
+        _coapContextSet[i] = {};
     }
+#endif
+
 #if CONFIG_WALTER_MODEM_ENABLE_HTTP
     _httpCurrentProfile = 0xff;
 
