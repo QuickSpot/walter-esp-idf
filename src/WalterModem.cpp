@@ -2829,7 +2829,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
     }
 
 /* Disable the unused label here so compiler is not angry! */
-#if CONFIG_WALTER_MODEM_MQTT || CONFIG_WALTER_MODEM_HTTP || CONFIG_WALTER_MODEM_COAP
+#if CONFIG_WALTER_MODEM_ENABLE_MQTT || CONFIG_WALTER_MODEM_ENABLE_HTTP || CONFIG_WALTER_MODEM_ENABLE_COAP
 after_processing_logic:
 #endif
     if (cmd == NULL ||
@@ -2850,7 +2850,7 @@ after_processing_logic:
 #pragma endregion
 
 #pragma region OTA
-#if CONFIG_WALTER_MODEM_ENABLE_OTA
+#if CONFIG_WALTER_MODEM_ENABLE_OTA && CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
 bool WalterModem::_processOtaInitializeEvent(uint8_t *data, uint16_t len)
 {
     if(!blueCherry.otaBuffer || len != sizeof(uint32_t)) {
@@ -3014,7 +3014,7 @@ bool WalterModem::_processOtaFinishEvent(void)
 #endif
 #pragma endregion
 
-#pragma region MOTA
+#pragma region MOTA_BLUE_CHERRY
 #if CONFIG_WALTER_MODEM_ENABLE_MOTA
 bool WalterModem::_motaFormatAndMount(void)
 {
@@ -3090,6 +3090,7 @@ bool WalterModem::_processMotaInitializeEvent(uint8_t *data, uint16_t len)
     return false;
 }
 
+#if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
 bool WalterModem::_processMotaChunkEvent(uint8_t *data, uint16_t len)
 {
     if(!blueCherry.otaSize || len == 0 || blueCherry.otaProgress + len > blueCherry.otaSize) {
@@ -3171,7 +3172,7 @@ bool WalterModem::_processMotaFinishEvent(void)
         return false;
     }
 }
-
+#endif
 void WalterModem::offlineMotaUpgrade(uint8_t *otaBuffer)
 {
     if(_wl_handle == WL_INVALID_HANDLE) {

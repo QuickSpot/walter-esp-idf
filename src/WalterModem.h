@@ -3239,7 +3239,7 @@ class WalterModem {
 #endif
 
 #pragma region OTA
-#if CONFIG_WALTER_MODEM_ENABLE_OTA
+#if CONFIG_WALTER_MODEM_ENABLE_OTA && CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
         /**
          * @brief Process OTA init event
          *
@@ -3294,6 +3294,7 @@ class WalterModem {
 
 #pragma region MOTA
 #if CONFIG_WALTER_MODEM_ENABLE_MOTA
+
         /**
          * @brief Format and mount the 'ffat' partition in order to receive a modem firmware update. 
          * 
@@ -3305,6 +3306,7 @@ class WalterModem {
          */
         static bool _motaFormatAndMount(void);
 
+#if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
         /**
          * @brief Initialze a modem firmware update.
          * 
@@ -3340,6 +3342,7 @@ class WalterModem {
          * @return True on success, false on error.
          */
         static bool _processMotaFinishEvent(void);
+#endif
 #endif
 #pragma endregion
         

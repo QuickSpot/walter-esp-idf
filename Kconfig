@@ -314,6 +314,7 @@ menu "walter-modem"
 
         config WALTER_MODEM_ENABLE_OTA
             bool "Enable OTA functionality (ESP32 firmware)"
+            depends on WALTER_MODEM_ENABLE_BLUE_CHERRY
             default y
             help
                 Enable ESP32 firmware upgrade functions.
