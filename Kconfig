@@ -311,7 +311,5 @@ menu "walter-modem"
             help
                 Enable ESP32 firmware upgrade functions.
         endmenu
-        endif
-
     endif
 endmenu
