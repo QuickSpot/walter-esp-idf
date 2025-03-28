@@ -112,25 +112,21 @@ menu "walter-modem"
                         help
                             The maximum number of rings that can be pending for the CoAP protocol.
                 endmenu
-
-                config WALTER_MODEM_ENABLE_BLUECHERRY
-                    bool "Enable bluecherry"
+                
+                config WALTER_MODEM_ENABLE_BLUE_CHERRY
+                    bool "Enable Blue cherry functions"
                     default y
                     help
-                        Enable bluecherry functions
+                        Disable bluecherry for walterModem
+                
+                if WALTER_MODEM_ENABLE_BLUE_CHERRY
+                    menu "Bluecherry"
+                        comment "nothing here yet"
+                    endmenu
+                endif
             endif
 
-            config WALTER_MODEM_ENABLE_BLUE_CHERRY
-                bool "Enable Blue cherry functions"
-                default y
-                help
-                    Disable bluecherry for walterModem
-            
-            if WALTER_MODEM_ENABLE_BLUE_CHERRY
-                menu "Bluecherry"
-                    comment "nothing here yet"
-                endmenu
-            endif
+
         endmenu
         menu "Pinout"
             if WALTER_MODEM_KCONFIG
@@ -297,20 +293,6 @@ menu "walter-modem"
                 help
                     The maximum number of TLS profiles that the library can support.
         endmenu
-        if WALTER_MODEM_ENABLE_BLUE_CHERRY
-            config WALTER_MODEM_ENABLE_MOTA
-                bool
-                default y  # Automatically set to true
-                help
-                    Enable Modem firmware upgrade functions.
-
-            config WALTER_MODEM_ENABLE_OTA
-                bool
-                default y  # Automatically set to true
-                help
-                    Enable ESP32 firmware upgrade functions.
-        endif
-        
         if !WALTER_MODEM_ENABLE_BLUE_CHERRY
             menu "Firmware upgrade"
             config WALTER_MODEM_ENABLE_MOTA

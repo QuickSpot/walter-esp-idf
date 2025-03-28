@@ -1196,7 +1196,7 @@ void WalterModem::_handleRxData(void *params)
 
     for(;;) {
         tickleWatchdog();
-        
+
 #if CONFI_WALTER_MODEM_ENABLE_MOTA
         if(_rxHandlerInterrupted) {
             vTaskDelay(pdMS_TO_TICKS(1000));
@@ -2003,7 +2003,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
 
     #pragma region GNSS
     #if CONFIG_WALTER_MODEM_ENABLE_GNSS
-    else if(_buffStartsWith(buff, "+LPGNSSFIXREADY: "))
+    if(_buffStartsWith(buff, "+LPGNSSFIXREADY: "))
     {
         uint16_t dataSize = buff->size - _strLitLen("+LPGNSSFIXREADY: ");
         uint8_t *data = buff->data + _strLitLen("+LPGNSSFIXREADY: ");
@@ -2195,7 +2195,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
     
     #pragma region HTTP
     #if CONFIG_WALTER_MODEM_ENABLE_HTTP
-        else if(_buffStartsWith(buff, "<<<"))   
+        if(_buffStartsWith(buff, "<<<"))   
         {
             /* <<< is start of SQNHTTPRCV answer */
             if(_httpCurrentProfile >= WALTER_MODEM_MAX_HTTP_PROFILES ||
@@ -2340,7 +2340,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
 
     #pragma region COAP
     #if CONFIG_WALTER_MODEM_ENABLE_COAP
-        else if (_buffStartsWith(buff, "+SQNCOAPRCV: "))
+        if (_buffStartsWith(buff, "+SQNCOAPRCV: "))
         {
             const char *rspStr = _buffStr(buff);
             char *payload = strchr(rspStr, '\r');
@@ -2608,7 +2608,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
 
     #pragma region SOCKETS
 #if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
-        else if(_buffStartsWith(buff, "+SQNSH: "))
+        if(_buffStartsWith(buff, "+SQNSH: "))
         {
             const char *rspStr = _buffStr(buff);
             int sockId = atoi(rspStr + _strLitLen("+SQNSH: "));
@@ -2624,7 +2624,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
 
     #pragma region MQTT
 #if CONFIG_WALTER_MODEM_ENABLE_MQTT
-    else if(_buffStartsWith(buff, "+SQNSMQTTONCONNECT:0,"))
+    if(_buffStartsWith(buff, "+SQNSMQTTONCONNECT:0,"))
     {
         const char *rspStr = _buffStr(buff);
         int status = atoi(rspStr + _strLitLen("+SQNSMQTTONCONNECT:0,"));
