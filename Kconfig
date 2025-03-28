@@ -116,6 +116,8 @@ menu "walter-modem"
                 config WALTER_MODEM_ENABLE_BLUE_CHERRY
                     bool "Enable Blue cherry functions"
                     default y
+                    select WALTER_MODEM_ENABLE_MOTA
+                    select WALTER_MODEM_ENABLE_OTA
                     help
                         Disable bluecherry for walterModem
                 
@@ -123,14 +125,6 @@ menu "walter-modem"
                     menu "Bluecherry"
                         comment "Mota and OTA functions are force on when bluecherry is enabled"
                     endmenu
-                    config WALTER_MODEM_ENABLE_MOTA
-                        bool
-                        default y
-                
-
-                    config WALTER_MODEM_ENABLE_OTA
-                        bool
-                        default y
                 endif
             endif
 
@@ -301,20 +295,22 @@ menu "walter-modem"
                 help
                     The maximum number of TLS profiles that the library can support.
         endmenu
-        if !WALTER_MODEM_ENABLE_BLUE_CHERRY
-            menu "Firmware upgrade"
-            config WALTER_MODEM_ENABLE_MOTA
-                bool "Enable MOTA functionality (Modem firmware)"
-                default y
-                help
-                    Enable Modem firmware upgrade functions.
+   
+        menu "Firmware upgrade"
+        config WALTER_MODEM_ENABLE_MOTA
+            bool "Enable MOTA functionality (Modem firmware)"
+            default y
+            depends on WALTER_MODEM_ENABLE_BLUE_CHERRY
+            help
+                Enable Modem firmware upgrade functions.
 
-            config WALTER_MODEM_ENABLE_OTA
-                bool "Enable OTA functionality (ESP32 firmware)"
-                default y
-                help
-                    Enable ESP32 firmware upgrade functions.
-            endmenu
+        config WALTER_MODEM_ENABLE_OTA
+            bool "Enable OTA functionality (ESP32 firmware)"
+            default y
+            depends on WALTER_MODEM_ENABLE_BLUE_CHERRY
+            help
+                Enable ESP32 firmware upgrade functions.
+        endmenu
         endif
 
     endif
