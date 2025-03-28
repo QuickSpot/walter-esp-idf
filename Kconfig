@@ -123,7 +123,13 @@ menu "walter-modem"
                 
                 if WALTER_MODEM_ENABLE_BLUE_CHERRY
                     menu "Bluecherry"
-                        comment "Mota and OTA functions are force on when bluecherry is enabled"
+                        comment "Mota and OTA functions are forced on when bluecherry is enabled!"
+                        
+                        config WALTER_MODEM_BLUE_CHERRY_HOSTNAME
+                            string "blue cherry server hostname"
+                            default coap.bluecherry.io
+                            help
+                                The hostname to use for bluecherry.
                     endmenu
                 endif
             endif

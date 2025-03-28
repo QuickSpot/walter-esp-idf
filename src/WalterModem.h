@@ -230,6 +230,14 @@ CONFIG_UINT8(WALTER_MODEM_MAX_TLS_PROFILES, 6)
  */
 CONFIG_UINT8(WALTER_MODEM_MAX_SOCKETS, 6)
 #endif
+
+#if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
+/**
+ * @brief The default hostname for Bluecherry.
+ */
+CONFIG(WALTER_MODEM_BLUE_CHERRY_HOSTNAME, const char *, "coap.bluecherry.io")
+#endif
+
 /**
  * @brief The maximum number of characters of an operator name.
  */
@@ -1712,7 +1720,7 @@ typedef struct
     /**
      * @brief The BlueCherry cloud hostname.
      */
-    char serverName[WALTER_MODEM_HOSTNAME_BUF_SIZE] = "coap.bluecherry.io";
+    char serverName[WALTER_MODEM_HOSTNAME_BUF_SIZE] = WALTER_MODEM_BLUE_CHERRY_HOSTNAME;
 
     /**
      * @brief The BlueCherry cloud CoAP port.
