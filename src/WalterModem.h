@@ -1718,11 +1718,6 @@ typedef struct
     uint8_t tlsProfileId;
 
     /**
-     * @brief The BlueCherry cloud hostname.
-     */
-    char serverName[WALTER_MODEM_HOSTNAME_BUF_SIZE] = WALTER_MODEM_BLUE_CHERRY_HOSTNAME;
-
-    /**
      * @brief The BlueCherry cloud CoAP port.
      */
     uint16_t port = 5684;

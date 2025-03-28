@@ -205,7 +205,7 @@ bool WalterModem::blueCherrySync(WalterModemRsp *rsp)
         rsp->data.blueCherry.messageCount = 0;
     }
 
-    if(!coapCreateContext(0, blueCherry.serverName, blueCherry.port, blueCherry.tlsProfileId)) {
+    if (!coapCreateContext(0, WALTER_MODEM_BLUE_CHERRY_HOSTNAME, blueCherry.port, blueCherry.tlsProfileId)) {
         return false;
     }
 
