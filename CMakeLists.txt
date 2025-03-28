@@ -7,6 +7,7 @@ endif()
 message(STATUS "Required components: ${REQUIRED_COMPONENTS}")
 
 idf_component_register(SRCS "src/WalterModem.cpp"
+                    "src/proto/WalterBlueCherry.cpp"
                     "src/proto/WalterGNSS.cpp"
                     "src/proto/WalterHTTP.cpp"
                     "src/proto/WalterMQTT.cpp"
