@@ -2507,6 +2507,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
                 uint8_t reqRspCodeRaw = atoi(reqRspCodeRawStr);
                 uint16_t length = atoi(lengthStr);
 
+#if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
                 if(profileId == 0) {
                     /* profile id 0 is the internal BlueCherry cloud coap profile */
                     if(blueCherry.lastAckedMessageId != messageId) {
@@ -2522,6 +2523,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
                             blueCherry.messageIn, WALTER_MODEM_MAX_INCOMING_MESSAGE_LEN, stringsBuffer);
                     }
                 } else {
+#endif
                     /* store ring in ring list for this coap context */
                     uint8_t ringIdx;
                     for(ringIdx = 0; ringIdx < WALTER_MODEM_COAP_MAX_PENDING_RINGS; ringIdx++) {
@@ -2548,7 +2550,9 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
                             (WalterModemCoapSendMethodRsp ) reqRspCodeRaw;
                         _coapContextSet[profileId].rings[ringIdx].length = length;
                     }
-                }
+            #if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
+                } // DO NOT REMOVE IS PART OF ABOVE IF STATEMENT
+            #endif
             }
         }
         
@@ -2581,19 +2585,21 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
                 /* Clear all pending rings on connection close */
                 memset(_coapContextSet[profileId].rings, 0, sizeof(_coapContextSet[profileId].rings));
 
+            #if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
                 if(profileId == 0) {
                     /* our own coap profile for BlueCherry was just closed */
                     if(blueCherry.status == WALTER_MODEM_BLUECHERRY_STATUS_AWAITING_RESPONSE) {
                         blueCherry.status = WALTER_MODEM_BLUECHERRY_STATUS_TIMED_OUT;
                     }
                 }
+            #endif
             }
         }
-    #endif
+#endif
     #pragma endregion
 
     #pragma region SOCKETS
-    #if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
         else if(_buffStartsWith(buff, "+SQNSH: "))
         {
             const char *rspStr = _buffStr(buff);
@@ -2605,11 +2611,11 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
                 _socketRelease(sock);
             }
         }
-    #endif
+#endif
     #pragma endregion
 
     #pragma region MQTT
-    #if CONFIG_WALTER_MODEM_ENABLE_MQTT
+#if CONFIG_WALTER_MODEM_ENABLE_MQTT
     else if(_buffStartsWith(buff, "+SQNSMQTTONCONNECT:0,"))
     {
         const char *rspStr = _buffStr(buff);
@@ -2791,7 +2797,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             memcpy(cmd->data, rspStr + 2, cmd->dataSize);
         }
     }
-    #endif
+#endif
     #pragma endregion
 
     else if(_buffStartsWithDigit(buff))
@@ -3302,8 +3308,11 @@ void WalterModem::_dispatchEvent(const char *buff, size_t len)
 void WalterModem::_sleepPrepare()
 {
     memcpy(_pdpCtxSetRTC, _pdpCtxSet, WALTER_MODEM_MAX_PDP_CTXTS * sizeof(WalterModemPDPContext));
+#if CONFIG_WALTER_MODEM_ENABLE_COAP
     memcpy(_coapCtxSetRTC, _coapContextSet,
         WALTER_MODEM_MAX_COAP_PROFILES * sizeof(WalterModemCoapContext));
+#endif
+
 #if CONFIG_WALTER_MODEM_ENABLE_MQTT
     memcpy(_mqttTopicSetRTC, _mqttTopics,
         WALTER_MODEM_MQTT_MAX_TOPICS *sizeof(WalterModemMqttTopic));
@@ -3317,8 +3326,12 @@ void WalterModem::_sleepPrepare()
 void WalterModem::_sleepWakeup()
 {
     memcpy(_pdpCtxSet, _pdpCtxSetRTC, WALTER_MODEM_MAX_PDP_CTXTS * sizeof(WalterModemPDPContext));
+
+#if CONFIG_WALTER_MODEM_ENABLE_COAP
     memcpy(_coapContextSet, _coapCtxSetRTC,
         WALTER_MODEM_MAX_COAP_PROFILES * sizeof(WalterModemCoapContext));
+#endif
+
 #if CONFIG_WALTER_MODEM_ENABLE_MQTT
     memcpy(_mqttTopics, _mqttTopicSetRTC,
         WALTER_MODEM_MQTT_MAX_TOPICS * sizeof(WalterModemMqttTopic));
