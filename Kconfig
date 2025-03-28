@@ -297,34 +297,34 @@ menu "walter-modem"
                 help
                     The maximum number of TLS profiles that the library can support.
         endmenu
-       if WALTER_MODEM_ENABLE_BLUE_CHERRY
-    config WALTER_MODEM_ENABLE_MOTA
-        bool
-        default y  # Automatically set to true
-        help
-            Enable Modem firmware upgrade functions.
-
-    config WALTER_MODEM_ENABLE_OTA
-        bool
-        default y  # Automatically set to true
-        help
-            Enable ESP32 firmware upgrade functions.
-
-else
-    menu "Firmware upgrade"
+    if WALTER_MODEM_ENABLE_BLUE_CHERRY
         config WALTER_MODEM_ENABLE_MOTA
-            bool "Enable MOTA functionality (Modem firmware)"
-            default y
+            bool
+            default y  # Automatically set to true
             help
                 Enable Modem firmware upgrade functions.
 
         config WALTER_MODEM_ENABLE_OTA
-            bool "Enable OTA functionality (ESP32 firmware)"
-            default y
+            bool
+            default y  # Automatically set to true
             help
                 Enable ESP32 firmware upgrade functions.
-    endmenu
-endif
+
+        else
+            menu "Firmware upgrade"
+            config WALTER_MODEM_ENABLE_MOTA
+                bool "Enable MOTA functionality (Modem firmware)"
+                default y
+                help
+                    Enable Modem firmware upgrade functions.
+
+            config WALTER_MODEM_ENABLE_OTA
+                bool "Enable OTA functionality (ESP32 firmware)"
+                default y
+                help
+                    Enable ESP32 firmware upgrade functions.
+            endmenu
+        endif
 
     endif
 endmenu

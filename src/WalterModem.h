@@ -3221,6 +3221,7 @@ class WalterModem {
 #pragma endregion
 
 #pragma region MOTA
+#if CONFIG_WALTER_MODEM_ENABLE_MOTA
         /**
          * @brief Format and mount the 'ffat' partition in order to receive a modem firmware update. 
          * 
@@ -3267,6 +3268,7 @@ class WalterModem {
          * @return True on success, false on error.
          */
         static bool _processMotaFinishEvent(void);
+#endif
 #pragma endregion
         
 #pragma region TLS
