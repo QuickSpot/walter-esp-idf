@@ -52,13 +52,13 @@
 #include <esp_log.h>
 #include <esp_sleep.h>
 #include <esp_system.h>
-#if WALTER_MODEM_ENABLE_MOTA || WALTER_MODEM_ENABLE_OTA
+#if CONFIG_WALTER_MODEM_ENABLE_MOTA || CONFIG_WALTER_MODEM_ENABLE_OTA
 #include <esp_ota_ops.h>
 #endif
 #include <driver/gpio.h>
 #include <driver/uart.h>
 #include <esp_task_wdt.h>
-#if WALTER_MODEM_ENABLE_MOTA || WALTER_MODEM_ENABLE_OTA
+#if CONFIG_WALTER_MODEM_ENABLE_MOTA || CONFIG_WALTER_MODEM_ENABLE_OTA
 #include <esp_partition.h>
 #include <esp_image_format.h>
 #endif
@@ -126,7 +126,7 @@ CONFIG_INT(UART_BUF_SIZE, 128)
 
 
 #pragma region RTC_MEMORY
-#if WALTER_MODEM_ENABLE_MOTA
+#if CONFIG_WALTER_MODEM_ENABLE_MOTA
 struct WalterModemStpRequest stpRequest;
 struct WalterModemStpResponseSessionOpen stpResponseSessionOpen;
 struct WalterModemStpRequestTransferBlockCmd stpRequestTransferBlockCmd;
@@ -134,7 +134,7 @@ struct WalterModemStpResponseTransferBlock stpResponseTransferBlock;
 #endif
 
 RTC_DATA_ATTR WalterModemPDPContext _pdpCtxSetRTC[WALTER_MODEM_MAX_PDP_CTXTS] = {};
-#if WALTER_MODEM_ENABLE_COAP
+#if CONFIG_WALTER_MODEM_ENABLE_COAP
 RTC_DATA_ATTR WalterModemCoAPContext _coapCtxSetRTC[WALTER_MODEM_MAX_COAP_PROFILES] = {};
 #endif
 
