@@ -202,10 +202,17 @@ CONFIG_UINT8(WALTER_MODEM_PDP_AUTH_PASS_MAX_SIZE, 63)
  */
 CONFIG_UINT8(WALTER_MODEM_MAX_PDP_CTXTS, 8)
 
+#if CONFIG_WALTER_MODEM_ENABLE_COAP
 /**
  * @brief The maximum number of CoAP profiles that the library can support.
  */
 CONFIG_UINT8(WALTER_MODEM_MAX_COAP_PROFILES, 3)
+/**
+ * @brief The maximum number of rings that can be pending for the CoAP protocol.
+ */
+CONFIG_UINT8(WALTER_MODEM_COAP_MAX_PENDING_RINGS, 8)
+
+#endif
 
 #if CONFIG_WALTER_MODEM_ENABLE_HTTP
 /**
@@ -281,11 +288,6 @@ CONFIG_UINT8(WALTER_MODEM_MQTT_MIN_PREF_KEEP_ALIVE, 20)
  */
 CONFIG_UINT8(WALTER_MODEM_MQTT_MAX_TOPICS, 4)
 #endif
-
-/**
- * @brief The maximum number of rings that can be pending for the CoAP protocol.
- */
-CONFIG_UINT8(WALTER_MODEM_COAP_MAX_PENDING_RINGS, 8)
 
 /**
  * @brief The maximum size of an incoming protocol message payload.
@@ -2295,10 +2297,12 @@ union WalterModemRspData {
      */
     int socketId;
 
+#if CONFIG_WALTER_MODEM_ENABLE_GNSS
     /**
      * @brief The GNSS assistance data status.
      */
     WalterModemGNSSAssistance gnssAssistance;
+#endif
 
     /**
      * @brief Unix timestamp of the current time and date in the modem.
