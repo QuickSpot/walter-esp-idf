@@ -3552,7 +3552,7 @@ class WalterModem {
          */
         static bool begin(uart_port_t uartNo, uint8_t watchdogTimeout = 0);
 #endif
-        #pragma endregion
+#pragma endregion
         
 #pragma region GENERAL
         /**
@@ -3749,8 +3749,42 @@ class WalterModem {
             WalterModemRsp *rsp = NULL,
             walterModemCb cb = NULL,
             void *args = NULL);
+
+        /**
+         * @brief Configure a TLS profile.
+         *
+         * This function should be called once in an initializer sketch that prepares the modem for
+         * its intended use on this Walter. Configure a set of TLS profiles within the modem, with
+         * optional client auth certificates, validation level (none/url/ca/url and ca) and TLS
+         * version. Later HTTP/MQTT/CoAP/BlueCherry/Socket sessions can then use these preconfigured
+         * profile ids.
+         *
+         * @param profileId Security profile id (1-6)
+         * @param tlsValid TLS validation level: nothing, URL, CA + period or all
+         * @param tlsVersion TLS version
+         * @param caCertificateId CA certificate, 0-19 or 0xff to specify none
+         * @param clientCertificateId Client TLS certificate index,0-19 or 0xff to specify none
+         * @param clientPrivKeyId Client TLS private key index, 0-19 or 0xff to specify none
+         * @param rsp Optional modem response structure to save the result in.
+         * @param cb Optional callback function, if set this function will not block.
+         * @param args Optional argument to pass to the callback.
+         *
+         * @return True on success, false otherwise.
+         */
+        static bool tlsConfigProfile(
+            uint8_t profileId,
+            WalterModemTlsValidation tlsValid = WALTER_MODEM_TLS_VALIDATION_NONE,
+            WalterModemTlsVersion tlsVersion = WALTER_MODEM_TLS_VERSION_12,
+            uint8_t caCertificateId = 0xff,
+            uint8_t clientCertificateId = 0xff,
+            uint8_t clientPrivKeyId = 0xff,
+            WalterModemRsp *rsp = NULL,
+            walterModemCb cb = NULL,
+            void *args = NULL);
 #pragma endregion
 
+/* protocol api functions: SOCKET, HTTP, MQTT, COAP, BLUECHERRY */
+#pragma region PROTO
 #pragma region MQTT
 #if CONFIG_WALTER_MODEM_ENABLE_MQTT
         /**
@@ -3883,37 +3917,6 @@ class WalterModem {
             WalterModemRsp *rsp = NULL);
 #endif
 #pragma endregion
-        /**
-         * @brief Configure a TLS profile.
-         *
-         * This function should be called once in an initializer sketch that prepares the modem for
-         * its intended use on this Walter. Configure a set of TLS profiles within the modem, with
-         * optional client auth certificates, validation level (none/url/ca/url and ca) and TLS
-         * version. Later HTTP/MQTT/CoAP/BlueCherry/Socket sessions can then use these preconfigured
-         * profile ids.
-         *
-         * @param profileId Security profile id (1-6)
-         * @param tlsValid TLS validation level: nothing, URL, CA + period or all
-         * @param tlsVersion TLS version
-         * @param caCertificateId CA certificate, 0-19 or 0xff to specify none
-         * @param clientCertificateId Client TLS certificate index,0-19 or 0xff to specify none
-         * @param clientPrivKeyId Client TLS private key index, 0-19 or 0xff to specify none
-         * @param rsp Optional modem response structure to save the result in.
-         * @param cb Optional callback function, if set this function will not block.
-         * @param args Optional argument to pass to the callback.
-         *
-         * @return True on success, false otherwise.
-         */
-        static bool tlsConfigProfile(
-            uint8_t profileId,
-            WalterModemTlsValidation tlsValid = WALTER_MODEM_TLS_VALIDATION_NONE,
-            WalterModemTlsVersion tlsVersion = WALTER_MODEM_TLS_VERSION_12,
-            uint8_t caCertificateId = 0xff,
-            uint8_t clientCertificateId = 0xff,
-            uint8_t clientPrivKeyId = 0xff,
-            WalterModemRsp *rsp = NULL,
-            walterModemCb cb = NULL,
-            void *args = NULL);
 
 #pragma region HTTP
 #if CONFIG_WALTER_MODEM_ENABLE_HTTP
@@ -4367,6 +4370,240 @@ class WalterModem {
             WalterModemRsp *rsp = NULL);
 #pragma endregion
 
+#pragma region SOCKETS
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+        /**
+         * @brief Create a new socket in a certain PDP context.
+         *
+         * This function will create a new socket. After socket creation one can set additional
+         * socket settings and use the socket for communication.
+         *
+         * @param rsp Optional modem response structure to save the result in.
+         * @param cb Optional callback function, if set this function will not block.
+         * @param args Optional argument to pass to the callback.
+         * @param pdpCtxId The PDP context id or -1 to re-use the last one.
+         * @param mtu The maximum transmission unit used by the socket.
+         * @param exchangeTimeout The maximum number of seconds this socket can be inactive.
+         * @param connTimeout The maximum number of seconds this socket can try to connect.
+         * @param sendDelayMs The number of milliseconds send delay.
+         *
+         * @return True on success, false otherwise.
+         */
+        static bool createSocket(
+            WalterModemRsp *rsp = NULL,
+            walterModemCb cb = NULL,
+            void *args = NULL,
+            int pdpCtxId = -1,
+            uint16_t mtu = 300,
+            uint16_t exchangeTimeout = 90,
+            uint16_t connTimeout = 60,
+            uint16_t sendDelayMs = 5000);
+
+        /**
+         * @brief Configure a socket.
+         *
+         * This function configures a newly created socket.
+         *
+         * @param rsp Optional modem response structure to save the result in.
+         * @param cb Optional callback function, if set this function will not block.
+         * @param args Optional argument to pass to the callback.
+         * @param socketId The id of the socket to connect or -1 to re-use the last one.
+         *
+         * @return True on success, false otherwise.
+         */
+        static bool configSocket(
+            WalterModemRsp *rsp = NULL,
+            walterModemCb cb = NULL,
+            void *args = NULL,
+            int socketId = -1);
+
+        /**
+         * @brief Connect a socket after which data can be exchanged.
+         *
+         * This function will connect a socket to a remote host. When the connection was successful
+         * data can be exchanged.
+         *
+         * @param remoteHost The remote IPv4/IPv6 or hostname to connect to.
+         * @param remotePort The remote port to connect on.
+         * @param localPort The local port in case of an UDP socket.
+         * @param rsp Optional modem response structure to save the result in.
+         * @param cb Optional callback function, if set this function will not block.
+         * @param args Optional argument to pass to the callback.
+         * @param protocol The protocol to use, UDP by default.
+         * @param acceptAnyRemote How to accept remote UDP packets.
+         * @param socketId The id of the socket to connect or -1 to re-use the last one.
+         *
+         * @return True on success, false otherwise.
+         */
+        static bool connectSocket(
+            const char *remoteHost,
+            uint16_t remotePort,
+            uint16_t localPort = 0,
+            WalterModemRsp *rsp = NULL,
+            walterModemCb cb = NULL,
+            void *args = NULL,
+            WalterModemSocketProto protocol = WALTER_MODEM_SOCKET_PROTO_UDP,
+            WalterModemSocketAcceptAnyRemote acceptAnyRemote =
+                WALTER_MODEM_ACCEPT_ANY_REMOTE_DISABLED,
+            int socketId = -1);
+
+        /**
+         * @brief Close a socket.
+         *
+         * This function closes a socket. Sockets can only be closed when they are suspended, active
+         * socket connections cannot be closed.
+         *
+         * @param rsp Optional modem response structure to save the result in.
+         * @param cb Optional callback function, if set this function will not block.
+         * @param args Optional argument to pass to the callback.
+         * @param socketId The id of the socket to close or -1 to re-use the last one.
+         *
+         * @return True on success, false otherwise.
+         */
+        static bool closeSocket(
+            WalterModemRsp *rsp = NULL,
+            walterModemCb cb = NULL,
+            void *args = NULL,
+            int socketId = -1);
+
+        /**
+         * @brief Send data over a socket.
+         *
+         * This function will send data over a socket. The data buffer cannot be freed until the
+         * send response is received (sync or async). The maximum size of the data buffer is
+         * 1500 bytes.
+         *
+         * @param data The data to send.
+         * @param dataSize The number of bytes to transmit.
+         * @param rsp Optional modem response structure to save the result in.
+         * @param cb Optional callback function, if set this function will not block.
+         * @param args Optional argument to pass to the callback.
+         * @param rai The release assistance information.
+         * @param socketId The id of the socket to close or -1 to re-use the last one.
+         *
+         * @return True on success, false otherwise.
+         */
+        static bool socketSend(
+            uint8_t *data,
+            uint16_t dataSize,
+            WalterModemRsp *rsp = NULL,
+            walterModemCb cb = NULL,
+            void *args = NULL,
+            WalterModemRAI rai = WALTER_MODEM_RAI_NO_INFO,
+            int socketId = -1);
+
+        /**
+         * @brief Send a string over a socket.
+         *
+         * This function will send a string over a socket. The string cannot be freed until the send
+         * response is received (sync or async). The maximum size of the string, not including the
+         * 0-terminator, is 1500 bytes.
+         *
+         * @param str A zero-terminated string.
+         * @param rsp Optional modem response structure to save the result in.
+         * @param cb Optional callback function, if set this function will not block.
+         * @param args Optional argument to pass to the callback.
+         * @param rai The release assistance information.
+         * @param socketId The id of the socket to close or -1 to re-use the last one.
+         *
+         * @return True on success, false otherwise.
+         */
+        static bool socketSend(
+            char *str,
+            WalterModemRsp *rsp = NULL,
+            walterModemCb cb = NULL,
+            void *args = NULL,
+            WalterModemRAI rai = WALTER_MODEM_RAI_NO_INFO,
+            int socketId = -1);
+#endif
+#pragma endregion
+
+#pragma region GNSS
+#if CONFIG_WALTER_MODEM_ENABLE_GNSS
+        /**
+         * @brief Configure Walter's GNSS receiver.
+         *
+         * This function will configure the GNSS receiver. The settings are persistent over reboots
+         * but it could be that they need to be set again after a modem firmware upgrade. Inbetween
+         * fixes this function could be used to change the sensitivity mode. It is recommended to
+         * run this function at least once before GNSS is used.
+         *
+         * @param sensMode The sensitivity mode.
+         * @param acqMode The acquisition mode.
+         * @param locMode The GNSS location mode.
+         * @param rsp Optional modem response structure to save the result in.
+         * @param cb Optional callback function, if set this function will not block.
+         * @param args Optional argument to pass to the callback.
+         *
+         * @return True on success, false on error.
+         */
+        static bool configGNSS(
+            WalterModemGNSSSensMode sensMode = WALTER_MODEM_GNSS_SENS_MODE_HIGH,
+            WalterModemGNSSAcqMode acqMode = WALTER_MODEM_GNSS_ACQ_MODE_COLD_WARM_START,
+            WalterModemGNSSLocMode locMode = WALTER_MODEM_GNSS_LOC_MODE_ON_DEVICE_LOCATION,
+            WalterModemRsp *rsp = NULL,
+            walterModemCb cb = NULL,
+            void *args = NULL);
+
+        /**
+         * @brief Get the current GNSS assistance data status.
+         *
+         * This function retrieves the status of the assistance data currently loaded in the GNSS
+         * subsystem.
+         *
+         * @param rsp Optional modem response structure to save the result in.
+         * @param cb Optional callback function, if set this function will not block.
+         * @param args Optional argument to pass to the callback.
+         *
+         * @return True on success, false on error.
+         */
+        static bool getGNSSAssistanceStatus(
+            WalterModemRsp *rsp = NULL,
+            walterModemCb cb = NULL,
+            void *args = NULL);
+
+        /**
+         * @brief Update the GNSS assistance data.
+         *
+         * This function will connect to the cloud to download the requested type of assistance data
+         * and update the GNSS subsystem with this date. The most efficient type of assistance data
+         * is real-time ephemeris.
+         *
+         * @param type The type of GNSS assistance data to update.
+         * @param rsp Optional modem response structure to save the result in.
+         * @param cb Optional callback function, if set this function will not block.
+         * @param args Optional argument to pass to the callback.
+         *
+         * @return True on success, false on error.
+         */
+        static bool updateGNSSAssistance(
+            WalterModemGNSSAssistanceType type =
+                WALTER_MODEM_GNSS_ASSISTANCE_TYPE_REALTIME_EPHEMERIS,
+            WalterModemRsp *rsp = NULL,
+            walterModemCb cb = NULL,
+            void *args = NULL);
+
+        /**
+         * @brief Perform a GNSS action.
+         *
+         * This function programs the GNSS subsystem to perform a certain action.
+         *
+         * @param action The action for the GNSS subsystem to perform.
+         * @param rsp Optional modem response structure to save the result in.
+         * @param cb Optional callback function, if set this function will not block.
+         * @param args Optional argument to pass to the callback.
+         *
+         * @return True on success, false on error.
+         */
+        static bool performGNSSAction(
+            WalterModemGNSSAction action = WALTER_MODEM_GNSS_ACTION_GET_SINGLE_FIX,
+            WalterModemRsp *rsp = NULL,
+            walterModemCb cb = NULL,
+            void *args = NULL);
+#endif
+#pragma endregion
+#pragma endregion
+
 #pragma region MODEM_STATE
         /**
          * @brief Get the network registration state.
@@ -4802,153 +5039,7 @@ class WalterModem {
             int pdpCtxId = -1);
 #pragma endregion
 
-#pragma region SOCKETS
-#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
-        /**
-         * @brief Create a new socket in a certain PDP context.
-         * 
-         * This function will create a new socket. After socket creation one can set additional
-         * socket settings and use the socket for communication.
-         * 
-         * @param rsp Optional modem response structure to save the result in.
-         * @param cb Optional callback function, if set this function will not block.
-         * @param args Optional argument to pass to the callback.
-         * @param pdpCtxId The PDP context id or -1 to re-use the last one.
-         * @param mtu The maximum transmission unit used by the socket.
-         * @param exchangeTimeout The maximum number of seconds this socket can be inactive.
-         * @param connTimeout The maximum number of seconds this socket can try to connect.
-         * @param sendDelayMs The number of milliseconds send delay.
-         * 
-         * @return True on success, false otherwise.
-         */
-        static bool createSocket(
-            WalterModemRsp *rsp = NULL,
-            walterModemCb cb = NULL,
-            void *args = NULL,
-            int pdpCtxId = -1,
-            uint16_t mtu = 300,
-            uint16_t exchangeTimeout = 90,
-            uint16_t connTimeout = 60,
-            uint16_t sendDelayMs = 5000);
 
-        /**
-         * @brief Configure a socket.
-         * 
-         * This function configures a newly created socket.
-         * 
-         * @param rsp Optional modem response structure to save the result in.
-         * @param cb Optional callback function, if set this function will not block.
-         * @param args Optional argument to pass to the callback.
-         * @param socketId The id of the socket to connect or -1 to re-use the last one.
-         * 
-         * @return True on success, false otherwise.
-         */
-        static bool configSocket(
-            WalterModemRsp *rsp = NULL,
-            walterModemCb cb = NULL,
-            void *args = NULL,
-            int socketId = -1);
-
-        /**
-         * @brief Connect a socket after which data can be exchanged.
-         * 
-         * This function will connect a socket to a remote host. When the connection was successful
-         * data can be exchanged.
-         * 
-         * @param remoteHost The remote IPv4/IPv6 or hostname to connect to.
-         * @param remotePort The remote port to connect on.
-         * @param localPort The local port in case of an UDP socket.
-         * @param rsp Optional modem response structure to save the result in.
-         * @param cb Optional callback function, if set this function will not block.
-         * @param args Optional argument to pass to the callback.
-         * @param protocol The protocol to use, UDP by default.
-         * @param acceptAnyRemote How to accept remote UDP packets.
-         * @param socketId The id of the socket to connect or -1 to re-use the last one.
-         * 
-         * @return True on success, false otherwise.
-         */
-        static bool connectSocket(
-            const char *remoteHost,
-            uint16_t remotePort,
-            uint16_t localPort = 0,
-            WalterModemRsp *rsp = NULL,
-            walterModemCb cb = NULL,
-            void *args = NULL,
-            WalterModemSocketProto protocol = WALTER_MODEM_SOCKET_PROTO_UDP,
-            WalterModemSocketAcceptAnyRemote acceptAnyRemote =
-                WALTER_MODEM_ACCEPT_ANY_REMOTE_DISABLED,
-            int socketId = -1);
-
-        /**
-         * @brief Close a socket.
-         * 
-         * This function closes a socket. Sockets can only be closed when they are suspended, active
-         * socket connections cannot be closed.
-         * 
-         * @param rsp Optional modem response structure to save the result in.
-         * @param cb Optional callback function, if set this function will not block.
-         * @param args Optional argument to pass to the callback.
-         * @param socketId The id of the socket to close or -1 to re-use the last one.
-         * 
-         * @return True on success, false otherwise.
-         */
-        static bool closeSocket(
-            WalterModemRsp *rsp = NULL,
-            walterModemCb cb = NULL,
-            void *args = NULL,
-            int socketId = -1);
-        
-        /**
-         * @brief Send data over a socket.
-         * 
-         * This function will send data over a socket. The data buffer cannot be freed until the
-         * send response is received (sync or async). The maximum size of the data buffer is
-         * 1500 bytes.
-         * 
-         * @param data The data to send.
-         * @param dataSize The number of bytes to transmit.
-         * @param rsp Optional modem response structure to save the result in.
-         * @param cb Optional callback function, if set this function will not block.
-         * @param args Optional argument to pass to the callback.
-         * @param rai The release assistance information.
-         * @param socketId The id of the socket to close or -1 to re-use the last one.
-         * 
-         * @return True on success, false otherwise.
-         */
-        static bool socketSend(
-            uint8_t *data,
-            uint16_t dataSize,
-            WalterModemRsp *rsp = NULL,
-            walterModemCb cb = NULL,
-            void *args = NULL,
-            WalterModemRAI rai = WALTER_MODEM_RAI_NO_INFO,
-            int socketId = -1);
-
-        /**
-         * @brief Send a string over a socket.
-         * 
-         * This function will send a string over a socket. The string cannot be freed until the send
-         * response is received (sync or async). The maximum size of the string, not including the
-         * 0-terminator, is 1500 bytes.
-         * 
-         * @param str A zero-terminated string.
-         * @param rsp Optional modem response structure to save the result in.
-         * @param cb Optional callback function, if set this function will not block.
-         * @param args Optional argument to pass to the callback.
-         * @param rai The release assistance information.
-         * @param socketId The id of the socket to close or -1 to re-use the last one.
-         * 
-         * @return True on success, false otherwise.
-         */
-        static bool socketSend(
-            char *str,
-            WalterModemRsp *rsp = NULL,
-            walterModemCb cb = NULL,
-            void *args = NULL,
-            WalterModemRAI rai = WALTER_MODEM_RAI_NO_INFO,
-            int socketId = -1);
-#endif
-#pragma endregion
         /**
          * @brief Get the current modem time and date.
          * 
@@ -4965,90 +5056,7 @@ class WalterModem {
             walterModemCb cb = NULL,
             void *args = NULL);
 
-#pragma region GNSS
-#if CONFIG_WALTER_MODEM_ENABLE_GNSS
-        /**
-         * @brief Configure Walter's GNSS receiver.
-         * 
-         * This function will configure the GNSS receiver. The settings are persistent over reboots
-         * but it could be that they need to be set again after a modem firmware upgrade. Inbetween
-         * fixes this function could be used to change the sensitivity mode. It is recommended to 
-         * run this function at least once before GNSS is used.
-         * 
-         * @param sensMode The sensitivity mode.
-         * @param acqMode The acquisition mode.
-         * @param locMode The GNSS location mode.
-         * @param rsp Optional modem response structure to save the result in.
-         * @param cb Optional callback function, if set this function will not block.
-         * @param args Optional argument to pass to the callback.
-         * 
-         * @return True on success, false on error.
-         */
-        static bool configGNSS(
-            WalterModemGNSSSensMode sensMode = WALTER_MODEM_GNSS_SENS_MODE_HIGH,
-            WalterModemGNSSAcqMode acqMode = WALTER_MODEM_GNSS_ACQ_MODE_COLD_WARM_START,
-            WalterModemGNSSLocMode locMode = WALTER_MODEM_GNSS_LOC_MODE_ON_DEVICE_LOCATION,
-            WalterModemRsp *rsp = NULL,
-            walterModemCb cb = NULL,
-            void *args = NULL);
-
-        /**
-         * @brief Get the current GNSS assistance data status.
-         * 
-         * This function retrieves the status of the assistance data currently loaded in the GNSS
-         * subsystem.
-         * 
-         * @param rsp Optional modem response structure to save the result in.
-         * @param cb Optional callback function, if set this function will not block.
-         * @param args Optional argument to pass to the callback.
-         * 
-         * @return True on success, false on error.
-         */
-        static bool getGNSSAssistanceStatus(
-            WalterModemRsp *rsp = NULL,
-            walterModemCb cb = NULL,
-            void *args = NULL);
-
-        /**
-         * @brief Update the GNSS assistance data.
-         * 
-         * This function will connect to the cloud to download the requested type of assistance data
-         * and update the GNSS subsystem with this date. The most efficient type of assistance data
-         * is real-time ephemeris.
-         * 
-         * @param type The type of GNSS assistance data to update.
-         * @param rsp Optional modem response structure to save the result in.
-         * @param cb Optional callback function, if set this function will not block.
-         * @param args Optional argument to pass to the callback.
-         * 
-         * @return True on success, false on error.
-         */
-        static bool updateGNSSAssistance(
-            WalterModemGNSSAssistanceType type =
-                WALTER_MODEM_GNSS_ASSISTANCE_TYPE_REALTIME_EPHEMERIS,
-            WalterModemRsp *rsp = NULL,
-            walterModemCb cb = NULL,
-            void *args = NULL);
-
-        /**
-         * @brief Perform a GNSS action.
-         * 
-         * This function programs the GNSS subsystem to perform a certain action.
-         * 
-         * @param action The action for the GNSS subsystem to perform.
-         * @param rsp Optional modem response structure to save the result in.
-         * @param cb Optional callback function, if set this function will not block.
-         * @param args Optional argument to pass to the callback.
-         * 
-         * @return True on success, false on error.
-         */
-        static bool performGNSSAction(
-            WalterModemGNSSAction action = WALTER_MODEM_GNSS_ACTION_GET_SINGLE_FIX,
-            WalterModemRsp *rsp = NULL,
-            walterModemCb cb = NULL,
-            void *args = NULL);
-#endif
-#pragma endregion
+#pragma region MOTA
 #if CONFIG_WALTER_MODEM_ENABLE_MOTA
         /**
          * @brief Offline update modem firmware from file on flash
@@ -5064,6 +5072,8 @@ class WalterModem {
          */
         static void offlineMotaUpgrade(uint8_t *otaBuffer);
 #endif
+#pragma endregion
+
 #pragma region EVENT_HANDLERS
         /**
          * @brief Set the network registration event handler.
