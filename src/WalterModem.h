@@ -49,6 +49,7 @@
 #include <mutex>
 #include <bitset>
 #include <cstdint>
+#include <cstring>
 #ifdef ARDUINO
 #include <Arduino.h>
 #else
@@ -366,6 +367,7 @@ CONFIG_UINT8(SPI_SECTORS_PER_BLOCK, 16)
 #include <freertos/semphr.h>
 #include <freertos/event_groups.h>
 #include <driver/uart.h>
+
 #pragma region ENUMS
 /**
  * @brief This enum groups status codes of functions and operational components of the modem.
@@ -574,6 +576,7 @@ typedef enum {
     WALTER_MODEM_CMD_STATE_COMPLETE,
 } WalterModemCmdState;
 
+#pragma region PDP_CONTEXT
 /**
  * @brief This enumeration represents the different states a PDP context can be in.
  */
@@ -655,6 +658,7 @@ typedef enum {
     WALTER_MODEM_PDP_AUTH_PROTO_PAP = 1,
     WALTER_MODEM_PDP_AUTH_PROTO_CHAP = 2
 } WalterModemPDPAuthProtocol;
+#pragma endregion
 
 /**
  * @brief This enum represents the different implemented response types.
@@ -780,6 +784,19 @@ typedef enum {
     WALTER_MODEM_TLS_VALIDATION_URL_AND_CA = 5
 } WalterModemTlsValidation;
 
+/**
+ * @brief In case of an NB-IoT connection the RAI (Release Assistance Information). The RAI is used
+ * to indicate to the network (MME) if there are going to be other transmissions or not.
+ */
+typedef enum
+{
+    WALTER_MODEM_RAI_NO_INFO = 0,
+    WALTER_MODEM_RAI_NO_FURTHER_RXTX_EXPECTED = 1,
+    WALTER_MODEM_RAI_ONLY_SINGLE_RXTX_EXPECTED = 2
+} WalterModemRAI;
+
+#pragma region PROTO
+#pragma region SOCKETS
 #if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
 /**
  * @brief The state of a socket.
@@ -814,16 +831,9 @@ typedef enum {
 } WalterModemSocketAcceptAnyRemote;
 
 #endif
-/**
- * @brief In case of an NB-IoT connection the RAI (Release Assistance Information). The RAI is used
- * to indicate to the network (MME) if there are going to be other transmissions or not.
- */
-typedef enum {
-    WALTER_MODEM_RAI_NO_INFO = 0,
-    WALTER_MODEM_RAI_NO_FURTHER_RXTX_EXPECTED = 1,
-    WALTER_MODEM_RAI_ONLY_SINGLE_RXTX_EXPECTED = 2
-} WalterModemRAI;
+#pragma endregion
 
+#pragma region GNSS
 #if CONFIG_WALTER_MODEM_ENABLE_GNSS
 /**
  * @brief The GNSS location modus. When set to 'on-device location' the GNSS subsystem will compute
@@ -880,21 +890,10 @@ typedef enum {
     WALTER_MODEM_GNSS_ASSISTANCE_TYPE_PREDICTED_EPHEMERIS = 2,
 } WalterModemGNSSAssistanceType;
 #endif
+#pragma endregion
 
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
-/**
- * @brief The possible statuses of a BlueCherry communication cycle.
- */
-typedef enum {
-    WALTER_MODEM_BLUECHERRY_STATUS_NOT_PROVISIONED,
-    WALTER_MODEM_BLUECHERRY_STATUS_IDLE,
-    WALTER_MODEM_BLUECHERRY_STATUS_AWAITING_RESPONSE,
-    WALTER_MODEM_BLUECHERRY_STATUS_RESPONSE_READY,
-    WALTER_MODEM_BLUECHERRY_STATUS_PENDING_MESSAGES,
-    WALTER_MODEM_BLUECHERRY_STATUS_TIMED_OUT
-} WalterModemBlueCherryStatus;
-#endif
-
+#pragma region COAP
+#if CONFIG_WALTER_MODEM_ENABLE_COAP
 /**
  * @brief The possible option codes for the CoAP message.
  */
@@ -947,38 +946,14 @@ typedef enum {
     WALTER_MODEM_COAP_OPT_VALUE_APPLICATION_X_OBIX_BINARY = 51,
     WALTER_MODEM_COAP_OPT_VALUE_APPLICATION_CBOR = 60
 } WalterModemCoapOptValue;
-#if CONFIG_WALTER_MODEM_ENABLE_MQTT
-/**
- * @brief Enum containing the MQTT response codes.
- */
-typedef enum {
-    WALTER_MODEM_MQTT_SUCCESS = 0,
-    WALTER_MODEM_MQTT_NOMEM = -1,
-    WALTER_MODEM_MQTT_PROTOCOL = -2,
-    WALTER_MODEM_MQTT_INVAL = -3,
-    WALTER_MODEM_MQTT_NO_CONN = -4,
-    WALTER_MODEM_MQTT_CONN_REFUSED = -5,
-    WALTER_MODEM_MQTT_NOT_FOUND = -6,
-    WALTER_MODEM_MQTT_CONN_LOST = -7,
-    WALTER_MODEM_MQTT_TLS = -8,
-    WALTER_MODEM_MQTT_PAYLOAD_SIZE = -9,
-    WALTER_MODEM_MQTT_NOT_SUPPORTED = -10,
-    WALTER_MODEM_MQTT_AUTH = -11,
-    WALTER_MODEM_MQTT_ACL_DENIED = -12,
-    WALTER_MODEM_MQTT_UNKNOWN = -13,
-    WALTER_MODEM_MQTT_ERRNO = -14,
-    WALTER_MODEM_MQTT_EAI = -15,
-    WALTER_MODEM_MQTT_PROXY = -16,
-    WALTER_MODEM_MQTT_UNAVAILABLE = -17
-} WalterModemMqttStatus;
-#endif
 
 /**
  * @brief The possible option values for the CoAP message.
  */
-typedef enum {
+typedef enum
+{
     /**
-     * @brief Set of overwrite an option. 
+     * @brief Set of overwrite an option.
      */
     WALTER_MODEM_COAP_OPT_SET = 0,
 
@@ -1001,7 +976,8 @@ typedef enum {
 /**
  * @brief The possible CoAP send types.
  */
-typedef enum {
+typedef enum
+{
     WALTER_MODEM_COAP_SEND_TYPE_CON = 0,
     WALTER_MODEM_COAP_SEND_TYPE_NON = 1,
     WALTER_MODEM_COAP_SEND_TYPE_ACK = 2,
@@ -1011,7 +987,8 @@ typedef enum {
 /**
  * @brief The possible CoAP send methods.
  */
-typedef enum {
+typedef enum
+{
     WALTER_MODEM_COAP_SEND_METHOD_NONE = 0,
     WALTER_MODEM_COAP_SEND_METHOD_GET = 1,
     WALTER_MODEM_COAP_SEND_METHOD_POST = 2,
@@ -1040,7 +1017,38 @@ typedef enum {
     WALTER_MODEM_COAP_SEND_RSP_CODE_GATEWAY_TIMEOUT = 504,
     WALTER_MODEM_COAP_SEND_RSP_CODE_PROXYING_NOT_SUPPORTED = 505
 } WalterModemCoapSendMethodRsp;
+#endif
+#pragma endregion
 
+#pragma region MQTT
+#if CONFIG_WALTER_MODEM_ENABLE_MQTT
+/**
+ * @brief Enum containing the MQTT response codes.
+ */
+typedef enum {
+    WALTER_MODEM_MQTT_SUCCESS = 0,
+    WALTER_MODEM_MQTT_NOMEM = -1,
+    WALTER_MODEM_MQTT_PROTOCOL = -2,
+    WALTER_MODEM_MQTT_INVAL = -3,
+    WALTER_MODEM_MQTT_NO_CONN = -4,
+    WALTER_MODEM_MQTT_CONN_REFUSED = -5,
+    WALTER_MODEM_MQTT_NOT_FOUND = -6,
+    WALTER_MODEM_MQTT_CONN_LOST = -7,
+    WALTER_MODEM_MQTT_TLS = -8,
+    WALTER_MODEM_MQTT_PAYLOAD_SIZE = -9,
+    WALTER_MODEM_MQTT_NOT_SUPPORTED = -10,
+    WALTER_MODEM_MQTT_AUTH = -11,
+    WALTER_MODEM_MQTT_ACL_DENIED = -12,
+    WALTER_MODEM_MQTT_UNKNOWN = -13,
+    WALTER_MODEM_MQTT_ERRNO = -14,
+    WALTER_MODEM_MQTT_EAI = -15,
+    WALTER_MODEM_MQTT_PROXY = -16,
+    WALTER_MODEM_MQTT_UNAVAILABLE = -17
+} WalterModemMqttStatus;
+#endif
+#pragma endregion
+
+#pragma region HTTP
 #if CONFIG_WALTER_MODEM_ENABLE_HTTP
 /**
  * @brief The possible commands for a HTTP query operation.
@@ -1071,8 +1079,23 @@ typedef enum {
     WALTER_MODEM_HTTP_POST_PARAM_UNSPECIFIED = 99
 } WalterModemHttpPostParam;
 #endif
+#pragma endregion
 
+#pragma region BLUE_CHERRY
 #if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+/**
+ * @brief The possible statuses of a BlueCherry communication cycle.
+ */
+typedef enum
+{
+    WALTER_MODEM_BLUECHERRY_STATUS_NOT_PROVISIONED,
+    WALTER_MODEM_BLUECHERRY_STATUS_IDLE,
+    WALTER_MODEM_BLUECHERRY_STATUS_AWAITING_RESPONSE,
+    WALTER_MODEM_BLUECHERRY_STATUS_RESPONSE_READY,
+    WALTER_MODEM_BLUECHERRY_STATUS_PENDING_MESSAGES,
+    WALTER_MODEM_BLUECHERRY_STATUS_TIMED_OUT
+} WalterModemBlueCherryStatus;
+
 /**
  * @brief The possible types of BlueCherry events.
  */
@@ -1087,7 +1110,9 @@ typedef enum {
     WALTER_MODEM_BLUECHERRY_EVENT_TYPE_MOTA_ERROR = 8
 } WalterModemBlueCherryEventType;
 #endif
+#pragma endregion
 
+#pragma region GNSS
 #if CONFIG_WALTER_MODEM_ENABLE_GNSS
 /**
  * @brief This structure represents a GNSS satellite.
@@ -1228,7 +1253,10 @@ typedef struct {
     WalterModemGNSSAssistanceTypeDetails predictedEphemeris;
 } WalterModemGNSSAssistance;
 #endif
+#pragma endregion
+#pragma endregion
 
+#pragma region EVENT_TYPES
 /**
  * @brief The different types of events supported by the library.
  */
@@ -1285,6 +1313,8 @@ typedef enum
 } WalterModemMQTTEvent;
 #endif
 #pragma endregion
+#pragma endregion
+
 #pragma region EVENT_HANDLER_CALLBACKS
 /**
  * @brief Header of a network registration event handler.
@@ -1343,6 +1373,7 @@ typedef void (*walterModemGNSSEventHandler)(const WalterModemGNSSFix *fix, void 
 typedef void (*walterModemMQTTEventHandler)(WalterModemMQTTEvent ev, WalterModemMqttStatus status, void *args);
 #endif
 #pragma endregion
+
 #pragma region STRUCTS
 /**
  * @brief This structure represents an event handler and it's metadata.
@@ -1401,6 +1432,7 @@ typedef struct {
     char name[WALTER_MODEM_OPERATOR_BUF_SIZE];
 } WalterModemOperator;
 
+#pragma region BAND_SELECTION
 /**
  * @brief This structure represents a band selection for a given RAT and operator.
  */
@@ -1438,7 +1470,9 @@ typedef struct {
      */
     WalterModemBandSelection config[WALTER_MODEM_MAX_BANDSEL_SETSIZE];
 } WalterModemBandSelectionConfigSet;
+#pragma endregion
 
+#pragma region SIM_ID
 /**
  * @brief This structure groups the SIM card identifiers.
  */
@@ -1454,6 +1488,29 @@ typedef struct {
     char euiccid[23];
 } WalterModemSIMCardID;
 
+/**
+ * @brief This structure contains the IMEI, IMEISV and SVN identity of the modem.
+ */
+typedef struct
+{
+    /**
+     * @brief A 0-terminated string representation of the IMEI number.
+     */
+    char imei[16];
+
+    /**
+     * @brief A 0-terminated string representation of the IMEISV number.
+     */
+    char imeisv[17];
+
+    /**
+     * @brief A 0-terminated string representation of the SVN number.
+     */
+    char svn[3];
+} WalterModemIdentity;
+#pragma endregion
+
+#pragma region PDP_CONTEXT
 /**
  * @brief This structure represents the two addresses that a certain PDP context can have.
  */
@@ -1475,25 +1532,124 @@ typedef struct {
 } WalterModemPDPAddressList;
 
 /**
- * @brief This structure contains the IMEI, IMEISV and SVN identity of the modem.
+ * @brief This structure represents a PDP context.
  */
-typedef struct {
+typedef struct
+{
     /**
-     * @brief A 0-terminated string representation of the IMEI number.
+     * @brief The state of the PDP context.
      */
-    char imei[16];
+    WalterModemPDPContextState state = WALTER_MODEM_PDP_CONTEXT_STATE_INACTIVE;
 
     /**
-     * @brief A 0-terminated string representation of the IMEISV number.
+     * @brief The ID of this PDP data context.
      */
-    char imeisv[17];
+    int id = 0;
 
     /**
-     * @brief A 0-terminated string representation of the SVN number.
+     * @brief The type of packet data protocol.
      */
-    char svn[3];
-} WalterModemIdentity;
+    WalterModemPDPType type = WALTER_MODEM_PDP_TYPE_IP;
 
+    /**
+     * @brief The APN to use.
+     */
+    char apn[WALTER_MODEM_APN_BUF_SIZE] = {0};
+
+    /**
+     * @brief The PDP address of this context.
+     */
+    char pdpAddress[WALTER_MODEM_PDP_ADDR_BUF_SIZE] = {0};
+
+    /**
+     * @brief A secondary IPv6 PDP address when dual stack is enabled.
+     */
+    char pdpAddress2[WALTER_MODEM_PDP_ADDR_BUF_SIZE] = {0};
+
+    /**
+     * @brief The header compression used in the PDP context.
+     */
+    WalterModemPDPHeaderCompression headerComp = WALTER_MODEM_PDP_HCOMP_UNSPEC;
+
+    /**
+     * @brief The data compression method used in the PDP context.
+     */
+    WalterModemPDPDataCompression dataComp = WALTER_MODEM_PDP_DCOMP_UNSPEC;
+
+    /**
+     * @brief The IPv4 address allocation method used in the PDP context.
+     */
+    WalterModemPDPIPv4AddrAllocMethod ipv4AllocMethod =
+        WALTER_MODEM_PDP_IPV4_ALLOC_NAS;
+
+    /**
+     * @brief The packet data protocol request type.
+     */
+    WalterModemPDPRequestType requestType =
+        WALTER_MODEM_PDP_REQUEST_NEW_OR_HANDOVER;
+
+    /**
+     * @brief The method to use for P-CSCF discovery.
+     */
+    WalterModemPDPPCSCFDiscoveryMethod pcscfMethod =
+        WALTER_MODEM_PDP_PCSCF_AUTO;
+
+    /**
+     * @brief This flag must be set when the PDP context is used for IM CN subsystem-related
+     * signalling.
+     */
+    bool forIMCN = false;
+
+    /**
+     * @brief This flag is set when the PDP context should use Non-Access Stratum (NAS) Signalling
+     * Low Priority Indication (NSLPI).
+     */
+    bool useNSLPI = false;
+
+    /**
+     * @brief When this flag is set the Protocol Configuration Options (PCO) are requested to be
+     * protected.
+     */
+    bool useSecurePCO = false;
+
+    /**
+     * @brief When this flag is set the PDP context will use NAS signalling to discover the MTU.
+     */
+    bool useNASIPv4MTUDiscovery = false;
+
+    /**
+     * @brief This flag should be set when the system supports local IP addresses in the Traffic
+     * Flow Template (TFT).
+     */
+    bool useLocalAddrInd = false;
+
+    /**
+     * @brief This flag should be set when NAS should be used to discovery the MTU of non-IP PDP
+     * contexts.
+     */
+    bool useNASNonIPMTUDiscovery = false;
+
+    /**
+     * @brief The authentication protocol used to activate the PDP, typically the APN authentication
+     * method.
+     */
+    WalterModemPDPAuthProtocol authProto = WALTER_MODEM_PDP_AUTH_PROTO_NONE;
+
+    /**
+     * @brief The user to authenticate.
+     */
+    char authUser[WALTER_MODEM_PDP_AUTH_USER_BUF_SIZE] = {0};
+
+    /**
+     * @brief The password to authenticate.
+     */
+    char authPass[WALTER_MODEM_PDP_AUTH_PASS_BUF_SIZE] = {0};
+} WalterModemPDPContext;
+#pragma endregion
+
+/* protocol structs: SOCKET, HTTP, MQTT, COAP, BLUECHERRY */
+#pragma region PROTO
+#pragma region BLUE_CHERRY
 #if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
 /**
  * @brief This structure contains one of possibly multiple BlueCherry messages delivered in a CoAP
@@ -1540,9 +1696,119 @@ typedef struct {
      */
     WalterModemBlueCherryMessage messages[16];
 } WalterModemBlueCherryData;
+
+/**
+ * @brief This structure represents the state of the BlueCherry connection.
+ */
+typedef struct
+{
+    /**
+     * @brief The TLS profile used by the BlueCherry connection.
+     */
+    uint8_t tlsProfileId;
+
+    /**
+     * @brief The BlueCherry cloud hostname.
+     */
+    char serverName[WALTER_MODEM_HOSTNAME_BUF_SIZE] = "coap.bluecherry.io";
+
+    /**
+     * @brief The BlueCherry cloud CoAP port.
+     */
+    uint16_t port = 5684;
+
+    /**
+     * @brief Timeout for ACK of outgoing BlueCherry CoAP messages, in seconds.
+     */
+    uint16_t ackTimeout = 60;
+
+    /**
+     * @brief The outgoing CoAP message buffer.
+     */
+    uint8_t messageOut[WALTER_MODEM_MAX_OUTGOING_MESSAGE_LEN];
+
+    /**
+     * @brief Length of the CoAP message being composed so far (containing a client id initially)
+     */
+    uint16_t messageOutLen = 1;
+
+    /**
+     * @brief Buffer for the incoming CoAP message.
+     */
+    uint8_t messageIn[WALTER_MODEM_MAX_INCOMING_MESSAGE_LEN];
+
+    /**
+     * @brief Length of the incoming CoAP message.
+     */
+    uint16_t messageInLen = 0;
+
+    /**
+     * @brief CoAP message id of the message being composed or sent. Start at 1, 0 is invalid.
+     */
+    uint16_t curMessageId = 1;
+
+    /**
+     * @brief Last acknowledged message id, 0 means nothing received yet.
+     */
+    uint16_t lastAckedMessageId = 0;
+
+    /**
+     * @brief Flag that indicates whether more data is ready on bridge, meaning an extra
+     * synchronisation is required.
+     */
+    bool moreDataAvailable = false;
+
+    /**
+     * @brief Status indicator for last BlueCherry synchronization cycle.
+     */
+    WalterModemBlueCherryStatus status = WALTER_MODEM_BLUECHERRY_STATUS_IDLE;
+
+    /**
+     * @brief Time when the last message was sent.
+     */
+    time_t lastTransmissionTime = 0;
+
+    /**
+     * @brief Pointer to where the incoming OTA data should be saved.
+     */
+    uint8_t *otaBuffer = NULL;
+
+    /**
+     * @brief The current position in the OTA buffer.
+     */
+    uint32_t otaBufferPos = 0;
+
+    /**
+     * @brief A buffer used to store the start of an OTA file, this is metadata and not actual
+     * firmware data.
+     */
+    uint8_t otaSkipBuffer[ENCRYPTED_BLOCK_SIZE];
+
+    /**
+     * @brief Flag used to signal an error.
+     */
+    bool emitErrorEvent = false;
+
+    /**
+     * @brief The total size of the OTA image.
+     */
+    uint32_t otaSize = 0;
+
+    /**
+     * @brief The OTA progress in percent, 0 means that the OTA is not currently running.
+     */
+    uint32_t otaProgress = 0;
+
+    /**
+     * @brief The current OTA partition.
+     */
+    const esp_partition_t *otaPartition = NULL;
+} WalterModemBlueCherryState;
 #endif
+#pragma endregion
 
-
+#pragma region COAP
+#if CONFIG_WALTER_MODEM_ENABLE_COAP
 /**
  * @brief This strucure represents the data in a walter coap message received.
  */
@@ -1609,6 +1875,51 @@ typedef struct {
     uint16_t length;
 } WalterModemCoapResponse;
 
+/**
+ * @brief This structure represents an incoming CoAP message indication.
+ */
+typedef struct
+{
+    /**
+     * @brief Message id (initialized 0 so message id 0 is not permitted in our CoAP implementation)
+     */
+    uint16_t messageId;
+
+    /**
+     * @brief The CoAP send type (CON/NON/ACK/RST).
+     */
+    WalterModemCoapSendType sendType;
+
+    /**
+     * @brief The method or response code.
+     */
+    WalterModemCoapSendMethodRsp methodRsp;
+
+    /**
+     * @brief The CoAP message size.
+     */
+    uint16_t length;
+} WalterModemCoapRing;
+
+/**
+ * @brief This structure represents a CoAP context with it's current state info.
+ */
+typedef struct
+{
+    /**
+     * @brief Connection status: connected or disconnected
+     */
+    bool connected;
+
+    /**
+     * @brief Up to 8 CoAP ring notifications.
+     */
+    WalterModemCoapRing rings[WALTER_MODEM_COAP_MAX_PENDING_RINGS];
+} WalterModemCoapContext;
+#endif
+#pragma endregion
+
+#pragma region MQTT
 #if CONFIG_WALTER_MODEM_ENABLE_MQTT
 /**
  * @brief This strucure represents an incoming MQTT message.
@@ -1634,8 +1945,59 @@ typedef struct {
      */
     WalterModemMqttStatus mqttStatus;
 } WalterModemMqttResponse;
-#endif
 
+/**
+ * @brief This strucure represents an incoming MQTT message.
+ */
+typedef struct
+{
+    /**
+     * @brief Message ID (0xffff means unknown, in case of QoS 0).
+     */
+    uint16_t messageId = 0;
+
+    /**
+     * @brief The Quality-of-Service (QoS) level.
+     */
+    uint8_t qos;
+
+    /**
+     * @brief The MQTT topic.
+     */
+    char topic[WALTER_MODEM_MQTT_TOPIC_BUF_SIZE] = {0};
+
+    /**
+     * @brief The length of the message.
+     */
+    uint16_t length;
+
+    /**
+     * @brief Is this ring free for usage.
+     */
+    bool free = true;
+} WalterModemMqttRing;
+
+typedef struct
+{
+    /**
+     * @brief is the topic in use/subscribed to.
+     */
+    bool free = true;
+
+    /**
+     * @brief Qos ofr the subscription.
+     */
+    uint8_t qos = 0;
+
+    /**
+     * @brief mqtt topic
+     */
+    char topic[WALTER_MODEM_MQTT_TOPIC_BUF_SIZE] = {0};
+} WalterModemMqttTopic;
+#endif
+#pragma endregion
+
+#pragma region HTTP
 #if CONFIG_WALTER_MODEM_ENABLE_HTTP
 /**
  * @brief This strucure represents a HTTP response.
@@ -1651,7 +2013,124 @@ typedef struct {
      */
     uint16_t contentLength;
 } WalterModemHttpResponse;
+
+/**
+ * @brief This structure represents a HTTP context with it's current state info.
+ */
+typedef struct
+{
+    /**
+     * @brief Connection status: connected or disconnected (only relevant for TLS where you first
+     * need to call httpConnect and poll until connected jumps to true)
+     */
+    bool connected;
+
+    /**
+     * @brief Context state: idle, expecting ring, got ring
+     */
+    WalterModemHttpContextState state;
+
+    /**
+     * @brief Last incoming ring: http status code
+     */
+    uint8_t httpStatus;
+
+    /**
+     * @brief Last incoming ring: length
+     */
+    uint16_t contentLength;
+
+    /**
+     * @brief Target buffer to hold content type header after ring URC
+     */
+    char *contentType;
+
+    /**
+     * @brief Target content type header buffer size
+     */
+    uint16_t contentTypeSize;
+} WalterModemHttpContext;
 #endif
+#pragma endregion
+
+#pragma region SOCKETS
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+/**
+ * @brief This structure represents a socket.
+ */
+typedef struct
+{
+    /**
+     * @brief The state of the socket (in its lifecycle).
+     */
+    WalterModemSocketState state = WALTER_MODEM_SOCKET_STATE_FREE;
+
+    /**
+     * @brief PDP context id to use.
+     */
+    int pdpContextId = 1;
+
+    /**
+     * @brief The socket identifier.
+     */
+    int id = 1;
+
+    /**
+     * @brief Maximum transmission unit used by the TCP/UDP/IP stack.
+     */
+    uint16_t mtu = 300;
+
+    /**
+     * @brief The socket exchange timeout in seconds. When no data is exchanged within the timeout
+     * the socket is automatically closed. When this is set to 0 the timeout is disabled. The
+     * maximum exchange timeout is 65535 seconds.
+     */
+    uint16_t exchangeTimeout = 90;
+
+    /**
+     * @brief The connection timeout in seconds. When a connection to the remote host could not be
+     * established within the given timeout an error will be generated. When this is set to 0 the
+     * timeout is disabled. The maximum connection timeout is 120 seconds.
+     */
+    uint16_t connTimeout = 60;
+
+    /**
+     * @brief The number of milliseconds after which the transmit buffer is effectively transmitted.
+     * The maximum delay is 25500 milliseconds.
+     */
+    uint16_t sendDelayMs = 5000;
+
+    /**
+     * @brief The protocol to use.
+     */
+    WalterModemSocketProto protocol = WALTER_MODEM_SOCKET_PROTO_UDP;
+
+    /**
+     * @brief How to handle data from other hosts than the remote host and port that the socket is
+     * configured for. This is only applicable when this is an UDP socket.
+     */
+    WalterModemSocketAcceptAnyRemote acceptAnyRemote = WALTER_MODEM_ACCEPT_ANY_REMOTE_DISABLED;
+
+    /**
+     * @brief The IPv4 or IPv6 address of the remote host or a hostname in which case a DNS query
+     * will be executed in the background.
+     */
+    char remoteHost[WALTER_MODEM_HOSTNAME_BUF_SIZE] = {0};
+
+    /**
+     * @brief The remote port to connect to.
+     */
+    uint16_t remotePort = 0;
+
+    /**
+     * @brief In case of UDP this is the local port number to which the remote host can send an
+     * answer.
+     */
+    uint16_t localPort = 0;
+} WalterModemSocket;
+#endif
+#pragma endregion
+#pragma endregion
 
 /**
  * @brief This structure groups the RSRQ and RSRP signal quality parameters.
@@ -1748,6 +2227,7 @@ typedef struct {
     uint8_t ceLevel;
 } WalterModemCellInformation;
 
+#pragma region QUEUE_CMD_RSP_PROCESSING
 /**
  * @brief This union groups the response data of all different commands.
  */
@@ -2127,432 +2607,10 @@ typedef struct {
      */
     uint8_t inIdx = 0;
 } WalterModemCmdQueue;
+#pragma endregion
 
-/**
- * @brief This structure represents a PDP context.
- */
-typedef struct {
-    /**
-     * @brief The state of the PDP context.
-     */
-    WalterModemPDPContextState state = WALTER_MODEM_PDP_CONTEXT_STATE_INACTIVE;
-
-    /**
-     * @brief The ID of this PDP data context.
-     */
-    int id = 0;
-
-    /**
-     * @brief The type of packet data protocol.
-     */
-    WalterModemPDPType type = WALTER_MODEM_PDP_TYPE_IP;
-
-    /**
-     * @brief The APN to use.
-     */
-    char apn[WALTER_MODEM_APN_BUF_SIZE] = { 0 };
-
-    /**
-     * @brief The PDP address of this context.
-     */
-    char pdpAddress[WALTER_MODEM_PDP_ADDR_BUF_SIZE] = { 0 };
-
-    /**
-     * @brief A secondary IPv6 PDP address when dual stack is enabled.
-     */
-    char pdpAddress2[WALTER_MODEM_PDP_ADDR_BUF_SIZE] = { 0 };
-
-    /**
-     * @brief The header compression used in the PDP context.
-     */
-    WalterModemPDPHeaderCompression headerComp = WALTER_MODEM_PDP_HCOMP_UNSPEC;
-
-    /**
-     * @brief The data compression method used in the PDP context.
-     */
-    WalterModemPDPDataCompression dataComp = WALTER_MODEM_PDP_DCOMP_UNSPEC;
-
-    /**
-     * @brief The IPv4 address allocation method used in the PDP context.
-     */
-    WalterModemPDPIPv4AddrAllocMethod ipv4AllocMethod =
-        WALTER_MODEM_PDP_IPV4_ALLOC_NAS;
-
-    /**
-     * @brief The packet data protocol request type.
-     */
-    WalterModemPDPRequestType requestType =
-        WALTER_MODEM_PDP_REQUEST_NEW_OR_HANDOVER;
-
-    /**
-     * @brief The method to use for P-CSCF discovery.
-     */
-    WalterModemPDPPCSCFDiscoveryMethod pcscfMethod =
-        WALTER_MODEM_PDP_PCSCF_AUTO;
-
-    /**
-     * @brief This flag must be set when the PDP context is used for IM CN subsystem-related
-     * signalling.
-     */
-    bool forIMCN = false;
-
-    /**
-     * @brief This flag is set when the PDP context should use Non-Access Stratum (NAS) Signalling
-     * Low Priority Indication (NSLPI).
-     */
-    bool useNSLPI = false;
-
-    /**
-     * @brief When this flag is set the Protocol Configuration Options (PCO) are requested to be
-     * protected.
-     */
-    bool useSecurePCO = false;
-
-    /**
-     * @brief When this flag is set the PDP context will use NAS signalling to discover the MTU.
-     */
-    bool useNASIPv4MTUDiscovery = false;
-
-    /**
-     * @brief This flag should be set when the system supports local IP addresses in the Traffic
-     * Flow Template (TFT).
-     */
-    bool useLocalAddrInd = false;
-
-    /**
-     * @brief This flag should be set when NAS should be used to discovery the MTU of non-IP PDP
-     * contexts.
-     */
-    bool useNASNonIPMTUDiscovery = false;
-
-    /**
-     * @brief The authentication protocol used to activate the PDP, typically the APN authentication
-     * method.
-     */
-    WalterModemPDPAuthProtocol authProto = WALTER_MODEM_PDP_AUTH_PROTO_NONE;
-
-    /**
-     * @brief The user to authenticate.
-     */
-    char authUser[WALTER_MODEM_PDP_AUTH_USER_BUF_SIZE] = { 0 };
-
-    /**
-     * @brief The password to authenticate.
-     */
-    char authPass[WALTER_MODEM_PDP_AUTH_PASS_BUF_SIZE] = { 0 };
-} WalterModemPDPContext;
-#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
-/**
- * @brief This structure represents a socket.
- */
-typedef struct {
-    /**
-     * @brief The state of the socket (in its lifecycle).
-     */
-    WalterModemSocketState state = WALTER_MODEM_SOCKET_STATE_FREE;
-
-    /**
-     * @brief PDP context id to use.
-     */
-    int pdpContextId = 1;
-
-    /**
-     * @brief The socket identifier.
-     */
-    int id = 1;
-
-    /**
-     * @brief Maximum transmission unit used by the TCP/UDP/IP stack.
-     */
-    uint16_t mtu = 300;
-
-    /**
-     * @brief The socket exchange timeout in seconds. When no data is exchanged within the timeout
-     * the socket is automatically closed. When this is set to 0 the timeout is disabled. The
-     * maximum exchange timeout is 65535 seconds.
-     */
-    uint16_t exchangeTimeout = 90;
-
-    /**
-     * @brief The connection timeout in seconds. When a connection to the remote host could not be
-     * established within the given timeout an error will be generated. When this is set to 0 the
-     * timeout is disabled. The maximum connection timeout is 120 seconds.
-     */
-    uint16_t connTimeout = 60;
-
-    /**
-     * @brief The number of milliseconds after which the transmit buffer is effectively transmitted.
-     * The maximum delay is 25500 milliseconds.
-     */
-    uint16_t sendDelayMs = 5000;
-
-    /**
-     * @brief The protocol to use.
-     */
-    WalterModemSocketProto protocol = WALTER_MODEM_SOCKET_PROTO_UDP;
-
-    /**
-     * @brief How to handle data from other hosts than the remote host and port that the socket is
-     * configured for. This is only applicable when this is an UDP socket.
-     */
-    WalterModemSocketAcceptAnyRemote acceptAnyRemote = WALTER_MODEM_ACCEPT_ANY_REMOTE_DISABLED;
-
-    /**
-     * @brief The IPv4 or IPv6 address of the remote host or a hostname in which case a DNS query
-     * will be executed in the background.
-     */
-    char remoteHost[WALTER_MODEM_HOSTNAME_BUF_SIZE] = { 0 }; 
-
-    /**
-     * @brief The remote port to connect to.
-     */
-    uint16_t remotePort = 0;
-
-    /**
-     * @brief In case of UDP this is the local port number to which the remote host can send an
-     * answer.
-     */
-    uint16_t localPort = 0;
-} WalterModemSocket;
-
-#endif
-
-/**
- * @brief This structure represents an incoming CoAP message indication.
- */
-typedef struct {
-    /**
-     * @brief Message id (initialized 0 so message id 0 is not permitted in our CoAP implementation)
-     */
-    uint16_t messageId;
-
-    /**
-     * @brief The CoAP send type (CON/NON/ACK/RST).
-     */
-    WalterModemCoapSendType sendType;
-
-    /**
-     * @brief The method or response code.
-     */
-    WalterModemCoapSendMethodRsp methodRsp;
-
-    /**
-     * @brief The CoAP message size.
-     */
-    uint16_t length;
-} WalterModemCoapRing;
-
-/**
- * @brief This structure represents a CoAP context with it's current state info.
- */
-typedef struct {
-    /**
-     * @brief Connection status: connected or disconnected
-     */
-    bool connected;
-
-    /**
-     * @brief Up to 8 CoAP ring notifications.
-     */
-    WalterModemCoapRing rings[WALTER_MODEM_COAP_MAX_PENDING_RINGS];
-} WalterModemCoapContext;
-
-#if CONFIG_WALTER_MODEM_ENABLE_HTTP
-/**
- * @brief This structure represents a HTTP context with it's current state info.
- */
-typedef struct {
-    /**
-     * @brief Connection status: connected or disconnected (only relevant for TLS where you first
-     * need to call httpConnect and poll until connected jumps to true)
-     */
-    bool connected;
-
-    /**
-     * @brief Context state: idle, expecting ring, got ring
-     */
-    WalterModemHttpContextState state;
-
-    /**
-     * @brief Last incoming ring: http status code
-     */
-    uint8_t httpStatus;
-
-    /**
-     * @brief Last incoming ring: length
-     */
-    uint16_t contentLength;
-
-    /**
-     * @brief Target buffer to hold content type header after ring URC
-     */
-    char *contentType;
-
-    /**
-     * @brief Target content type header buffer size
-     */
-    uint16_t contentTypeSize;
-} WalterModemHttpContext;
-#endif
-
-#if CONFIG_WALTER_MODEM_ENABLE_MQTT
-/**
- * @brief This strucure represents an incoming MQTT message.
- */
-typedef struct {
-    /**
-     * @brief Message ID (0xffff means unknown, in case of QoS 0).
-     */
-    uint16_t messageId = 0;
-
-    /**
-     * @brief The Quality-of-Service (QoS) level.
-     */
-    uint8_t qos;
-
-    /**
-     * @brief The MQTT topic.
-     */
-    char topic[WALTER_MODEM_MQTT_TOPIC_BUF_SIZE] = { 0 };
-
-    /**
-     * @brief The length of the message.
-     */
-    uint16_t length;
-
-    /**
-     * @brief Is this ring free for usage.
-     */
-    bool free = true;
-} WalterModemMqttRing;
-
-typedef struct {
-    /**
-     * @brief is the topic in use/subscribed to.
-     */
-    bool free = true;
-
-    /**
-     * @brief Qos ofr the subscription.
-     */
-    uint8_t qos = 0;
-
-    /**
-     * @brief mqtt topic
-     */
-    char topic[WALTER_MODEM_MQTT_TOPIC_BUF_SIZE] = {0};
-} WalterModemMqttTopic;
-#endif
-
-#if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
-/**
- * @brief This structure represents the state of the BlueCherry connection.
- */
-typedef struct {
-    /**
-     * @brief The TLS profile used by the BlueCherry connection.
-     */
-    uint8_t tlsProfileId;
-
-    /**
-     * @brief The BlueCherry cloud hostname.
-     */
-    char serverName[WALTER_MODEM_HOSTNAME_BUF_SIZE] = "coap.bluecherry.io";
-
-    /**
-     * @brief The BlueCherry cloud CoAP port.
-     */
-    uint16_t port = 5684;
-
-    /**
-     * @brief Timeout for ACK of outgoing BlueCherry CoAP messages, in seconds.
-     */
-    uint16_t ackTimeout = 60;
-
-    /**
-     * @brief The outgoing CoAP message buffer.
-     */
-    uint8_t messageOut[WALTER_MODEM_MAX_OUTGOING_MESSAGE_LEN];
-
-    /**
-     * @brief Length of the CoAP message being composed so far (containing a client id initially)
-     */
-    uint16_t messageOutLen = 1;
-    
-    /**
-     * @brief Buffer for the incoming CoAP message.
-     */
-    uint8_t messageIn[WALTER_MODEM_MAX_INCOMING_MESSAGE_LEN];
-
-    /**
-     * @brief Length of the incoming CoAP message.
-     */
-    uint16_t messageInLen = 0;
-
-    /**
-     * @brief CoAP message id of the message being composed or sent. Start at 1, 0 is invalid.
-     */
-    uint16_t curMessageId = 1;
-
-    /**
-     * @brief Last acknowledged message id, 0 means nothing received yet.
-     */
-    uint16_t lastAckedMessageId = 0;
-
-    /**
-     * @brief Flag that indicates whether more data is ready on bridge, meaning an extra
-     * synchronisation is required.
-     */
-    bool moreDataAvailable = false;
-
-    /**
-     * @brief Status indicator for last BlueCherry synchronization cycle.
-     */
-    WalterModemBlueCherryStatus status = WALTER_MODEM_BLUECHERRY_STATUS_IDLE;
-
-    /**
-     * @brief Time when the last message was sent.
-     */
-    time_t lastTransmissionTime = 0;
-
-    /**
-     * @brief Pointer to where the incoming OTA data should be saved.
-     */
-    uint8_t *otaBuffer = NULL;
-
-    /**
-     * @brief The current position in the OTA buffer.
-     */
-    uint32_t otaBufferPos = 0;
-
-    /**
-     * @brief A buffer used to store the start of an OTA file, this is metadata and not actual
-     * firmware data.
-     */
-    uint8_t otaSkipBuffer[ENCRYPTED_BLOCK_SIZE];
-
-    /**
-     * @brief Flag used to signal an error.
-     */
-    bool emitErrorEvent = false;
-
-    /**
-     * @brief The total size of the OTA image.
-     */
-    uint32_t otaSize = 0;
-
-    /**
-     * @brief The OTA progress in percent, 0 means that the OTA is not currently running.
-     */
-    uint32_t otaProgress = 0;
-
-    /**
-     * @brief The current OTA partition.
-     */
-    const esp_partition_t *otaPartition = NULL;
-} WalterModemBlueCherryState;
-#endif
-
+#pragma region MOTA_STP
+#if CONFIG_WALTER_MODEM_ENABLE_MOTA
 /**
  * @brief This structure represents a Sequans STP request packet.
  */
@@ -2588,6 +2646,9 @@ struct WalterModemStpRequestTransferBlockCmd {
 struct WalterModemStpResponseTransferBlock {
     uint16_t residue;
 };
+#endif
+#pragma endregion
+
 #pragma endregion
 /**
  * @brief The WalterModem class allows you to use the Sequans Monarch 2 modem and positioning

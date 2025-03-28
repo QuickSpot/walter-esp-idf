@@ -132,8 +132,10 @@ struct WalterModemStpResponseSessionOpen stpResponseSessionOpen;
 struct WalterModemStpRequestTransferBlockCmd stpRequestTransferBlockCmd;
 struct WalterModemStpResponseTransferBlock stpResponseTransferBlock;
 RTC_DATA_ATTR WalterModemPDPContext _pdpCtxSetRTC[WALTER_MODEM_MAX_PDP_CTXTS] = {};
-RTC_DATA_ATTR WalterModemPDPContext _coapCtxSetRTC[WALTER_MODEM_MAX_COAP_PROFILES] = {};
+RTC_DATA_ATTR WalterModemCoAPContext _coapCtxSetRTC[WALTER_MODEM_MAX_COAP_PROFILES] = {};
+#if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
 RTC_DATA_ATTR WalterModemBlueCherryState blueCherryRTC = {};
+#endif
 
 #if CONFIG_WALTER_MODEM_ENABLE_MQTT
 RTC_DATA_ATTR WalterModemMqttTopic _mqttTopicSetRTC[WALTER_MODEM_MQTT_MAX_TOPICS] = {};
