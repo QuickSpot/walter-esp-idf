@@ -1061,7 +1061,9 @@ void WalterModem::_parseRxData(char *rxData, size_t len)
             if(data == '>') {
                 _parserData.state = WALTER_MODEM_RSP_PARSER_DATA_PROMPT;
             } else if(data == '<') {
+                #if CONFIG_WALTER_MODEM_ENABLE_HTTP
                 _parserData.state = WALTER_MODEM_RSP_PARSER_DATA_HTTP_START1;
+                #endif
             }
             _addATByteToBuffer(data, false);
             break;
@@ -1072,7 +1074,9 @@ void WalterModem::_parseRxData(char *rxData, size_t len)
                 _parserData.state = WALTER_MODEM_RSP_PARSER_START_CR;
                 _queueRxBuffer();
             } else if(data == '>') {
+#if CONFIG_WALTER_MODEM_ENABLE_HTTP
                 _parserData.state = WALTER_MODEM_RSP_PARSER_DATA_PROMPT_HTTP;
+#endif
             } else {
                 /* state might have changed after detecting end \r */
                 if(_parserData.state == WALTER_MODEM_RSP_PARSER_DATA_PROMPT) {
@@ -2824,11 +2828,10 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         cmd->rsp->data.imsi[offset++] = '\0';
     }
 
-/* Disable the unused label warning here so compiler is not angry! */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-label"
-
+/* Disable the unused label here so compiler is not angry! */
+#if CONFIG_WALTER_MODEM_MQTT || CONFIG_WALTER_MODEM_HTTP || CONFIG_WALTER_MODEM_COAP
 after_processing_logic:
+#endif
     if (cmd == NULL ||
         cmd->type == WALTER_MODEM_CMD_TYPE_TX ||
         cmd->state == WALTER_MODEM_CMD_STATE_FREE ||
@@ -2842,8 +2845,6 @@ after_processing_logic:
 
     _finishQueueCmd(cmd, result);
     buff->free = true;
-
-#pragma GCC diagnostic pop
 }
 
 #pragma endregion
