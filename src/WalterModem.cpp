@@ -52,12 +52,16 @@
 #include <esp_log.h>
 #include <esp_sleep.h>
 #include <esp_system.h>
+#if WALTER_MODEM_ENABLE_MOTA || WALTER_MODEM_ENABLE_OTA
 #include <esp_ota_ops.h>
+#endif
 #include <driver/gpio.h>
 #include <driver/uart.h>
 #include <esp_task_wdt.h>
+#if WALTER_MODEM_ENABLE_MOTA || WALTER_MODEM_ENABLE_OTA
 #include <esp_partition.h>
 #include <esp_image_format.h>
+#endif
 
 #pragma region CONFIG
 /**
