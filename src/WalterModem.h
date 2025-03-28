@@ -88,8 +88,8 @@ for efficient configuration management."
 #define CONFIG_WALTER_MODEM_ENABLE_COAP 1
 #endif
 
-#ifndef CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
-#define CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY 1
+#ifndef CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
+#define CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY 1
 #endif
 
 #ifndef CONFIG_WALTER_MODEM_ENABLE_MOTA
@@ -1084,7 +1084,7 @@ typedef enum {
 #pragma endregion
 
 #pragma region BLUE_CHERRY
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+#if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
 /**
  * @brief The possible statuses of a BlueCherry communication cycle.
  */
@@ -1652,7 +1652,7 @@ typedef struct
 /* protocol structs: SOCKET, HTTP, MQTT, COAP, BLUECHERRY */
 #pragma region PROTO
 #pragma region BLUE_CHERRY
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+#if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
 /**
  * @brief This structure contains one of possibly multiple BlueCherry messages delivered in a CoAP
  * datagram. 
@@ -2315,7 +2315,7 @@ union WalterModemRspData {
      * @brief The modem identity.
      */
     WalterModemIdentity identity;
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+#if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
     /**
      * @brief The BlueCherry data 
      */
@@ -2842,7 +2842,7 @@ class WalterModem {
 #endif
 #pragma endregion
 
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+#if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
         /*
          * @brief The current BlueCherry state.
          */
@@ -3219,7 +3219,7 @@ class WalterModem {
         static void _processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *rsp);
 #pragma endregion
 
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+#if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
         /**
          * @brief Process an incoming BlueCherry event.
          *
@@ -4096,7 +4096,7 @@ class WalterModem {
 #pragma endregion
 
 #pragma region BLUE_CHERRY
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+#if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
         /**
          * @brief Upload BlueCherry credentials to the modem.
          *
