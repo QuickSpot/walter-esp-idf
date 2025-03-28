@@ -1164,10 +1164,11 @@ void WalterModem::_handleRxData(void)
 {
     size_t uartBufLen;
     static char incomingBuf[UART_BUF_SIZE];
-
+#if CONFI_WALTER_MODEM_ENABLE_MOTA
     if(_rxHandlerInterrupted) {
         return;
     }
+#endif
 
     uartBufLen = _uart->available();
 
@@ -1195,11 +1196,13 @@ void WalterModem::_handleRxData(void *params)
 
     for(;;) {
         tickleWatchdog();
-
+        
+#if CONFI_WALTER_MODEM_ENABLE_MOTA
         if(_rxHandlerInterrupted) {
             vTaskDelay(pdMS_TO_TICKS(1000));
             continue;
         }
+#endif
 
         uart_get_buffered_data_len(_uartNo, &uartBufLen);
 
