@@ -134,11 +134,11 @@ struct WalterModemStpResponseTransferBlock stpResponseTransferBlock;
 RTC_DATA_ATTR WalterModemPDPContext _pdpCtxSetRTC[WALTER_MODEM_MAX_PDP_CTXTS] = {};
 RTC_DATA_ATTR WalterModemPDPContext _coapCtxSetRTC[WALTER_MODEM_MAX_COAP_PROFILES] = {};
 RTC_DATA_ATTR WalterModemBlueCherryState blueCherryRTC = {};
-#pragma endregion
 
 #if CONFIG_WALTER_MODEM_ENABLE_MQTT
 RTC_DATA_ATTR WalterModemMqttTopic _mqttTopicSetRTC[WALTER_MODEM_MQTT_MAX_TOPICS] = {};
 #endif
+#pragma endregion
 
 #pragma region HELPER_FUNCTIONS
 /**
@@ -421,7 +421,7 @@ bool strToFloat(const char *str, int len, float *result)
 
 #pragma region PRIVATE_METHODS
 #pragma region MODEM_UPGRADE
-
+#if CONFIG_WALTER_MODEM_ENABLE_MOTA
 uint16_t WalterModem::_modemFirmwareUpgradeStart(void)
 {
     char *atCmd[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] = {NULL};
@@ -776,6 +776,7 @@ void WalterModem::_modemFirmwareUpgradeBlock(size_t blockSize, uint32_t transact
     ESP_LOGD("WalterModem", "received STP transfer block ack data: received=%d payload: %d",
              bytesReceived, _switchEndian16(stpResponseTransferBlock.residue));
 }
+#endif
 #pragma endregion
 
 #pragma region UART
