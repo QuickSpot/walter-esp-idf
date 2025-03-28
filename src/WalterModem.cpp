@@ -1476,7 +1476,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
     _dispatchEvent((const char*) (buff->data), buff->size);
 
     WalterModemState result = WALTER_MODEM_STATE_OK;
-
+    #pragma region GENERAL
     if(_buffStartsWith(buff, "+CEREG: ")) {
         const char *rspStr = _buffStr(buff);
         int ceReg = atoi(rspStr + _strLitLen("+CEREG: "));
@@ -1965,7 +1965,31 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             }
         }
     }
-#if CONFIG_WALTER_MODEM_ENABLE_GNSS
+    else if (_buffStartsWith(buff, "+CCLK: \""))
+    {
+        buff->data[buff->size - 1] = '\0';
+        char *data = (char *)buff->data + _strLitLen("+CCLK: \"");
+        cmd->rsp->type = WALTER_MODEM_RSP_DATA_TYPE_CLOCK;
+        int64_t utcTime = strTotime(data, "%y/%m/%d,%H:%M:%S");
+        uint16_t tzOffset;
+        if (data[17] == '+')
+        {
+            tzOffset = atoi(data + 18) * 15 * 60;
+        }
+        else
+        {
+            tzOffset = atoi(data + 18) * -15 * 60;
+        }
+        cmd->rsp->data.clock = utcTime - tzOffset;
+        if (cmd->rsp->data.clock < WALTER_MODEM_MIN_VALID_TIMESTAMP)
+        {
+            cmd->rsp->data.clock = -1;
+        }
+    }
+    #pragma endregion
+
+    #pragma region GNSS
+    #if CONFIG_WALTER_MODEM_ENABLE_GNSS
     else if(_buffStartsWith(buff, "+LPGNSSFIXREADY: "))
     {
         uint16_t dataSize = buff->size - _strLitLen("+LPGNSSFIXREADY: ");
@@ -2153,156 +2177,39 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             }
         }
     }
-#endif
-    else if(_buffStartsWith(buff, "+CCLK: \""))
-    {
-        buff->data[buff->size - 1] = '\0';
-        char *data = (char*) buff->data + _strLitLen("+CCLK: \"");
-        cmd->rsp->type = WALTER_MODEM_RSP_DATA_TYPE_CLOCK;
-        int64_t utcTime = strTotime(data, "%y/%m/%d,%H:%M:%S");
-        uint16_t tzOffset;
-        if(data[17] == '+') {
-            tzOffset = atoi(data + 18) * 15 * 60;
-        } else {
-            tzOffset = atoi(data + 18) * -15 * 60;
-        }
-        cmd->rsp->data.clock = utcTime - tzOffset;
-        if(cmd->rsp->data.clock < WALTER_MODEM_MIN_VALID_TIMESTAMP) {
-            cmd->rsp->data.clock = -1;
-        }
-    }
-    else if(_buffStartsWith(buff, "+SQNCOAPRCV: "))
-    {
-        const char *rspStr = _buffStr(buff);
-        char *payload = strchr(rspStr, '\r');
-        if(payload != 0) {
-            payload++;
-        }
-
-        char *commaPos = strchr(rspStr, ',');
-        char *start = (char*) rspStr + _strLitLen("+SQNCOAPRCV: ");
-        uint8_t profileId = 0;
-        uint16_t messageId = 0;
-
-        WalterModemCoapSendType sendType = WALTER_MODEM_COAP_SEND_TYPE_CON;
-        uint8_t reqRspCodeRaw = 0;
-
-        if(commaPos) {
-            /* got prof_id */
-            *commaPos = '\0';
-            profileId = atoi(start);
-            start = ++commaPos;
-            commaPos = strchr(commaPos, ',');
-        }
-
-        if(commaPos) {
-            /* got msg_id */
-            *commaPos = '\0';
-            messageId = atoi(start);
-            start = ++commaPos;
-            commaPos = strchr(commaPos, ',');
-        }
-
-        if(commaPos) {
-            /* got token */
-            *commaPos = '\0';
-            start = ++commaPos;
-            commaPos = strchr(commaPos, ',');
-        }
-
-        if(commaPos) {
-            /* got req_resp */
-            *commaPos = '\0';
-            start = ++commaPos;
-            commaPos = strchr(commaPos, ',');
-        }
-
-        if(commaPos) {
-            /* got type (con, noncon, ack, rst) */
-            *commaPos = '\0';
-            sendType = (WalterModemCoapSendType) atoi(start);
-            start = ++commaPos;
-            commaPos = strchr(commaPos, ',');
-        }
-
-        if(commaPos) {
-            /* got rsp code (or method if we allow inbound requests) */
-            *commaPos = '\0';
-            reqRspCodeRaw = atoi(start);
-            uint16_t length = atoi(commaPos + 1);
-
-            if(profileId >= WALTER_MODEM_MAX_COAP_PROFILES) {
+    #endif
+    #pragma endregion
+    
+    #pragma region HTTP
+    #if CONFIG_WALTER_MODEM_ENABLE_HTTP
+        else if(_buffStartsWith(buff, "<<<"))   
+        {
+            /* <<< is start of SQNHTTPRCV answer */
+            if(_httpCurrentProfile >= WALTER_MODEM_MAX_HTTP_PROFILES ||
+            _httpContextSet[_httpCurrentProfile].state != WALTER_MODEM_HTTP_CONTEXT_STATE_GOT_RING) {
                 result = WALTER_MODEM_STATE_ERROR;
                 goto after_processing_logic;
             }
 
-            /* find message id in the stored rings for this profile */
-            uint8_t ringIdx;
-            for(ringIdx = 0; ringIdx < WALTER_MODEM_COAP_MAX_PENDING_RINGS; ringIdx++) {
-                if(_coapContextSet[profileId].rings[ringIdx].messageId == messageId &&
-                   _coapContextSet[profileId].rings[ringIdx].sendType == sendType &&
-                   _coapContextSet[profileId].rings[ringIdx].methodRsp == reqRspCodeRaw) {
-                    break;
-                }
-            }
-
-            if(ringIdx < WALTER_MODEM_COAP_MAX_PENDING_RINGS) {
-                /* free ring entry */
-                _coapContextSet[profileId].rings[ringIdx].messageId = 0;
-            }
-
-            cmd->rsp->type = WALTER_MODEM_RSP_DATA_TYPE_COAP;
-            cmd->rsp->data.coapResponse.profileId = profileId;
-            cmd->rsp->data.coapResponse.messageId = messageId;
-            cmd->rsp->data.coapResponse.sendType = sendType;
-            cmd->rsp->data.coapResponse.methodRsp =
-                (WalterModemCoapSendMethodRsp) reqRspCodeRaw;
-
-            if(length > cmd->dataSize) {
-                cmd->rsp->data.coapResponse.length = cmd->dataSize;
-            }
-            else {
-                cmd->rsp->data.coapResponse.length = length;
+            cmd->rsp->type = WALTER_MODEM_RSP_DATA_TYPE_HTTP_RESPONSE;
+            cmd->rsp->data.httpResponse.httpStatus = _httpContextSet[_httpCurrentProfile].httpStatus;
+            if(_httpContextSet[_httpCurrentProfile].contentLength > cmd->dataSize - 1) {
+                cmd->rsp->data.httpResponse.contentLength = cmd->dataSize - 1;
+            } else {
+                cmd->rsp->data.httpResponse.contentLength =
+                    _httpContextSet[_httpCurrentProfile].contentLength;
             }
 
             /* 
-             * If data and dataSize are null, we cannot store the result. We can only hope the user
-             * is using a callback which has access to the raw buffer.
-             */
+            * If data and dataSize are null, we cannot store the result. We can only hope the user is
+            * using a callback which has access to the raw buffer.
+            */
             if(cmd->data) {
-                memcpy(cmd->data, payload, cmd->rsp->data.coapResponse.length);
+                memcpy(cmd->data, buff->data + 3, cmd->rsp->data.httpResponse.contentLength);
+                cmd->data[cmd->rsp->data.httpResponse.contentLength] = '\0';
             }
         }
-    }
-#if CONFIG_WALTER_MODEM_ENABLE_HTTP
-    else if(_buffStartsWith(buff, "<<<"))   
-    {
-        /* <<< is start of SQNHTTPRCV answer */
-        if(_httpCurrentProfile >= WALTER_MODEM_MAX_HTTP_PROFILES ||
-           _httpContextSet[_httpCurrentProfile].state != WALTER_MODEM_HTTP_CONTEXT_STATE_GOT_RING) {
-            result = WALTER_MODEM_STATE_ERROR;
-            goto after_processing_logic;
-        }
-
-        cmd->rsp->type = WALTER_MODEM_RSP_DATA_TYPE_HTTP_RESPONSE;
-        cmd->rsp->data.httpResponse.httpStatus = _httpContextSet[_httpCurrentProfile].httpStatus;
-        if(_httpContextSet[_httpCurrentProfile].contentLength > cmd->dataSize - 1) {
-            cmd->rsp->data.httpResponse.contentLength = cmd->dataSize - 1;
-        } else {
-            cmd->rsp->data.httpResponse.contentLength =
-                _httpContextSet[_httpCurrentProfile].contentLength;
-        }
-
-        /* 
-         * If data and dataSize are null, we cannot store the result. We can only hope the user is
-         * using a callback which has access to the raw buffer.
-         */
-        if(cmd->data) {
-            memcpy(cmd->data, buff->data + 3, cmd->rsp->data.httpResponse.contentLength);
-            cmd->data[cmd->rsp->data.httpResponse.contentLength] = '\0';
-        }
-    }
-    else if(_buffStartsWith(buff, "+SQNHTTPRING: "))
+        else if(_buffStartsWith(buff, "+SQNHTTPRING: "))
     {
         const char *rspStr = _buffStr(buff);
         char *commaPos = strchr(rspStr, ',');
@@ -2361,211 +2268,343 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             return;
         }
     }
-#endif
+        else if (_buffStartsWith(buff, "+SQNHTTPCONNECT: "))
+        {
+            const char *rspStr = _buffStr(buff);
+            char *commaPos = strchr(rspStr, ',');
+            uint8_t profileId, resultCode;
 
-    else if(_buffStartsWith(buff, "+SQNCOAPRING: "))
-    {
-        const char *rspStr = _buffStr(buff);
-        char *commaPos = strchr(rspStr, ',');
-        char *start = (char*) rspStr + _strLitLen("+SQNCOAPRING: ");
-
-        char *profileIdStr = NULL;
-        char *messageIdStr = NULL;
-        char *sendTypeStr = NULL;
-        char *reqRspCodeRawStr = NULL;
-        char *lengthStr = NULL;
-
-        if(commaPos) {
-            *commaPos = '\0';
-            profileIdStr = start;
-            start = ++commaPos;
-            commaPos = strchr(commaPos, ',');
-
-            if(!_coapContextSet[atoi(profileIdStr)].connected ||
-               atoi(profileIdStr) >= WALTER_MODEM_MAX_COAP_PROFILES) {
-                //TODO: return error if modem returns invalid profile id.
-                buff->free = true;
-                return;
+            if (commaPos)
+            {
+                *commaPos = '\0';
+                resultCode = atoi(commaPos + 1);
             }
-        }
+            else
+            {
+                resultCode = 0;
+            }
 
-        if(commaPos) {
-            *commaPos = '\0';
-            messageIdStr = start;
-            start = ++commaPos;
-            commaPos = strchr(commaPos, ',');
-        }
+            profileId = atoi(rspStr + _strLitLen("+SQNHTTPCONNECT: "));
 
-        if(commaPos) {
-            *commaPos = '\0';
-            start = ++commaPos;
-            commaPos = strchr(commaPos, ',');
-        }
-
-        if(commaPos) {
-            *commaPos = '\0';
-            sendTypeStr = start;
-            start = ++commaPos;
-            commaPos = strchr(commaPos, ',');
-        }
-
-        if(commaPos) {
-            *commaPos = '\0';
-            reqRspCodeRawStr = start;
-            lengthStr = commaPos + 1;
-
-            /* convert parameters to int */
-            uint8_t profileId = atoi(profileIdStr);
-            uint16_t messageId = atoi(messageIdStr);
-            WalterModemCoapSendType sendType = (WalterModemCoapSendType) atoi(sendTypeStr);
-            uint8_t reqRspCodeRaw = atoi(reqRspCodeRawStr);
-            uint16_t length = atoi(lengthStr);
-
-            if(profileId == 0) {
-                /* profile id 0 is the internal BlueCherry cloud coap profile */
-                if(blueCherry.lastAckedMessageId != messageId) {
-                    WalterModemBuffer *stringsBuffer = _getFreeBuffer();
-                    stringsBuffer->size +=
-                        sprintf((char*) stringsBuffer->data, "AT+SQNCOAPRCV=%s,%s,%s",
-                            profileIdStr, messageIdStr, lengthStr);
-                    const char *_cmdArr[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] =
-                        arr((const char*) stringsBuffer->data);
-
-                    _addQueueCmd(_cmdArr, "+SQNCOAPRCV: ", NULL, coap_received_from_bluecherry,
-                        &blueCherry, NULL, NULL, WALTER_MODEM_CMD_TYPE_TX_WAIT,
-                        blueCherry.messageIn, WALTER_MODEM_MAX_INCOMING_MESSAGE_LEN, stringsBuffer);
+            if (profileId < WALTER_MODEM_MAX_HTTP_PROFILES)
+            {
+                if (resultCode == 0)
+                {
+                    _httpContextSet[profileId].connected = true;
                 }
-            } else {
-                /* store ring in ring list for this coap context */
-                uint8_t ringIdx;
-                for(ringIdx = 0; ringIdx < WALTER_MODEM_COAP_MAX_PENDING_RINGS; ringIdx++) {
-                    if(!_coapContextSet[profileId].rings[ringIdx].messageId) {
-                        break;
-                    }
-                    if(_coapContextSet[profileId].rings[ringIdx].messageId == messageId &&
-                       _coapContextSet[profileId].rings[ringIdx].sendType == sendType &&
-                       _coapContextSet[profileId].rings[ringIdx].methodRsp == reqRspCodeRaw) {
-                        break;
-                    }
-                }
-
-                if(ringIdx == WALTER_MODEM_COAP_MAX_PENDING_RINGS) {
-                    //TODO: error reporting mechanism for this failed URC
-                    buff->free = true;
-                    return;
-                }
-
-                if(!_coapContextSet[profileId].rings[ringIdx].messageId) {
-                    _coapContextSet[profileId].rings[ringIdx].messageId = messageId;
-                    _coapContextSet[profileId].rings[ringIdx].sendType = sendType;
-                    _coapContextSet[profileId].rings[ringIdx].methodRsp =
-                        (WalterModemCoapSendMethodRsp ) reqRspCodeRaw;
-                    _coapContextSet[profileId].rings[ringIdx].length = length;
+                else
+                {
+                    _httpContextSet[profileId].connected = false;
                 }
             }
+
+            // TODO: implement event hook for arduino developers
         }
-    }
-    
-    else if(_buffStartsWith(buff, "+SQNCOAPCONNECTED: "))
-    {
-        const char *rspStr = _buffStr(buff);
-        char *commaPos = strchr(rspStr, ',');
-        if(commaPos) {
-            *commaPos = '\0';
-        }
+        else if (_buffStartsWith(buff, "+SQNHTTPDISCONNECT: "))
+        {
+            const char *rspStr = _buffStr(buff);
+            uint8_t profileId = atoi(rspStr + _strLitLen("+SQNHTTPDISCONNECT: "));
 
-        uint8_t profileId = atoi(rspStr + _strLitLen("+SQNCOAPCONNECTED: "));
-
-        if(profileId < WALTER_MODEM_MAX_COAP_PROFILES) {
-            _coapContextSet[profileId].connected = true;
-        }
-    }
-    else if(_buffStartsWith(buff, "+SQNCOAPCLOSED: "))
-    {
-        const char *rspStr = _buffStr(buff);
-        char *commaPos = strchr(rspStr, ',');
-        if(commaPos) {
-            *commaPos = '\0';
-        }
-
-        uint8_t profileId = atoi(rspStr + _strLitLen("+SQNCOAPCLOSED: "));
-
-        if(profileId < WALTER_MODEM_MAX_COAP_PROFILES) {
-            _coapContextSet[profileId].connected = false;
-            /* Clear all pending rings on connection close */
-            memset(_coapContextSet[profileId].rings, 0, sizeof(_coapContextSet[profileId].rings));
-
-            if(profileId == 0) {
-                /* our own coap profile for BlueCherry was just closed */
-                if(blueCherry.status == WALTER_MODEM_BLUECHERRY_STATUS_AWAITING_RESPONSE) {
-                    blueCherry.status = WALTER_MODEM_BLUECHERRY_STATUS_TIMED_OUT;
-                }
-            }
-        }
-    }
-#if CONFIG_WALTER_MODEM_ENABLE_HTTP
-    else if(_buffStartsWith(buff, "+SQNHTTPCONNECT: "))
-    {
-        const char *rspStr = _buffStr(buff);
-        char *commaPos = strchr(rspStr, ',');
-        uint8_t profileId, resultCode;
-
-        if(commaPos) {
-            *commaPos = '\0';
-            resultCode = atoi(commaPos + 1);
-        } else {
-            resultCode = 0;
-        }
-
-        profileId = atoi(rspStr + _strLitLen("+SQNHTTPCONNECT: "));
-
-        if(profileId < WALTER_MODEM_MAX_HTTP_PROFILES) {
-            if(resultCode == 0) {
-                _httpContextSet[profileId].connected = true;
-            } else {
+            if (profileId < WALTER_MODEM_MAX_HTTP_PROFILES)
+            {
                 _httpContextSet[profileId].connected = false;
             }
+
+            // TODO: implement event hook for arduino developers
         }
-
-        //TODO: implement event hook for arduino developers
-    }
-    else if(_buffStartsWith(buff, "+SQNHTTPDISCONNECT: "))
-    {
-        const char *rspStr = _buffStr(buff);
-        uint8_t profileId = atoi(rspStr + _strLitLen("+SQNHTTPDISCONNECT: "));
-
-        if(profileId < WALTER_MODEM_MAX_HTTP_PROFILES) {
-            _httpContextSet[profileId].connected = false;
-        }
-
-        //TODO: implement event hook for arduino developers
-    }
-    else if(_buffStartsWith(buff, "+SQNHTTPSH: "))
+        else if (_buffStartsWith(buff, "+SQNHTTPSH: "))
     {
         const char *rspStr = _buffStr(buff);
         uint8_t profileId = atoi(rspStr + _strLitLen("+SQNHTTPSH: "));
 
-        if(profileId < WALTER_MODEM_MAX_HTTP_PROFILES) {
+        if (profileId < WALTER_MODEM_MAX_HTTP_PROFILES)
+        {
             _httpContextSet[profileId].connected = false;
         }
     }
-#endif
+    #endif
+    #pragma endregion
 
-#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
-    else if(_buffStartsWith(buff, "+SQNSH: "))
-    {
-        const char *rspStr = _buffStr(buff);
-        int sockId = atoi(rspStr + _strLitLen("+SQNSH: "));
+    #pragma region COAP
+    #if CONFIG_WALTER_MODEM_ENABLE_COAP
+        else if (_buffStartsWith(buff, "+SQNCOAPRCV: "))
+        {
+            const char *rspStr = _buffStr(buff);
+            char *payload = strchr(rspStr, '\r');
+            if (payload != 0)
+            {
+                payload++;
+            }
 
-        WalterModemSocket *sock = _socketGet(sockId);
+            char *commaPos = strchr(rspStr, ',');
+            char *start = (char *)rspStr + _strLitLen("+SQNCOAPRCV: ");
+            uint8_t profileId = 0;
+            uint16_t messageId = 0;
 
-        if(sock) {
-            _socketRelease(sock);
+            WalterModemCoapSendType sendType = WALTER_MODEM_COAP_SEND_TYPE_CON;
+            uint8_t reqRspCodeRaw = 0;
+
+            if (commaPos)
+            {
+                /* got prof_id */
+                *commaPos = '\0';
+                profileId = atoi(start);
+                start = ++commaPos;
+                commaPos = strchr(commaPos, ',');
+            }
+
+            if (commaPos)
+            {
+                /* got msg_id */
+                *commaPos = '\0';
+                messageId = atoi(start);
+                start = ++commaPos;
+                commaPos = strchr(commaPos, ',');
+            }
+
+            if (commaPos)
+            {
+                /* got token */
+                *commaPos = '\0';
+                start = ++commaPos;
+                commaPos = strchr(commaPos, ',');
+            }
+
+            if (commaPos)
+            {
+                /* got req_resp */
+                *commaPos = '\0';
+                start = ++commaPos;
+                commaPos = strchr(commaPos, ',');
+            }
+
+            if (commaPos)
+            {
+                /* got type (con, noncon, ack, rst) */
+                *commaPos = '\0';
+                sendType = (WalterModemCoapSendType)atoi(start);
+                start = ++commaPos;
+                commaPos = strchr(commaPos, ',');
+            }
+
+            if (commaPos)
+            {
+                /* got rsp code (or method if we allow inbound requests) */
+                *commaPos = '\0';
+                reqRspCodeRaw = atoi(start);
+                uint16_t length = atoi(commaPos + 1);
+
+                if (profileId >= WALTER_MODEM_MAX_COAP_PROFILES)
+                {
+                    result = WALTER_MODEM_STATE_ERROR;
+                    goto after_processing_logic;
+                }
+
+                /* find message id in the stored rings for this profile */
+                uint8_t ringIdx;
+                for (ringIdx = 0; ringIdx < WALTER_MODEM_COAP_MAX_PENDING_RINGS; ringIdx++)
+                {
+                    if (_coapContextSet[profileId].rings[ringIdx].messageId == messageId &&
+                        _coapContextSet[profileId].rings[ringIdx].sendType == sendType &&
+                        _coapContextSet[profileId].rings[ringIdx].methodRsp == reqRspCodeRaw)
+                    {
+                        break;
+                    }
+                }
+
+                if (ringIdx < WALTER_MODEM_COAP_MAX_PENDING_RINGS)
+                {
+                    /* free ring entry */
+                    _coapContextSet[profileId].rings[ringIdx].messageId = 0;
+                }
+
+                cmd->rsp->type = WALTER_MODEM_RSP_DATA_TYPE_COAP;
+                cmd->rsp->data.coapResponse.profileId = profileId;
+                cmd->rsp->data.coapResponse.messageId = messageId;
+                cmd->rsp->data.coapResponse.sendType = sendType;
+                cmd->rsp->data.coapResponse.methodRsp =
+                    (WalterModemCoapSendMethodRsp)reqRspCodeRaw;
+
+                if (length > cmd->dataSize)
+                {
+                    cmd->rsp->data.coapResponse.length = cmd->dataSize;
+                }
+                else
+                {
+                    cmd->rsp->data.coapResponse.length = length;
+                }
+
+                /*
+                * If data and dataSize are null, we cannot store the result. We can only hope the user
+                * is using a callback which has access to the raw buffer.
+                */
+                if (cmd->data)
+                {
+                    memcpy(cmd->data, payload, cmd->rsp->data.coapResponse.length);
+                }
+            }
         }
-    }
-#endif
+        else if(_buffStartsWith(buff, "+SQNCOAPRING: "))
+        {
+            const char *rspStr = _buffStr(buff);
+            char *commaPos = strchr(rspStr, ',');
+            char *start = (char*) rspStr + _strLitLen("+SQNCOAPRING: ");
 
-#if CONFIG_WALTER_MODEM_ENABLE_MQTT
+            char *profileIdStr = NULL;
+            char *messageIdStr = NULL;
+            char *sendTypeStr = NULL;
+            char *reqRspCodeRawStr = NULL;
+            char *lengthStr = NULL;
+
+            if(commaPos) {
+                *commaPos = '\0';
+                profileIdStr = start;
+                start = ++commaPos;
+                commaPos = strchr(commaPos, ',');
+
+                if(!_coapContextSet[atoi(profileIdStr)].connected ||
+                atoi(profileIdStr) >= WALTER_MODEM_MAX_COAP_PROFILES) {
+                    //TODO: return error if modem returns invalid profile id.
+                    buff->free = true;
+                    return;
+                }
+            }
+
+            if(commaPos) {
+                *commaPos = '\0';
+                messageIdStr = start;
+                start = ++commaPos;
+                commaPos = strchr(commaPos, ',');
+            }
+
+            if(commaPos) {
+                *commaPos = '\0';
+                start = ++commaPos;
+                commaPos = strchr(commaPos, ',');
+            }
+
+            if(commaPos) {
+                *commaPos = '\0';
+                sendTypeStr = start;
+                start = ++commaPos;
+                commaPos = strchr(commaPos, ',');
+            }
+
+            if(commaPos) {
+                *commaPos = '\0';
+                reqRspCodeRawStr = start;
+                lengthStr = commaPos + 1;
+
+                /* convert parameters to int */
+                uint8_t profileId = atoi(profileIdStr);
+                uint16_t messageId = atoi(messageIdStr);
+                WalterModemCoapSendType sendType = (WalterModemCoapSendType) atoi(sendTypeStr);
+                uint8_t reqRspCodeRaw = atoi(reqRspCodeRawStr);
+                uint16_t length = atoi(lengthStr);
+
+                if(profileId == 0) {
+                    /* profile id 0 is the internal BlueCherry cloud coap profile */
+                    if(blueCherry.lastAckedMessageId != messageId) {
+                        WalterModemBuffer *stringsBuffer = _getFreeBuffer();
+                        stringsBuffer->size +=
+                            sprintf((char*) stringsBuffer->data, "AT+SQNCOAPRCV=%s,%s,%s",
+                                profileIdStr, messageIdStr, lengthStr);
+                        const char *_cmdArr[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] =
+                            arr((const char*) stringsBuffer->data);
+
+                        _addQueueCmd(_cmdArr, "+SQNCOAPRCV: ", NULL, coap_received_from_bluecherry,
+                            &blueCherry, NULL, NULL, WALTER_MODEM_CMD_TYPE_TX_WAIT,
+                            blueCherry.messageIn, WALTER_MODEM_MAX_INCOMING_MESSAGE_LEN, stringsBuffer);
+                    }
+                } else {
+                    /* store ring in ring list for this coap context */
+                    uint8_t ringIdx;
+                    for(ringIdx = 0; ringIdx < WALTER_MODEM_COAP_MAX_PENDING_RINGS; ringIdx++) {
+                        if(!_coapContextSet[profileId].rings[ringIdx].messageId) {
+                            break;
+                        }
+                        if(_coapContextSet[profileId].rings[ringIdx].messageId == messageId &&
+                        _coapContextSet[profileId].rings[ringIdx].sendType == sendType &&
+                        _coapContextSet[profileId].rings[ringIdx].methodRsp == reqRspCodeRaw) {
+                            break;
+                        }
+                    }
+
+                    if(ringIdx == WALTER_MODEM_COAP_MAX_PENDING_RINGS) {
+                        //TODO: error reporting mechanism for this failed URC
+                        buff->free = true;
+                        return;
+                    }
+
+                    if(!_coapContextSet[profileId].rings[ringIdx].messageId) {
+                        _coapContextSet[profileId].rings[ringIdx].messageId = messageId;
+                        _coapContextSet[profileId].rings[ringIdx].sendType = sendType;
+                        _coapContextSet[profileId].rings[ringIdx].methodRsp =
+                            (WalterModemCoapSendMethodRsp ) reqRspCodeRaw;
+                        _coapContextSet[profileId].rings[ringIdx].length = length;
+                    }
+                }
+            }
+        }
+        
+        else if(_buffStartsWith(buff, "+SQNCOAPCONNECTED: "))
+        {
+            const char *rspStr = _buffStr(buff);
+            char *commaPos = strchr(rspStr, ',');
+            if(commaPos) {
+                *commaPos = '\0';
+            }
+
+            uint8_t profileId = atoi(rspStr + _strLitLen("+SQNCOAPCONNECTED: "));
+
+            if(profileId < WALTER_MODEM_MAX_COAP_PROFILES) {
+                _coapContextSet[profileId].connected = true;
+            }
+        }
+        else if(_buffStartsWith(buff, "+SQNCOAPCLOSED: "))
+        {
+            const char *rspStr = _buffStr(buff);
+            char *commaPos = strchr(rspStr, ',');
+            if(commaPos) {
+                *commaPos = '\0';
+            }
+
+            uint8_t profileId = atoi(rspStr + _strLitLen("+SQNCOAPCLOSED: "));
+
+            if(profileId < WALTER_MODEM_MAX_COAP_PROFILES) {
+                _coapContextSet[profileId].connected = false;
+                /* Clear all pending rings on connection close */
+                memset(_coapContextSet[profileId].rings, 0, sizeof(_coapContextSet[profileId].rings));
+
+                if(profileId == 0) {
+                    /* our own coap profile for BlueCherry was just closed */
+                    if(blueCherry.status == WALTER_MODEM_BLUECHERRY_STATUS_AWAITING_RESPONSE) {
+                        blueCherry.status = WALTER_MODEM_BLUECHERRY_STATUS_TIMED_OUT;
+                    }
+                }
+            }
+        }
+    #endif
+    #pragma endregion
+
+    #pragma region SOCKETS
+    #if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+        else if(_buffStartsWith(buff, "+SQNSH: "))
+        {
+            const char *rspStr = _buffStr(buff);
+            int sockId = atoi(rspStr + _strLitLen("+SQNSH: "));
+
+            WalterModemSocket *sock = _socketGet(sockId);
+
+            if(sock) {
+                _socketRelease(sock);
+            }
+        }
+    #endif
+    #pragma endregion
+
+    #pragma region MQTT
+    #if CONFIG_WALTER_MODEM_ENABLE_MQTT
     else if(_buffStartsWith(buff, "+SQNSMQTTONCONNECT:0,"))
     {
         const char *rspStr = _buffStr(buff);
@@ -2747,7 +2786,9 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             memcpy(cmd->data, rspStr + 2, cmd->dataSize);
         }
     }
-#endif
+    #endif
+    #pragma endregion
+
     else if(_buffStartsWithDigit(buff))
     {
         if(cmd == NULL) {
