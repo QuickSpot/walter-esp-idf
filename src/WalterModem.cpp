@@ -4024,6 +4024,8 @@ bool WalterModem::definePDPContext(
         _returnState(WALTER_MODEM_STATE_NO_FREE_PDP_CONTEXT);
     }
 
+    ctx->id = ctxId;
+
     ctx->state = WALTER_MODEM_PDP_CONTEXT_STATE_NOT_ATTACHED;
 
     ctx->type = type;
