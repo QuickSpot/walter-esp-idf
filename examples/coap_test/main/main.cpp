@@ -48,6 +48,8 @@
  */
 
 #include <esp_mac.h>
+#include <esp_log.h>
+
 #include <WalterModem.h>
 
 /**
@@ -89,7 +91,7 @@ void waitForNetwork()
     ESP_LOGI("mqtt_test", "Connected to the network");
 }
 
-void app_main(void)
+extern "C" void app_main(void)
 {
     ESP_LOGI("mqtt_test", "Walter modem test v0.0.1");
 

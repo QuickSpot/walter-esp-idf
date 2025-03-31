@@ -12,6 +12,7 @@ endforeach()
 
 idf_component_register(
     SRCS "src/WalterModem.cpp"
+         "src/proto/WalterCoAP.cpp"
          "src/proto/WalterBlueCherry.cpp"
          "src/proto/WalterGNSS.cpp"
          "src/proto/WalterHTTP.cpp"
