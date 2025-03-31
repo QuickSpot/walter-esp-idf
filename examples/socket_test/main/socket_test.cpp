@@ -174,11 +174,17 @@ extern "C" void app_main(void)
   }
 
   /* Create PDP context */
-  if(modem.definePDPContext("", WALTER_MODEM_PDP_AUTH_PROTO_PAP, "sora", "sora"))
-  {
+  if(modem.definePDPContext()) {
     ESP_LOGI("socket_test", "Created PDP context");
   } else {
     ESP_LOGI("socket_test", "Could not create PDP context");
+    return;
+  }
+
+  if(modem.setPDPAuthParams(WALTER_MODEM_PDP_AUTH_PROTO_NONE,"sora","sora")) {
+    ESP_LOGI("socket_test", "Authenticated the PDP context");
+  } else {
+    ESP_LOGI("socket_test", "Could not authenticate the PDP context");
     return;
   }
   

@@ -76,6 +76,19 @@ uint8_t incomingBuf[256] = {0};
  */
 uint16_t counter = 0;
 
+void waitForNetwork()
+{
+    /* Wait for the network to become available */
+    WalterModemNetworkRegState regState = modem.getNetworkRegState();
+    while (!(regState == WALTER_MODEM_NETWORK_REG_REGISTERED_HOME ||
+             regState == WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING))
+    {
+        vTaskDelay(pdMS_TO_TICKS(100));
+        regState = modem.getNetworkRegState();
+    }
+    ESP_LOGI("mqtt_test", "Connected to the network");
+}
+
 void app_main(void)
 {
     ESP_LOGI("mqtt_test", "Walter modem test v0.0.1");
@@ -131,16 +144,28 @@ void app_main(void)
 
   /* Create PDP context */
   if(modem.definePDPContext()) {
-    ESP_LOGI("mqtt_test", "Created PDP context");
+    ESP_LOGI("coap_test", "Created PDP context");
   } else {
-    ESP_LOGI("mqtt_test", "Could not create PDP context");
+    ESP_LOGI("coap_test", "Could not create PDP context");
     return;
   }
 
-  if(modem.setPDPAuthParams()) {
-    ESP_LOGI("mqtt_test", "Authenticated the PDP context");
+  if(modem.setPDPAuthParams(WALTER_MODEM_PDP_AUTH_PROTO_NONE,"sora","sora")) {
+    ESP_LOGI("coap_test", "Authenticated the PDP context");
   } else {
-    ESP_LOGI("mqtt_test", "Could not authenticate the PDP context");
+    ESP_LOGI("coap_test", "Could not authenticate the PDP context");
+    return;
+  }
+
+
+  if(modem.getPDPAddress(&rsp)) {
+    ESP_LOGI("coap_test", "PDP context address list:");
+    ESP_LOGI("coap_test", "  - %s", rsp.data.pdpAddressList.pdpAddress);
+    if(rsp.data.pdpAddressList.pdpAddress2[0] != '\0') {
+      ESP_LOGI("coap_test", "  - %s", rsp.data.pdpAddressList.pdpAddress2);
+    }
+  } else {
+    ESP_LOGI("coap_test", "Could not retrieve PDP context addresses");
     return;
   }
 }

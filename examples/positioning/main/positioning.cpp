@@ -102,6 +102,8 @@ WalterModemGNSSFix posFix = {};
  */
 uint8_t dataBuf[PACKET_SIZE] = { 0 };
 
+const int maxWaitMs = 30000; /* maximum wait time of 30 seconds */
+
 /**
  * @brief Configure the modem's network.
  * 
@@ -117,29 +119,19 @@ uint8_t dataBuf[PACKET_SIZE] = { 0 };
 bool lteInit(const char *apn, const char *user = NULL, const char *pass = NULL)
 {
   /* Create PDP context */
-  if(user != NULL) {
-    if(!modem.createPDPContext(
-        apn,
-        WALTER_MODEM_PDP_AUTH_PROTO_PAP,
-        user,
-        pass))
-    {
-      ESP_LOGI("positioning", "Could not create PDP context");
-      return false;
-    }
-  } else {
-    if(!modem.createPDPContext(apn)) {
-      ESP_LOGI("positioning", "Could not create PDP context");
-      return false;
-    }
-  }
-
-  /* Authenticate the PDP context */
-  if(!modem.authenticatePDPContext()) {
-    ESP_LOGI("positioning", "Could not authenticate the PDP context");
+  
+  if(!modem.createPDPContext(apn))
+  {
+    ESP_LOGI("positioning", "Could not create PDP context");
     return false;
   }
 
+  /* Authenticate the PDP context */
+  if (!modem.setPDPAuthParams(WALTER_MODEM_PDP_AUTH_PROTO_NONE, "sora", "sora"))
+  {
+    ESP_LOGI("positioning", "Could not authenticate the PDP context");
+    return false;
+  }
   return true;
 }
 
@@ -406,9 +398,9 @@ bool socketConnect(const char *ip, uint16_t port)
     return false;
   }
 
-  /* Attach the PDP context */
+  /* Attach the MT to the Packet Domain Service */
   if(!modem.setNetworkAttachementState(true)) {
-    ESP_LOGI("positioning", "Could not attach to the PDP context");
+    ESP_LOGI("positioning", "Could not attach to the PDS(Packet Domain Service)");
     return false;
   }
 
@@ -516,7 +508,7 @@ extern "C" void app_main(void)
     return;
   }
 
-  modem.setGNSSfixHandler(fixHandler);
+  modem.setGNSSEventHandler(fixHandler);
 
   /* this loop is basically the Arduino loop function */
   for(;;) {
