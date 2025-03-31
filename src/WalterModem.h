@@ -4411,7 +4411,7 @@ class WalterModem {
             WalterModemRsp *rsp = NULL,
             walterModemCb cb = NULL,
             void *args = NULL,
-            int pdpCtxId = -1,
+            int pdpCtxId = 1,
             uint16_t mtu = 300,
             uint16_t exchangeTimeout = 90,
             uint16_t connTimeout = 60,
@@ -4957,17 +4957,14 @@ class WalterModem {
          * @return True on success, false otherwise.
          */
         static bool definePDPContext(
+            const uint8_t ctxId = 1,
             const char *apn = NULL,
-            WalterModemPDPAuthProtocol authProto = WALTER_MODEM_PDP_AUTH_PROTO_NONE,
-            const char *authUser = NULL,
-            const char *authPass = NULL,
             WalterModemRsp *rsp = NULL,
             walterModemCb cb = NULL,
             void *args = NULL,
             WalterModemPDPType type = WALTER_MODEM_PDP_TYPE_IP,
             const char *pdpAddress = NULL,
-            const uint8_t ctxId = 1,
-            WalterModemPDPHeaderCompression headerComp = WALTER_MODEM_PDP_HCOMP_OFF, 
+            WalterModemPDPHeaderCompression headerComp = WALTER_MODEM_PDP_HCOMP_OFF,
             WalterModemPDPDataCompression dataComp = WALTER_MODEM_PDP_DCOMP_OFF,
             WalterModemPDPIPv4AddrAllocMethod ipv4AllocMethod = WALTER_MODEM_PDP_IPV4_ALLOC_NAS,
             WalterModemPDPRequestType requestType = WALTER_MODEM_PDP_REQUEST_NEW_OR_HANDOVER,
@@ -4993,8 +4990,11 @@ class WalterModem {
          * 
          * @return True on success, false otherwise.
          */
-        static bool authenticatePDPContext(
+        static bool setPDPAuthParams(
             int pdpCtxId = -1,
+            WalterModemPDPAuthProtocol authProto = WALTER_MODEM_PDP_AUTH_PROTO_NONE,
+            const char *authUser = NULL,
+            const char *authPass = NULL,
             WalterModemRsp *rsp = NULL,
             walterModemCb cb = NULL,
             void *args = NULL);
@@ -5032,7 +5032,7 @@ class WalterModem {
          * 
          * @return True on success, false otherwise.
          */
-        static bool attachPDPContext(
+        static bool setNetworkAttachementState(
             bool attach = true,
             WalterModemRsp *rsp = NULL,
             walterModemCb cb = NULL,

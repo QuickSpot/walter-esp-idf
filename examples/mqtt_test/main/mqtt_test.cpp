@@ -177,7 +177,7 @@ extern "C" void app_main(void)
   waitForNetwork();
   
   /* Attach the PDP context */
-  if(modem.attachPDPContext(true)) {
+  if(modem.setNetworkAttachementState(true)) {
     ESP_LOGI("mqtt_test", "Attached to the PDP context");
   } else {
     ESP_LOGI("mqtt_test", "Could not attach to the PDP context");

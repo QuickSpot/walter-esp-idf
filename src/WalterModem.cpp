@@ -4042,9 +4042,6 @@ bool WalterModem::definePDPContext(
     ctx->useNASIPv4MTUDiscovery = useNASIPv4MTUDiscovery;
     ctx->useLocalAddrInd = useLocalAddrInd;
     ctx->useNASNonIPMTUDiscovery = useNASNonIPMTUDiscovery;
-    ctx->authProto = authProto;
-    _strncpy_s(ctx->authUser, authUser, WALTER_MODEM_PDP_AUTH_USER_MAX_SIZE);
-    _strncpy_s(ctx->authPass, authPass, WALTER_MODEM_PDP_AUTH_PASS_MAX_SIZE);
 
     auto completeHandler = [](WalterModemCmd *cmd, WalterModemState result)
     {
@@ -4079,9 +4076,12 @@ bool WalterModem::definePDPContext(
     _returnAfterReply();
 }
 
-bool WalterModem::authenticatePDPContext(
+bool WalterModem::setPDPAuthParams(
     int pdpCtxId,
-    WalterModemRsp *rsp,
+    WalterModemPDPAuthProtocol authProto,
+    const char *authUser,
+    const char *authPass,
+    WalterModemRsp * rsp,
     walterModemCb cb,
     void *args)
 {
@@ -4093,6 +4093,10 @@ bool WalterModem::authenticatePDPContext(
     if(ctx->authProto == WALTER_MODEM_PDP_AUTH_PROTO_NONE) {
         _returnState(WALTER_MODEM_STATE_OK);
     }
+
+    ctx->authProto = authProto;
+    _strncpy_s(ctx->authUser, authUser, WALTER_MODEM_PDP_AUTH_USER_MAX_SIZE);
+    _strncpy_s(ctx->authPass, authPass, WALTER_MODEM_PDP_AUTH_PASS_MAX_SIZE);
 
     _runCmd(arr(
         "AT+CGAUTH=",
@@ -4142,7 +4146,7 @@ bool WalterModem::setPDPContextActive(
     _returnAfterReply();
 }
 
-bool WalterModem::attachPDPContext(
+bool WalterModem::setNetworkAttachementState(
     bool attach,
     WalterModemRsp *rsp,
     walterModemCb cb,

@@ -111,7 +111,7 @@ bool WalterModem::createSocket(
     uint16_t sendDelayMs)
 {
     WalterModemPDPContext *ctx = _pdpContextGet(pdpCtxId);
-    if (ctx == NULL)
+    if (ctx == NULL || pdpCtxId < 0)
     {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_PDP_CONTEXT);
     }

@@ -407,7 +407,7 @@ bool socketConnect(const char *ip, uint16_t port)
   }
 
   /* Attach the PDP context */
-  if(!modem.attachPDPContext(true)) {
+  if(!modem.setNetworkAttachementState(true)) {
     ESP_LOGI("positioning", "Could not attach to the PDP context");
     return false;
   }
