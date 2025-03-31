@@ -143,7 +143,7 @@ extern "C" void app_main(void)
   }
 
   /* Create PDP context */
-  if(modem.createPDPContext("", WALTER_MODEM_PDP_AUTH_PROTO_PAP, "sora", "sora")) {
+  if(modem.definePDPContext("", WALTER_MODEM_PDP_AUTH_PROTO_PAP, "sora", "sora")) {
     ESP_LOGI("mqtt_test", "Created PDP context");
   } else {
     ESP_LOGI("mqtt_test", "Could not create PDP context");
