@@ -3997,16 +3997,13 @@ uint8_t WalterModem::durationToActiveTime(
 
 #pragma region PDP_CONTEXT
 bool WalterModem::definePDPContext(
+    const uint8_t ctxId,
     const char *apn,
-    WalterModemPDPAuthProtocol authProto,
-    const char *authUser,
-    const char *authPass,
     WalterModemRsp *rsp,
     walterModemCb cb,
     void *args,
     WalterModemPDPType type,
     const char *pdpAddress,
-    const uint8_t ctxId,
     WalterModemPDPHeaderCompression headerComp,
     WalterModemPDPDataCompression dataComp,
     WalterModemPDPIPv4AddrAllocMethod ipv4AllocMethod,
