@@ -55,7 +55,7 @@
 /**
  * @brief COAP profile used for COAP tests
  */
-#define COAP_PROFILE 1
+#define COAP_PROFILE 0
 
 /**
  * @brief The modem instance.
@@ -159,6 +159,32 @@ extern "C" void app_main(void)
         return;
     }
 
+    /* Set the operational state to full */
+    if(modem.setOpState(WALTER_MODEM_OPSTATE_FULL)) {
+        ESP_LOGI("coap_test", "Successfully set operational state to FULL");
+    } else {
+        ESP_LOGI("coap_test", "Could not set operational state to FULL");
+        return;
+    }
+
+    /* Set the network operator selection to automatic */
+    if(modem.setNetworkSelectionMode(WALTER_MODEM_NETWORK_SEL_MODE_AUTOMATIC)) {
+        ESP_LOGI("coap_test", "Network selection mode to was set to automatic");
+    } else {
+        ESP_LOGI("coap_test", "Could not set the network selection mode to automatic");
+        return;
+    }
+
+    waitForNetwork();
+    
+    /* Attach the PDP context */
+    if(modem.setNetworkAttachementState(true)) {
+        ESP_LOGI("coap_test", "Attached to the PDP context");
+    } else {
+        ESP_LOGI("coap_test", "Could not attach to the PDP context");
+        return;
+    }
+
 
     if(modem.getPDPAddress(&rsp)) {
         ESP_LOGI("coap_test", "PDP context address list:");
@@ -172,6 +198,7 @@ extern "C" void app_main(void)
     }
 
     for(;;) {
+        vTaskDelay(pdMS_TO_TICKS(10000));
         dataBuf[6] = counter >> 8;
         dataBuf[7] = counter & 0xFF;
 
@@ -181,7 +208,7 @@ extern "C" void app_main(void)
 
         if(!modem.coapCreateContext(COAP_PROFILE, "coap.me", 5683)) {
             ESP_LOGE("coap_test", "Could not create COAP context. Better luck next iteration?\r\n");
-            return;
+            continue;
         } else {
             ESP_LOGI("coap_test", "Successfully created or refreshed COAP context\r\n");
         }
