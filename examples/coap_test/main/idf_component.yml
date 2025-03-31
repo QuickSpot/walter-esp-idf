@@ -1,0 +1,5 @@
+dependencies:
+  idf: ">=5.0.0"
+  dptechnics/walter-modem:
+    version: "add-kconfig"
+    git: "https://github.com/lolrobbe2/walter-esp-idf.git"

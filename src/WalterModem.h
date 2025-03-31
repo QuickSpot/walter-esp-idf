@@ -4991,10 +4991,10 @@ class WalterModem {
          * @return True on success, false otherwise.
          */
         static bool setPDPAuthParams(
-            int pdpCtxId = -1,
             WalterModemPDPAuthProtocol authProto = WALTER_MODEM_PDP_AUTH_PROTO_NONE,
             const char *authUser = NULL,
             const char *authPass = NULL,
+            int pdpCtxId = -1,
             WalterModemRsp *rsp = NULL,
             walterModemCb cb = NULL,
             void *args = NULL);

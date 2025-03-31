@@ -4077,11 +4077,11 @@ bool WalterModem::definePDPContext(
 }
 
 bool WalterModem::setPDPAuthParams(
-    int pdpCtxId,
     WalterModemPDPAuthProtocol authProto,
     const char *authUser,
     const char *authPass,
-    WalterModemRsp * rsp,
+    int pdpCtxId,
+    WalterModemRsp *rsp,
     walterModemCb cb,
     void *args)
 {
