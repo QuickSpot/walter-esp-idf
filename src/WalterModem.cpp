@@ -3112,8 +3112,8 @@ bool WalterModem::_processMotaChunkEvent(uint8_t *data, uint16_t len)
 
     blueCherry.otaProgress += len;
 
-    ESP_LOGD("WalterModem", "MOTA: appending new chunk of %d bytes to ESP32 flash; so far %"PRIu32
-        "/%"PRIu32" bytes written", len, blueCherry.otaProgress, blueCherry.otaSize);
+    ESP_LOGD("WalterModem", "MOTA: appending new chunk of %d bytes to ESP32 flash; so far %" PRIu32
+        "/%" PRIu32 " bytes written", len, blueCherry.otaProgress, blueCherry.otaSize);
 
     return false;
 }
@@ -3152,7 +3152,7 @@ bool WalterModem::_processMotaFinishEvent(void)
         /* next block */
         bytesLeft -= bytesRead;
         ESP_LOGD("WalterModem",
-            "sent chunk of %d bytes from ESP flash to modem; so far %"PRIu32"/%"PRIu32" bytes sent",
+            "sent chunk of %d bytes from ESP flash to modem; so far %" PRIu32 "/%" PRIu32 " bytes sent",
             bytesRead, blueCherry.otaSize - bytesLeft, blueCherry.otaSize);
 
         tickleWatchdog();
