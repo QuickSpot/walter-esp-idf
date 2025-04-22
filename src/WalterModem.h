@@ -1300,8 +1300,13 @@ typedef enum
     /**
      * @brief HTTP related events.
      */
-    WALTER_MODEM_EVENT_TYPE_HTTP
+    WALTER_MODEM_EVENT_TYPE_HTTP,
     
+    /**
+     * @brief CoAP related events.
+     */
+    WALTER_MODEM_EVENT_TYPE_COAP,
+
     /**
      * @brief The number of event types supported by the library.
      */
@@ -1339,6 +1344,17 @@ typedef enum
     WALTER_MODEM_HTTP_EVENT_CONNECTION_CLOSED,
     WALTER_MODEM_HTTP_EVENT_RING
 } WalterModemHttpEvent;
+#endif
+#if CONFIG_WALTER_MODEM_ENABLE_COAP
+/**
+ * @brief This enumeration groups the different types of CoAP events.
+ */
+typedef enum
+{
+    WALTER_MODEM_COAP_EVENT_CONNECTED,
+    WALTER_MODEM_COAP_EVENT_DISCONNECTED,
+    WALTER_MODEM_COAP_EVENT_RING
+} WalterModemCoapEvent;
 #endif
 #pragma endregion
 #pragma endregion
@@ -1413,6 +1429,19 @@ typedef void (*walterModemMQTTEventHandler)(WalterModemMQTTEvent ev, WalterModem
  */
 typedef void (*walterModemHttpEventHandler)(WalterModemHttpEvent ev, int profileId, void *args);
 #endif
+
+#if CONFIG_WALTER_MODEM_ENABLE_COAP
+/**
+ * @brief Header of an CoAP event handler
+ *
+ * @param ev The Type of CoAPEvent
+ * @param profileId the id of the CoAP Profile
+ * @param args Optional arguments set by the application layer.
+ *
+ * @return None.
+ */
+typedef void (*walterModemCoAPEventHandler)(WalterModemCoapEvent ev, int profileId, void *args);
+#endif
 #pragma endregion
 
 #pragma region STRUCTS
@@ -1456,6 +1485,13 @@ typedef struct
          * @brief Pointer to the http event handler.
          */
         walterModemHttpEventHandler httpHandler;
+#endif
+
+#if CONFIG_WALTER_MODEM_ENABLE_COAP
+        /**
+         * @brief Pointer to the CoAP event handler.
+         */
+        walterModemCoAPEventHandler coapHandler;
 #endif
     };
 
@@ -5221,6 +5257,17 @@ class WalterModem {
          * the HTTP event handler, this function must be called with a nullptr as the handler.
          */
         static void setHTTPEventHandler(walterModemHttpEventHandler handler, void *args = NULL);
+#endif
+
+#if CONFIG_WALTER_MODEM_ENABLE_COAP
+        /**
+         * @brief Set the CoAP event handler.
+         *
+         * This function sets the handler that is called when an CoAP event is launched by the modem
+         * When this function is called multiple times, only the last handler will be set. To remove
+         * the CoAP event handler, this function must be called with a nullptr as the handler.
+         */
+        static void setCoAPEventHandler(walterModemCoAPEventHandler handler, void *args = NULL);
 #endif
 #pragma endregion
 

@@ -254,5 +254,13 @@ bool WalterModem::coapSendData(
         "OK", rsp, cb, args, NULL, NULL, WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT, payload, length);
     _returnAfterReply();
 }
+
+void WalterModem::setCoAPEventHandler(
+    walterModemCoAPEventHandler handler,
+    void *args = NULL)
+{
+    _eventHandlers[WALTER_MODEM_EVENT_TYPE_COAP].coapHandler = handler;
+    _eventHandlers[WALTER_MODEM_EVENT_TYPE_COAP].args = args;
+}
 #pragma endregion
 #endif
