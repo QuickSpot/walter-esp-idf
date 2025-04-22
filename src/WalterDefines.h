@@ -45,7 +45,7 @@
 
 #ifndef WALTER_DEFINES_H
 #define WALTER_DEFINES_H
-#include "WalterModem.h"
+#include <WalterModem.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <time.h>
