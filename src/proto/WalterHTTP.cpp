@@ -45,6 +45,20 @@
 
 #include <WalterDefines.h>
 #if CONFIG_WALTER_MODEM_ENABLE_HTTP
+#pragma region PRIVATE_METHODS
+void WalterModem::_dispatchEvent(WalterModemHttpEvent event, int profileId)
+{
+    WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_HTTP;
+    if (handler->httpHandler == nullptr) {
+        return;
+    }
+
+    auto start = std::chrono::steady_clock::now();
+    handler->httpHandler(event, profileId, handler->args);
+    _checkEventDuration(start);
+}
+#pragma endregion
+
 #pragma region PUBLIC_METHODS
 bool WalterModem::httpConfigProfile(
     uint8_t profileId,
@@ -291,6 +305,14 @@ bool WalterModem::httpDidRing(
         rsp, cb, args, completeHandler, NULL, WALTER_MODEM_CMD_TYPE_TX_WAIT, targetBuf,
         targetBufSize);
     _returnAfterReply();
+}
+
+void WalterModem::setHTTPEventHandler(
+    walterModemHttpEventHandler handler, 
+    void *args = NULL)
+{
+    _eventHandlers[WALTER_MODEM_EVENT_TYPE_HTTP].httpHandler = handler;
+    _eventHandlers[WALTER_MODEM_EVENT_TYPE_HTTP].args = args;
 }
 #pragma endregion
 #endif

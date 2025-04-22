@@ -1298,6 +1298,11 @@ typedef enum
     WALTER_MODEM_EVENT_TYPE_MQTT,
 
     /**
+     * @brief HTTP related events.
+     */
+    WALTER_MODEM_EVENT_TYPE_HTTP
+    
+    /**
      * @brief The number of event types supported by the library.
      */
     WALTER_MODEM_EVENT_TYPE_COUNT
@@ -1321,6 +1326,19 @@ typedef enum
     WALTER_MODEM_MQTT_EVENT_DISCONNECTED,
     WALTER_MODEM_MQTT_EVENT_RING
 } WalterModemMQTTEvent;
+#endif
+
+#if CONFIG_WALTER_MODEM_ENABLE_HTTP
+/**
+ * @brief This enumeration groups the different types of HTTP events.
+ */
+typedef enum
+{
+    WALTER_MODEM_HTTP_EVENT_CONNECTED,
+    WALTER_MODEM_HTTP_EVENT_DISCONNECTED,
+    WALTER_MODEM_HTTP_EVENT_CONNECTION_CLOSED,
+    WALTER_MODEM_HTTP_EVENT_RING
+} WalterModemHttpEvent;
 #endif
 #pragma endregion
 #pragma endregion
@@ -1382,6 +1400,19 @@ typedef void (*walterModemGNSSEventHandler)(const WalterModemGNSSFix *fix, void 
  */
 typedef void (*walterModemMQTTEventHandler)(WalterModemMQTTEvent ev, WalterModemMqttStatus status, void *args);
 #endif
+
+#if CONFIG_WALTER_MODEM_ENABLE_HTTP
+/**
+ * @brief Header of an HTTP event handler
+ *
+ * @param ev The Type of HTTPEvent
+ * @param profileId the id of the Http Profile
+ * @param args Optional arguments set by the application layer.
+ * 
+ * @return None.
+ */
+typedef void (*walterModemHttpEventHandler)(WalterModemHttpEvent ev, int profileId, void *args);
+#endif
 #pragma endregion
 
 #pragma region STRUCTS
@@ -1418,6 +1449,13 @@ typedef struct
          * @brief Pointer to the MQTT event handler.
          */
         walterModemMQTTEventHandler mqttHandler;
+#endif
+
+#if CONFIG_WALTER_MODEM_ENABLE_HTTP
+        /**
+         * @brief Pointer to the http event handler.
+         */
+        walterModemHttpEventHandler httpHandler;
 #endif
     };
 
@@ -3465,6 +3503,12 @@ class WalterModem {
          */
         static void _dispatchEvent(WalterModemMQTTEvent event, WalterModemMqttStatus status);
 #endif
+
+#if CONFIG_WALTER_MODEM_ENABLE_HTTP
+        /*
+        */
+       static void _dispatchEvent(WalterModemHttpEvent event, int profileId);
+#endif
 #pragma endregion
         
 #pragma region MODEM_SLEEP
@@ -5166,6 +5210,17 @@ class WalterModem {
          * the MQTT event handler, this function must be called with a nullptr as the handler.
          */
         static void setMQTTEventHandler(walterModemMQTTEventHandler handler, void *args = NULL);
+#endif
+
+#if CONFIG_WALTER_MODEM_ENABLE_HTTP
+        /**
+         * @brief Set the HTTP event handler.
+         *
+         * This function sets the handler that is called when an HTTP event is launched by the modem
+         * When this function is called multiple times, only the last handler will be set. To remove
+         * the HTTP event handler, this function must be called with a nullptr as the handler.
+         */
+        static void setHTTPEventHandler(walterModemHttpEventHandler handler, void *args = NULL);
 #endif
 #pragma endregion
 

@@ -2279,6 +2279,8 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
                            _httpContextSet[profileId].contentTypeSize - 1);
             }
             _httpContextSet[profileId].contentLength = contentLength;
+
+            _dispatchEvent(WALTER_MODEM_HTTP_EVENT_RING,profileId);
         } else {
             //TODO: report this incomplete ring message as an error. 
             buff->free = true;
@@ -2315,7 +2317,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
                 }
             }
 
-            // TODO: implement event hook for arduino developers
+            _dispatchEvent(WALTER_MODEM_HTTP_EVENT_CONNECTED,profileId);
         }
         else if (_buffStartsWith(buff, "+SQNHTTPDISCONNECT: "))
         {
@@ -2325,9 +2327,9 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             if (profileId < WALTER_MODEM_MAX_HTTP_PROFILES)
             {
                 _httpContextSet[profileId].connected = false;
+                _dispatchEvent(WALTER_MODEM_HTTP_EVENT_DISCONNECTED, profileId);
             }
 
-            // TODO: implement event hook for arduino developers
         }
         else if (_buffStartsWith(buff, "+SQNHTTPSH: "))
     {
@@ -2337,6 +2339,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         if (profileId < WALTER_MODEM_MAX_HTTP_PROFILES)
         {
             _httpContextSet[profileId].connected = false;
+            _dispatchEvent(WALTER_MODEM_HTTP_EVENT_CONNECTION_CLOSED, profileId);
         }
     }
     #endif
