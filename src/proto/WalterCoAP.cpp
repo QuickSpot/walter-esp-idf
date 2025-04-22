@@ -272,7 +272,7 @@ bool WalterModem::coapSendData(
 
 void WalterModem::setCoAPEventHandler(
     walterModemCoAPEventHandler handler,
-    void *args = NULL)
+    void *args)
 {
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_COAP].coapHandler = handler;
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_COAP].args = args;
