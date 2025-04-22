@@ -2564,6 +2564,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
                         _coapContextSet[profileId].rings[ringIdx].methodRsp =
                             (WalterModemCoapSendMethodRsp ) reqRspCodeRaw;
                         _coapContextSet[profileId].rings[ringIdx].length = length;
+                        _dispatchEvent(WALTER_MODEM_COAP_EVENT_RING,profileId);
                     }
             #if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
                 } // DO NOT REMOVE IS PART OF ABOVE IF STATEMENT
@@ -2583,6 +2584,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
 
             if(profileId < WALTER_MODEM_MAX_COAP_PROFILES) {
                 _coapContextSet[profileId].connected = true;
+                _dispatchEvent(WALTER_MODEM_COAP_EVENT_CONNECTED, profileId)
             }
         }
         else if(_buffStartsWith(buff, "+SQNCOAPCLOSED: "))
@@ -2599,9 +2601,9 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
                 _coapContextSet[profileId].connected = false;
                 /* Clear all pending rings on connection close */
                 memset(_coapContextSet[profileId].rings, 0, sizeof(_coapContextSet[profileId].rings));
-
+                _dispatchEvent(WALTER_MODEM_COAP_EVENT_DISCONNECTED, profileId)
             #if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
-                if(profileId == 0) {
+                    if (profileId == 0) {
                     /* our own coap profile for BlueCherry was just closed */
                     if(blueCherry.status == WALTER_MODEM_BLUECHERRY_STATUS_AWAITING_RESPONSE) {
                         blueCherry.status = WALTER_MODEM_BLUECHERRY_STATUS_TIMED_OUT;

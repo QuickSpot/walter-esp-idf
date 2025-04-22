@@ -46,6 +46,21 @@
 #include <WalterDefines.h>
 
 #if CONFIG_WALTER_MODEM_ENABLE_COAP
+#pragma region PRIVATE_METHODS
+void WalterModem::_dispatchEvent(WalterModemCoapEvent event, int profileId)
+{
+    WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_COAP;
+    if (handler->coapHandler == nullptr)
+    {
+        return;
+    }
+
+    auto start = std::chrono::steady_clock::now();
+    handler->coapHandler(event, profileId, handler->args);
+    _checkEventDuration(start);
+}
+#pragma endregion
+
 #pragma region PUBLIC_METHODS
 bool WalterModem::coapDidRing(
     uint8_t profileId,

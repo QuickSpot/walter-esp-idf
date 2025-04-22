@@ -3541,10 +3541,28 @@ class WalterModem {
 #endif
 
 #if CONFIG_WALTER_MODEM_ENABLE_HTTP
-        /*
-        */
-       static void _dispatchEvent(WalterModemHttpEvent event, int profileId);
+        /**
+         * @brief Dispatch a HTTP event.
+         * This function will try to call a MQTT event handler. When no such handler is installed
+         * this function is a no-op
+         *
+         * @param event The type of HTTP event that has occurred.
+         */
+        static void _dispatchEvent(WalterModemHttpEvent event, int profileId);
 #endif
+
+#if CONFIG_WALTER_MODEM_ENABLE_COAP
+        /**
+         * @brief Dispatch a CoAP event.
+         * This function will try to call a CoAP event handler. When no such handler is installed
+         * this function is a no-op
+         *
+         * @param event The type of CoAP event that has occurred.
+         */
+        static void _dispatchEvent(WalterModemCoapEvent event, int profileId);
+#endif
+
+#if CONFIG_WALTER_MODEM_ENABLE
 #pragma endregion
         
 #pragma region MODEM_SLEEP
