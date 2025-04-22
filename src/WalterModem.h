@@ -3561,8 +3561,6 @@ class WalterModem {
          */
         static void _dispatchEvent(WalterModemCoapEvent event, int profileId);
 #endif
-
-#if CONFIG_WALTER_MODEM_ENABLE
 #pragma endregion
         
 #pragma region MODEM_SLEEP
