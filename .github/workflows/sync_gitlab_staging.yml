@@ -16,7 +16,7 @@ jobs:
     steps:
       - name: Clone target repository
         run: |
-          git clone -b master https://${{ secrets.PR_SYNC_TOKEN }}@git.dptechnics.com/quickspot/walter/walter-software/cpp/walter-cpp-modem-lib.git target-repo
+          git clone -b master https://GITHUB_PR_SYNC_TOKEN:${{ secrets.PR_SYNC_TOKEN }}@git.dptechnics.com/quickspot/walter/walter-software/cpp/walter-cpp-modem-lib.git target-repo
           
       - name: Checkout the repository
         uses: actions/checkout@v4
