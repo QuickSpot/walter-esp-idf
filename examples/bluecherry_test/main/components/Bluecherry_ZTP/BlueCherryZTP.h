@@ -194,7 +194,7 @@ private:
   /**
    * @brief The modem security profile in use for BlueCherry communication.
    */
-  static inline uint8_t _tlsProfileId = NULL;
+  static inline uint8_t _tlsProfileId = 0;
 
   /**
    * @brief The BlueCherry device ID received from the server.
