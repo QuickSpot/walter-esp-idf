@@ -76,7 +76,7 @@ uint8_t counter = 0;
 /**
  * @brief CA root certificate for DTLS (chain with intermediate: bandwidth!)
  */
-const char *caCert = "-----BEGIN CERTIFICATE-----\r\n\
+const char *bc_ca_cert = "-----BEGIN CERTIFICATE-----\r\n\
 MIIBlTCCATqgAwIBAgICEAAwCgYIKoZIzj0EAwMwGjELMAkGA1UEBhMCQkUxCzAJ\r\n\
 BgNVBAMMAmNhMB4XDTI0MDMyNDEzMzM1NFoXDTQ0MDQwODEzMzM1NFowJDELMAkG\r\n\
 A1UEBhMCQkUxFTATBgNVBAMMDGludGVybWVkaWF0ZTBZMBMGByqGSM49AgEGCCqG\r\n\
@@ -179,6 +179,7 @@ void syncBlueCherry()
     if (!modem.blueCherrySync(&rsp))
     {
       ESP_LOGE(
+          "bluecherry_test",
           "Error during BlueCherry cloud platform synchronisation: %d",
           rsp.data.blueCherry.state);
       modem.softReset();
@@ -190,25 +191,25 @@ void syncBlueCherry()
     {
       if (rsp.data.blueCherry.messages[msgIdx].topic == 0)
       {
-        ESP_LOGI("Downloading new firmware version");
+        ESP_LOGI("bluecherry_test", "Downloading new firmware version");
         break;
       }
       else
       {
-        ESP_LOGI("Incoming message %d/%d:", msgIdx + 1, rsp.data.blueCherry.messageCount);
-        ESP_LOGI("Topic: %02x\r\n", rsp.data.blueCherry.messages[msgIdx].topic);
-        ESP_LOGI("Data size: %d\r\n", rsp.data.blueCherry.messages[msgIdx].dataSize);
+        ESP_LOGI("bluecherry_test", "Incoming message %d/%d:", msgIdx + 1, rsp.data.blueCherry.messageCount);
+        ESP_LOGI("bluecherry_test", "Topic: %02x\r\n", rsp.data.blueCherry.messages[msgIdx].topic);
+        ESP_LOGI("bluecherry_test", "Data size: %d\r\n", rsp.data.blueCherry.messages[msgIdx].dataSize);
 
         for (uint8_t byteIdx = 0; byteIdx < rsp.data.blueCherry.messages[msgIdx].dataSize; byteIdx++) {
-          ESP_LOGI("%c", rsp.data.blueCherry.messages[msgIdx].data[byteIdx]);
+          ESP_LOGI("bluecherry_test", "%c", rsp.data.blueCherry.messages[msgIdx].data[byteIdx]);
         }
 
-        ESP_LOGI("\r\n");
+        ESP_LOGI("bluecherry_test", "\r\n");
       }
     }
   } while (!rsp.data.blueCherry.syncFinished);
 
-  ESP_LOGI("Synchronized with BlueCherry cloud platform");
+  ESP_LOGI("bluecherry_test", "Synchronized with BlueCherry cloud platform");
   return;
 }
 
@@ -239,6 +240,7 @@ void init()
     ESP_LOGI("bluecherry_test", "Modem communication error");
     return;
   }
+  WalterModemRsp rsp = {};
   unsigned short attempt = 0;
   while (!modem.blueCherryInit(BC_TLS_PROFILE, otaBuffer, &rsp))
   {
@@ -247,8 +249,8 @@ void init()
         attempt <= 2)
     {
       ESP_LOGI(
-        "Device is not provisioned for BlueCherry \n 
-        communication, starting Zero Touch Provisioning");
+        "bluecherry_test",
+        "Device is not provisioned for BlueCherry \n communication, starting Zero Touch Provisioning");
 
       if (attempt == 0)
       {
@@ -257,7 +259,7 @@ void init()
         if (!BlueCherryZTP::begin(BC_DEVICE_TYPE, BC_TLS_PROFILE, bc_ca_cert,
                                   &modem))
         {
-          Serial.println("Failed to initialize ZTP");
+          ESP_LOGE("bluecherry_test", "Failed to initialize ZTP");
           continue;
         }
 
@@ -267,19 +269,19 @@ void init()
         if (!BlueCherryZTP::addDeviceIdParameter(
                 BLUECHERRY_ZTP_DEVICE_ID_TYPE_MAC, mac))
         {
-          ESP_LOGE("Could not add MAC address as ZTP device ID parameter");
+          ESP_LOGE("bluecherry_test", "Could not add MAC address as ZTP device ID parameter");
         }
 
         // Fetch IMEI number
         if (!modem.getIdentity(&rsp))
         {
-          ESP_LOGE("Could not fetch IMEI number from modem");
+          ESP_LOGE("bluecherry_test", "Could not fetch IMEI number from modem");
         }
 
         if (!BlueCherryZTP::addDeviceIdParameter(
                 BLUECHERRY_ZTP_DEVICE_ID_TYPE_IMEI, rsp.data.identity.imei))
         {
-          ESP_LOGE("Could not add IMEI as ZTP device ID parameter");
+          ESP_LOGE("bluecherry_test", "Could not add IMEI as ZTP device ID parameter");
         }
       }
       attempt++;
@@ -287,21 +289,21 @@ void init()
       // Request the BlueCherry device ID
       if (!BlueCherryZTP::requestDeviceId())
       {
-        ESP_LOGE("Could not request device ID");
+        ESP_LOGE("bluecherry_test", "Could not request device ID");
         continue;
       }
 
       // Generate the private key and CSR
       if (!BlueCherryZTP::generateKeyAndCsr())
       {
-        ESP_LOGE("Could not generate private key");
+        ESP_LOGE("bluecherry_test", "Could not generate private key");
       }
-      delay(1000);
+      vTaskDelay(pdMS_TO_TICKS(1000));
 
       // Request the signed certificate
       if (!BlueCherryZTP::requestSignedCertificate())
       {
-        ESP_LOGE("Could not request signed certificate");
+        ESP_LOGE("bluecherry_test", "Could not request signed certificate");
         continue;
       }
 
@@ -309,19 +311,18 @@ void init()
       if (!modem.blueCherryProvision(BlueCherryZTP::getCert(),
                                      BlueCherryZTP::getPrivKey(), bc_ca_cert))
       {
-        ESP_LOGE("Failed to upload the DTLS certificates");
+        ESP_LOGE("bluecherry_test", "Failed to upload the DTLS certificates");
         continue;
       }
     }
     else
     {
-      ESP_LOGE("Failed to initialize BlueCherry cloud platform, \n 
-        restarting Walter in 10 seconds");
-      delay(10000);
+      ESP_LOGE("bluecherry_test", "Failed to initialize BlueCherry cloud platform, \n restarting Walter in 10 seconds");
+      vTaskDelay(pdMS_TO_TICKS(10000));
       esp_restart();
     }
   }
-  ESP_LOGI("Successfully initialized BlueCherry cloud platform");
+  ESP_LOGI("bluecherry_test", "Successfully initialized BlueCherry cloud platform");
 }
 
 void loop()

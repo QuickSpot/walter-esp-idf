@@ -113,7 +113,7 @@ bool BlueCherryZTP::_seedRandom(bool rfEnabled) {
 bool BlueCherryZTP::begin(const char *typeId, const uint8_t tlsProfileId,
                           const char *caCert, const WalterModem *modem) {
   if (typeId == nullptr || strlen(typeId) != BLUECHERRY_ZTP_ID_LEN ||
-      tlsProfileId == NULL || tlsProfileId == 0 || tlsProfileId > 6 ||
+      tlsProfileId == 0|| tlsProfileId == 0 || tlsProfileId > 6 ||
       caCert == nullptr || modem == nullptr) {
     return false;
   }
@@ -344,7 +344,7 @@ bool BlueCherryZTP::generateKeyAndCsr(bool rfEnabled) {
   int ret;
   uint8_t csrBuf[BLUECHERRY_ZTP_CERT_BUF_SIZE];
 
-  if (_bcTypeId == nullptr || _bcDevId == nullptr ||
+  if (_bcTypeId == nullptr ||
       strlen(_bcTypeId) != BLUECHERRY_ZTP_ID_LEN ||
       strlen(_bcDevId) != BLUECHERRY_ZTP_ID_LEN) {
     return false;
