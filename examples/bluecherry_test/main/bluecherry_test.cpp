@@ -50,15 +50,22 @@
 #include <esp_mac.h>
 #include <esp_log.h>
 #include <driver/uart.h>
-#include "WalterModem.h"
+#include <WalterModem.h>
+#include <components/Bluecherry_ZTP/BlueCherryZTP.h>
+#include <components/Bluecherry_ZTP/BlueCherryZTP_CBOR.h>
 
 WalterModem modem;
 
+// Define BlueCherry cloud device ID
+#define BC_DEVICE_TYPE "walter01"
+
+// Define modem TLS profile used for BlueCherry cloud platform
+#define BC_TLS_PROFILE 1
+
 uint8_t dataBuf[256] = { 0 };
-uint8_t otaBuffer[SPI_FLASH_BLOCK_SIZE];
+uint8_t otaBuffer[SPI_FLASH_BLOCK_SIZE] = {0};
 uint8_t counter = 0;
 
-#define TLS_PROFILE 1
 
 /* The keys below are not valid and hence this example will not
  * work without your own keys, but it serves as an illustration
@@ -93,238 +100,253 @@ VYg4UI2D74WfVxn+NyVd2/aXTvSBp8VgyV3odA==\r\n\
 -----END CERTIFICATE-----\r\n";
 
 /**
- * @brief Walter client certificate for DTLS
+ * @brief This function tries to connect the modem to the cellular network.
+ * @return true if the connection attempt is successful, else false.
  */
-const char *walterClientCert = "-----BEGIN CERTIFICATE-----\r\n\
-MIIBNTCB3AICEAEwCgYIKoZIzj0EAwMwJDELMAkGA1UEBhMCQkUxFTATBgNVBAMM\r\n\
-DGludGVybWVkaWF0ZTAeFw0yNDAzMjUxMDU5MzRaFw00NDA0MDkxMDU5MzRaMCkx\r\n\
-CzAJBgNVBAYTAkJFMRowGAYDVQQDDBFsaXRlMDAwMS4xMTExMTExMTBZMBMGByqG\r\n\
-SM49AgEGCCqGSM49AwEHA0IABPnA7m6yDd0w6iNuKWJ5T3eMB38Upk1yfM+fUUth\r\n\
-AY/qh/BM8JYqG0KFpbR0ymNe+KU0m2cUCPR1QIUVvp3sIYYwCgYIKoZIzj0EAwMD\r\n\
-SAAwRQIgDkAa7P78ieIamFqj8el2zL0oL/VHBYcTQL9/ZzsJBSkCIQCRFMsbIHc/\r\n\
-AiKVsr/pbTYtxbyz0UJKUlVoM2S7CjeAKg==\r\n\
------END CERTIFICATE-----\r\n";
-
-/**
- * @brief Walter client private key for DTLS
- */
-const char *walterClientKey = "-----BEGIN EC PRIVATE KEY-----\r\n\
-MHcCAQEEIHsCxTfyp5l7OA0RbKTKkfbTOeZ26WtpfduUvXD6Ly0YoAoGCCqGSM49\r\n\
-AwEHoUQDQgAE+cDubrIN3TDqI24pYnlPd4wHfxSmTXJ8z59RS2EBj+qH8Ezwliob\r\n\
-QoWltHTKY174pTSbZxQI9HVAhRW+newhhg==\r\n\
------END EC PRIVATE KEY-----\r\n";
-
-
-void waitForNetwork()
+bool lteConnected()
+{
+  WalterModemNetworkRegState regState = modem.getNetworkRegState();
+  return (regState == WALTER_MODEM_NETWORK_REG_REGISTERED_HOME ||
+          regState == WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING);
+}
+bool waitForNetwork()
 {
   /* Wait for the network to become available */
-  WalterModemNetworkRegState regState = modem.getNetworkRegState();
-  while(!(regState == WALTER_MODEM_NETWORK_REG_REGISTERED_HOME ||
-          regState == WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING))
+  int timeout = 0;
+  while (!lteConnected())
   {
     vTaskDelay(pdMS_TO_TICKS(100));
-    regState = modem.getNetworkRegState();
+    timeout += 100;
+    if (timeout > 300000)
+      return false;
   }
   ESP_LOGI("bluecherry_test", "Connected to the network");
+  return true;
 }
 
-extern "C" void app_main(void)
+bool lteConnect()
+{
+  WalterModemRsp rsp = {};
+
+  if (modem.setOpState(WALTER_MODEM_OPSTATE_NO_RF)) {
+    ESP_LOGI("bluecherry_test", "Successfully set operational state to NO RF");
+  } else {
+    ESP_LOGI("bluecherry_test", "Could not set operational state to NO RF");
+    return false;
+  }
+
+  /* Give the modem time to detect the SIM */
+  vTaskDelay(pdMS_TO_TICKS(2000));
+
+  /* Create PDP context */
+  if (modem.definePDPContext()) {
+    ESP_LOGI("coap_test", "Created PDP context");
+  } else {
+    ESP_LOGI("coap_test", "Could not create PDP context");
+    return false;
+  }
+
+  /* Set the operational state to full */
+  if (modem.setOpState(WALTER_MODEM_OPSTATE_FULL)) {
+    ESP_LOGI("bluecherry_test", "Successfully set operational state to FULL");
+  } else {
+    ESP_LOGI("bluecherry_test", "Could not set operational state to FULL");
+    return false;
+  }
+
+  /* Set the network operator selection to automatic */
+  if (modem.setNetworkSelectionMode(WALTER_MODEM_NETWORK_SEL_MODE_AUTOMATIC)) {
+    ESP_LOGI("bluecherry_test", "Network selection mode to was set to automatic");
+  } else {
+    ESP_LOGI("bluecherry_test", "Could not set the network selection mode to automatic");
+    return false;
+  }
+
+  waitForNetwork();
+
+  return true;
+}
+// This function will poll the BlueCherry cloud platform to check if there is an
+// incoming MQTT message or new firmware version available. If a new firmware
+// version is available, the device automatically downloads and reboots with the
+// new firmware.
+void syncBlueCherry()
+{
+  WalterModemRsp rsp = {};
+
+  do
+  {
+    if (!modem.blueCherrySync(&rsp))
+    {
+      ESP_LOGE(
+          "Error during BlueCherry cloud platform synchronisation: %d",
+          rsp.data.blueCherry.state);
+      modem.softReset();
+      lteConnect();
+      return;
+    }
+
+    for (uint8_t msgIdx = 0; msgIdx < rsp.data.blueCherry.messageCount; msgIdx++)
+    {
+      if (rsp.data.blueCherry.messages[msgIdx].topic == 0)
+      {
+        ESP_LOGI("Downloading new firmware version");
+        break;
+      }
+      else
+      {
+        ESP_LOGI("Incoming message %d/%d:", msgIdx + 1, rsp.data.blueCherry.messageCount);
+        ESP_LOGI("Topic: %02x\r\n", rsp.data.blueCherry.messages[msgIdx].topic);
+        ESP_LOGI("Data size: %d\r\n", rsp.data.blueCherry.messages[msgIdx].dataSize);
+
+        for (uint8_t byteIdx = 0; byteIdx < rsp.data.blueCherry.messages[msgIdx].dataSize; byteIdx++) {
+          ESP_LOGI("%c", rsp.data.blueCherry.messages[msgIdx].data[byteIdx]);
+        }
+
+        ESP_LOGI("\r\n");
+      }
+    }
+  } while (!rsp.data.blueCherry.syncFinished);
+
+  ESP_LOGI("Synchronized with BlueCherry cloud platform");
+  return;
+}
+
+void init()
 {
   ESP_LOGI("bluecherry_test", "Walter modem test v0.0.1");
 
   /* Get the MAC address for board validation */
   esp_read_mac(dataBuf, ESP_MAC_WIFI_STA);
   ESP_LOGI("bluecherry_test", "Walter's MAC is: %02X:%02X:%02X:%02X:%02X:%02X",
-    dataBuf[0],
-    dataBuf[1],
-    dataBuf[2],
-    dataBuf[3],
-    dataBuf[4],
-    dataBuf[5]);
+           dataBuf[0],
+           dataBuf[1],
+           dataBuf[2],
+           dataBuf[3],
+           dataBuf[4],
+           dataBuf[5]);
 
-  if(WalterModem::begin(UART_NUM_1)) {
+  if (WalterModem::begin(UART_NUM_1)) { 
     ESP_LOGI("bluecherry_test", "Modem initialization OK");
   } else {
     ESP_LOGI("bluecherry_test", "Modem initialization ERROR");
     return;
   }
 
-  if(modem.checkComm()) {
+  if (modem.checkComm()) {
     ESP_LOGI("bluecherry_test", "Modem communication is ok");
   } else {
     ESP_LOGI("bluecherry_test", "Modem communication error");
     return;
   }
-
-  WalterModemRsp rsp = {};
-  if(modem.getOpState(&rsp)) {
-    ESP_LOGI("bluecherry_test", "Modem operational state: %d", rsp.data.opState);
-  } else {
-    ESP_LOGI("bluecherry_test", "Could not retrieve modem operational state");
-    return;
-  }
-
-  if(modem.getRadioBands(&rsp)) {
-    ESP_LOGI("bluecherry_test", "Modem is configured for the following bands:");
-    
-    for(int i = 0; i < rsp.data.bandSelCfgSet.count; ++i) {
-      WalterModemBandSelection *bSel = rsp.data.bandSelCfgSet.config + i;
-      ESP_LOGI("bluecherry_test", "  - Operator '%s' on %s: 0x%05lx",
-        bSel->netOperator.name,
-        bSel->rat == WALTER_MODEM_RAT_NBIOT ? "NB-IoT" : "LTE-M",
-        bSel->bands);
-    }
-  } else {
-    ESP_LOGI("bluecherry_test", "Could not retrieve configured radio bands");
-    return;
-  }
-
-  if(modem.setOpState(WALTER_MODEM_OPSTATE_NO_RF)) {
-    ESP_LOGI("bluecherry_test", "Successfully set operational state to NO RF");
-  } else {
-    ESP_LOGI("bluecherry_test", "Could not set operational state to NO RF");
-    return;
-  }
-
-  /* Give the modem time to detect the SIM */
-  vTaskDelay(pdMS_TO_TICKS(2000));
-
-  if(modem.unlockSIM()) {
-    ESP_LOGI("bluecherry_test", "Successfully unlocked SIM card");
-  } else {
-    ESP_LOGI("bluecherry_test", "Could not unlock SIM card");
-    return;
-  }
-
-  /* Create PDP context */
-  if(modem.createPDPContext("", WALTER_MODEM_PDP_AUTH_PROTO_PAP, "sora", "sora"))
+  unsigned short attempt = 0;
+  while (!modem.blueCherryInit(BC_TLS_PROFILE, otaBuffer, &rsp))
   {
-    ESP_LOGI("bluecherry_test", "Created PDP context");
-  } else {
-    ESP_LOGI("bluecherry_test", "Could not create PDP context");
-    return;
-  }
+    if (rsp.data.blueCherry.state ==
+            WALTER_MODEM_BLUECHERRY_STATUS_NOT_PROVISIONED &&
+        attempt <= 2)
+    {
+      ESP_LOGI(
+        "Device is not provisioned for BlueCherry \n 
+        communication, starting Zero Touch Provisioning");
 
-  /* Authenticate the PDP context */
-  if(modem.authenticatePDPContext()) {
-    ESP_LOGI("bluecherry_test", "Authenticated the PDP context");
-  } else {
-    ESP_LOGI("bluecherry_test", "Could not authenticate the PDP context");
-    return;
-  }
+      if (attempt == 0)
+      {
+        // Device is not provisioned yet, initialize BlueCherry zero touch
+        // provisioning
+        if (!BlueCherryZTP::begin(BC_DEVICE_TYPE, BC_TLS_PROFILE, bc_ca_cert,
+                                  &modem))
+        {
+          Serial.println("Failed to initialize ZTP");
+          continue;
+        }
 
-  /* Set the operational state to full */
-  if(modem.setOpState(WALTER_MODEM_OPSTATE_FULL)) {
-    ESP_LOGI("bluecherry_test", "Successfully set operational state to FULL");
-  } else {
-    ESP_LOGI("bluecherry_test", "Could not set operational state to FULL");
-    return;
-  }
+        // Fetch MAC address
+        uint8_t mac[8] = {0};
+        esp_read_mac(mac, ESP_MAC_WIFI_STA);
+        if (!BlueCherryZTP::addDeviceIdParameter(
+                BLUECHERRY_ZTP_DEVICE_ID_TYPE_MAC, mac))
+        {
+          ESP_LOGE("Could not add MAC address as ZTP device ID parameter");
+        }
 
-  /* Set the network operator selection to automatic */
-  if(modem.setNetworkSelectionMode(WALTER_MODEM_NETWORK_SEL_MODE_AUTOMATIC)) {
-    ESP_LOGI("bluecherry_test", "Network selection mode to was set to automatic");
-  } else {
-    ESP_LOGI("bluecherry_test", "Could not set the network selection mode to automatic");
-    return;
-  }
+        // Fetch IMEI number
+        if (!modem.getIdentity(&rsp))
+        {
+          ESP_LOGE("Could not fetch IMEI number from modem");
+        }
 
-  waitForNetwork();
+        if (!BlueCherryZTP::addDeviceIdParameter(
+                BLUECHERRY_ZTP_DEVICE_ID_TYPE_IMEI, rsp.data.identity.imei))
+        {
+          ESP_LOGE("Could not add IMEI as ZTP device ID parameter");
+        }
+      }
+      attempt++;
 
-  /* Activate the PDP context */
-  if(modem.setPDPContextActive(true)) {
-    ESP_LOGI("bluecherry_test", "Activated the PDP context");
-  } else {
-    ESP_LOGI("bluecherry_test", "Could not activate the PDP context");
-    return;
-  }
+      // Request the BlueCherry device ID
+      if (!BlueCherryZTP::requestDeviceId())
+      {
+        ESP_LOGE("Could not request device ID");
+        continue;
+      }
 
-  /* Attach the PDP context */
-  if(modem.setNetworkAttachementState(true)) {
-    ESP_LOGI("bluecherry_test", "Attached to the PDP context");
-  } else {
-    ESP_LOGI("bluecherry_test", "Could not attach to the PDP context");
-    return;
-  }
+      // Generate the private key and CSR
+      if (!BlueCherryZTP::generateKeyAndCsr())
+      {
+        ESP_LOGE("Could not generate private key");
+      }
+      delay(1000);
 
-  if(modem.getPDPAddress(&rsp)) {
-    ESP_LOGI("bluecherry_test", "PDP context address list:");
-    ESP_LOGI("bluecherry_test", "  - %s", rsp.data.pdpAddressList.pdpAddress);
-    if(rsp.data.pdpAddressList.pdpAddress2[0] != '\0') {
-      ESP_LOGI("bluecherry_test", "  - %s", rsp.data.pdpAddressList.pdpAddress2);
+      // Request the signed certificate
+      if (!BlueCherryZTP::requestSignedCertificate())
+      {
+        ESP_LOGE("Could not request signed certificate");
+        continue;
+      }
+
+      // Store BlueCherry TLS certificates + private key in the modem
+      if (!modem.blueCherryProvision(BlueCherryZTP::getCert(),
+                                     BlueCherryZTP::getPrivKey(), bc_ca_cert))
+      {
+        ESP_LOGE("Failed to upload the DTLS certificates");
+        continue;
+      }
     }
-  } else {
-    ESP_LOGI("bluecherry_test", "Could not retrieve PDP context addresses");
-    return;
+    else
+    {
+      ESP_LOGE("Failed to initialize BlueCherry cloud platform, \n 
+        restarting Walter in 10 seconds");
+      delay(10000);
+      esp_restart();
+    }
   }
+  ESP_LOGI("Successfully initialized BlueCherry cloud platform");
+}
 
-  /* Upload keys to modem NVRAM keystore */
-  if(modem.tlsProvisionKeys(walterClientCert, walterClientKey, caCert)) {
-    ESP_LOGI("bluecherry_test", "Successfully uploaded the TLS keys");
-  } else {
-    ESP_LOGI("bluecherry_test", "Failed to upload the TLS keys");
-  }
-
-  /* Configure TLS profile */
-  if(modem.tlsConfigProfile(TLS_PROFILE, WALTER_MODEM_TLS_VALIDATION_URL_AND_CA, WALTER_MODEM_TLS_VERSION_12, 6, 5, 0)) {
-    ESP_LOGI("bluecherry_test", "Successfully configured the TLS profile");
-  } else {
-    ESP_LOGI("bluecherry_test", "Failed to configure TLS profile\r\n");
-  }
-
-  modem.initBlueCherry(TLS_PROFILE, "coap.bluecherry.io", 5684, otaBuffer);
-  ESP_LOGI("bluecherry_test", "BlueCherry cloud platform link initialized");
-
+void loop()
+{
   /* this loop is basically the Arduino loop function */
-  for(;;) {
+
+  for (;;)
+  {
     WalterModemRsp rsp = {};
-    bool moreDataAvailable;
-  
-    vTaskDelay(pdMS_TO_TICKS(15000));
-  
-    dataBuf[6] = counter++;
-    modem.blueCherryPublish(0x84, 7, dataBuf);
-  
-    do {
-      while(!modem.blueCherrySynchronize()) {
-        ESP_LOGI("bluecherry_test", "Error communicating with BlueCherry cloud platform!");
-        ESP_LOGI("bluecherry_test", "Rebooting modem after BlueCherry sync failure (CoAP stack may be broken)");
-        modem.reset();
-        modem.setOpState(WALTER_MODEM_OPSTATE_FULL);
-        waitForNetwork();
-        vTaskDelay(pdMS_TO_TICKS(1000));
-        ESP_LOGI("bluecherry_test", "New attempt...");
-      }
-  
-      ESP_LOGI("bluecherry_test", "Synchronized with the BlueCherry cloud platform, awaiting ring for ACK");
-  
-      while(!modem.blueCherryDidRing(&moreDataAvailable, &rsp)) {
-        vTaskDelay(pdMS_TO_TICKS(100));
-      }
-  
-      if(rsp.data.blueCherry.nak) {
-        ESP_LOGI("bluecherry_test", "Rebooting modem after timeout waiting for ACK (workaround bug)");
-        ESP_LOGI("bluecherry_test", "Published data lost: next attempt will be a new COAP msg (msgid++)");
-        ESP_LOGI("bluecherry_test", "so the developer has the chance to disregard data that is obsolete by now...");
-        modem.reset();
-        modem.setOpState(WALTER_MODEM_OPSTATE_FULL);
-        waitForNetwork();
-        ESP_LOGI("bluecherry_test", "Continuing");
-        break;
-      }
-  
-      ESP_LOGI("bluecherry_test", "Successfully sent message. Nr incoming msgs: %d",
-        rsp.data.blueCherry.messageCount);
-  
-      for(uint8_t msgIdx = 0; msgIdx < rsp.data.blueCherry.messageCount; msgIdx++) {
-        ESP_LOGI("bluecherry_test", "Incoming message %d/%d:", msgIdx + 1, rsp.data.blueCherry.messageCount);
-        ESP_LOGI("bluecherry_test", "topic: %02x", rsp.data.blueCherry.messages[msgIdx].topic);
-        ESP_LOGI("bluecherry_test", "data size: %d", rsp.data.blueCherry.messages[msgIdx].dataSize);
-      }
-  
-      if(moreDataAvailable) {
-        ESP_LOGI("bluecherry_test", "(got some incoming data but more is waiting to be fetched: doing another sync call)");
-      }
-    } while(moreDataAvailable);
+    if (modem.getCellInformation(WALTER_MODEM_SQNMONI_REPORTS_SERVING_CELL,
+                                 &rsp))
+    {
+      char msg[18];
+      snprintf(msg, sizeof(msg), "{\"RSRP\": %7.2f}", rsp.data.cellInformation.rsrp);
+      modem.blueCherryPublish(0x84, sizeof(msg) - 1, (uint8_t *)msg);
+    }
+
+    // Poll BlueCherry platform if an incoming message or firmware update is available
+    syncBlueCherry();
   }
+}
+
+extern "C" void app_main(void)
+{
+  
+  init();
+  loop();
 }
