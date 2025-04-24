@@ -60,3 +60,5 @@ This is the Changelog for WalterModem
 
 1) createPDPContext => definePDPContext
 2) authenticatePDPContext => setAuthParams
+
+`all examples have been reworked.`

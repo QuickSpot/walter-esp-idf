@@ -230,7 +230,7 @@ void syncBlueCherry()
 
 void init()
 {
-  ESP_LOGI(TAG, "Walter modem test v0.0.1");
+  ESP_LOGI(TAG, "Walter modem bluecherry example v1.0.0");
 
   /* Get the MAC address for board validation */
   esp_read_mac(dataBuf, ESP_MAC_WIFI_STA);
