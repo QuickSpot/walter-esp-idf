@@ -51,22 +51,26 @@
 #include <esp_log.h>
 #include <driver/uart.h>
 #include "WalterModem.h"
+
 /**
  * @brief Cellular APN for SIM card. Leave empty to autodetect APN.
  */
 CONFIG(CELLULAR_APN,const char*, "")
 
-
+/**
+ * @brief Time interval in ms of data sent to the Walter demo server.
+ */
+CONFIG_UINT16(SEND_INTERVAL_MS, 10000)
 
 /**
- * @brief The address of the Walter Demo server.
+ * @brief The address of the Walter demo server.
  */
-CONFIG(SERV_ADDR,const char* ,"walterdemo.quickspot.io")
+CONFIG(SERV_ADDR,const char*, "walterdemo.quickspot.io")
 
 /**
- * @brief The UDP port of the Walter Demo server.
+ * @brief The UDP port of the Walter demo server.
  */
-CONFIG_INT(SERV_PORT,1999)
+CONFIG_INT(SERV_PORT, 1999)
 
 /**
  * @brief The modem instance.
@@ -99,12 +103,12 @@ void waitForNetwork()
     vTaskDelay(pdMS_TO_TICKS(100));
     regState = modem.getNetworkRegState();
   }
-  ESP_LOGI("socket_test", "Connected to the network");
+  ESP_LOGI("socket_test", "Connected to the cellular network");
 }
 
 extern "C" void app_main(void)
 {
-  ESP_LOGI("socket_test", "Walter Socket Example v1.0.0");
+  ESP_LOGI("socket_test", "Walter UDP Socket example v1");
 
   /* Get the MAC address for board validation */
   esp_read_mac(dataBuf, ESP_MAC_WIFI_STA);
@@ -116,6 +120,7 @@ extern "C" void app_main(void)
     dataBuf[4],
     dataBuf[5]);
 
+  /* Initialize the modem */
   if(WalterModem::begin(UART_NUM_1)) {
     ESP_LOGI("socket_test", "Successfully initialized modem");
   } else {
@@ -145,7 +150,8 @@ extern "C" void app_main(void)
     ESP_LOGE("socket_test", "Could not set the network selection mode to automatic");
     return;
   }
-  /* Wait for the network to become available */
+
+  /* Wait for the network connection to become available */
   waitForNetwork();
 
   /* Construct a socket */
@@ -164,7 +170,6 @@ extern "C" void app_main(void)
     return;
   }
 
-  /* this loop is basically the Arduino loop function */
   for(;;) {
     dataBuf[6] = counter >> 8;
     dataBuf[7] = counter & 0xFF;
@@ -177,9 +182,7 @@ extern "C" void app_main(void)
       vTaskDelay(pdMS_TO_TICKS(1000));
       esp_restart();
     }
-  
-    vTaskDelay(pdMS_TO_TICKS(10000));
+
+    vTaskDelay(pdMS_TO_TICKS(SEND_INTERVAL_MS));
   }
 }
-
-

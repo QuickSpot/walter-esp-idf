@@ -4534,17 +4534,18 @@ class WalterModem {
         /**
          * @brief Dial a socket after which data can be exchanged.
          *
-         * This function will dial a socket to a remote host. When the dial is successful data can 
+         * This function will dial a socket to a remote host. When the dial is successful data can
          * be exchanged.
          *
-         * @param remoteHost The remote IPv4/IPv6 or hostname to connect to.
-         * @param remotePort The remote port to connect on.
+         * @param remoteHost The remote IPv4/IPv6 or hostname to dial to.
+         * @param remotePort The remote port to dial on.
          * @param localPort The local port in case of an UDP socket.
          * @param rsp Optional modem response structure to save the result in.
          * @param cb Optional callback function, if set this function will not block.
          * @param args Optional argument to pass to the callback.
          * @param protocol The protocol to use, UDP by default.
-         * @param acceptAnyRemote How to accept remote UDP packets.
+         * @param acceptAnyRemote Determines whether receive/send UDP datagrams from/to another µ
+         * address than remoteHost:remotePort are allowed.
          * @param socketId The id of the socket to connect or -1 to re-use the last one.
          *
          * @return True on success, false otherwise.

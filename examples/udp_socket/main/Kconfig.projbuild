@@ -4,7 +4,13 @@ menu "socket Example"
             string "cellular apn"
             default ""
             help
-                the default apn to connect to
+                the apn to connect to
+        
+        config SEND_INTERVAL_MS
+            int "data transmission interval"
+            default 10000
+            help
+                the data transmission interval to the walter demo server
         
         config SERV_ADDR
             string "demo server address"
