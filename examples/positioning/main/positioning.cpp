@@ -394,7 +394,7 @@ bool socketConnect(const char *ip, uint16_t port)
   }
 
   /* Attach the MT to the Packet Domain Service */
-  if(!modem.setNetworkAttachementState(true)) {
+  if(!modem.setNetworkAttachmentState(true)) {
     ESP_LOGI("positioning", "Could not attach to the PDS(Packet Domain Service)");
     return false;
   }

@@ -4148,7 +4148,7 @@ bool WalterModem::setPDPContextActive(
     _returnAfterReply();
 }
 
-bool WalterModem::setNetworkAttachementState(
+bool WalterModem::setNetworkAttachmentState(
     bool attach,
     WalterModemRsp *rsp,
     walterModemCb cb,

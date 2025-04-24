@@ -53,6 +53,11 @@
 #include <WalterModem.h>
 
 /**
+ * @brief Cellular APN for SIM card. Leave empty to autodetect APN.
+ */
+#define CELLULAR_APN ""
+
+/**
  * @brief COAP profile used for COAP tests
  */
 #define COAP_PROFILE 0
@@ -112,20 +117,7 @@ extern "C" void app_main(void)
         return;
     }
 
-    if (modem.checkComm()) {
-        ESP_LOGI("coap_test", "Modem communication is ok");
-    } else {
-        ESP_LOGI("coap_test", "Modem communication error");
-        return;
-    }
-
     WalterModemRsp rsp = {};
-    if (modem.getOpState(&rsp)) {
-        ESP_LOGI("coap_test", "Modem operational state: %d", rsp.data.opState);
-    } else {
-        ESP_LOGI("coap_test", "Could not retrieve modem operational state");
-        return;
-    }
 
     if(modem.setOpState(WALTER_MODEM_OPSTATE_NO_RF)) {
         ESP_LOGI("mqtt_test", "Successfully set operational state to NO RF");
@@ -134,11 +126,8 @@ extern "C" void app_main(void)
         return;
     }
 
-    /* Give the modem time to detect the SIM */
-    vTaskDelay(pdMS_TO_TICKS(2000));
-
     /* Create PDP context */
-    if(modem.definePDPContext()) {
+    if(modem.definePDPContext(1, CELLULAR_APN)) {
         ESP_LOGI("coap_test", "Created PDP context");
     } else {
         ESP_LOGI("coap_test", "Could not create PDP context");
@@ -163,14 +152,6 @@ extern "C" void app_main(void)
 
     waitForNetwork();
     
-    /* Attach the PDP context */
-    if(modem.setNetworkAttachementState(true)) {
-        ESP_LOGI("coap_test", "Attached to the PDP context");
-    } else {
-        ESP_LOGI("coap_test", "Could not attach to the PDP context");
-        return;
-    }
-
     for(;;) {
         vTaskDelay(pdMS_TO_TICKS(10000));
         dataBuf[6] = counter >> 8;

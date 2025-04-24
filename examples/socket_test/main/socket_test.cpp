@@ -126,14 +126,6 @@ extern "C" void app_main(void)
   
   modem.setRegistrationEventHandler(registrationEvent);
 
-
-  if(modem.checkComm()) {
-    ESP_LOGI("socket_test", "Modem communication is ok");
-  } else {
-    ESP_LOGI("socket_test", "Modem communication error");
-    return;
-  }
-
   if(modem.setOpState(WALTER_MODEM_OPSTATE_NO_RF)) {
     ESP_LOGI("socket_test", "Successfully set operational state to NO RF");
   } else {

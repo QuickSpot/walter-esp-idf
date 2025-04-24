@@ -62,15 +62,7 @@ extern "C" void app_main(void)
         return;
     }
 
-    ESP_LOGI("http_test", "waiting for network");
-
     WalterModemRsp rsp = {};
-    if(modem.getOpState(&rsp)) {
-        ESP_LOGI("http_test", "Modem operational state: %d", rsp.data.opState);
-    } else {
-        ESP_LOGE("http_test", "Could not retrieve modem operational state");
-        return;
-    }
 
     if(!modem.setOpState(WALTER_MODEM_OPSTATE_NO_RF)) {
         ESP_LOGE("http_test", "Could not set operational state to NO RF");

@@ -95,20 +95,7 @@ extern "C" void app_main(void)
     return;
   }
 
-  if(modem.checkComm()) {
-    ESP_LOGI("mqtt_test", "Modem communication is ok");
-  } else {
-    ESP_LOGI("mqtt_test", "Modem communication error");
-    return;
-  }
-
   WalterModemRsp rsp = {};
-  if(modem.getOpState(&rsp)) {
-    ESP_LOGI("mqtt_test", "Modem operational state: %d", rsp.data.opState);
-  } else {
-    ESP_LOGI("mqtt_test", "Could not retrieve modem operational state");
-    return;
-  }
 
   if(modem.getRadioBands(&rsp)) {
     ESP_LOGI("mqtt_test", "Modem is configured for the following bands:");
@@ -160,14 +147,6 @@ extern "C" void app_main(void)
   }
 
   waitForNetwork();
-  
-  /* Attach the PDP context */
-  if(modem.setNetworkAttachementState(true)) {
-    ESP_LOGI("mqtt_test", "Attached to the PDP context");
-  } else {
-    ESP_LOGI("mqtt_test", "Could not attach to the PDP context");
-    return;
-  }
 
   // other public mqtt broker with web client: mqtthq.com
   if (modem.mqttConfig("walter-mqtt-test-topic", "", ""))

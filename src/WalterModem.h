@@ -5128,7 +5128,7 @@ class WalterModem {
          * 
          * @return True on success, false otherwise.
          */
-        static bool setNetworkAttachementState(
+        static bool setNetworkAttachmentState(
             bool attach = true,
             WalterModemRsp *rsp = NULL,
             walterModemCb cb = NULL,
