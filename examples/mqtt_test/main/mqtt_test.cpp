@@ -53,6 +53,11 @@
 #include <cstring>
 #include "WalterModem.h"
 
+/**
+ * @brief Cellular APN for SIM card. Leave empty to autodetect APN.
+ */
+#define CELLULAR_APN ""
+
 #define TLS_PROFILE 1
 
 WalterModem modem;
@@ -97,21 +102,6 @@ extern "C" void app_main(void)
 
   WalterModemRsp rsp = {};
 
-  if(modem.getRadioBands(&rsp)) {
-    ESP_LOGI("mqtt_test", "Modem is configured for the following bands:");
-    
-    for(int i = 0; i < rsp.data.bandSelCfgSet.count; ++i) {
-      WalterModemBandSelection *bSel = rsp.data.bandSelCfgSet.config + i;
-      ESP_LOGI("mqtt_test", "  - Operator '%s' on %s: 0x%05lx",
-        bSel->netOperator.name,
-        bSel->rat == WALTER_MODEM_RAT_NBIOT ? "NB-IoT" : "LTE-M",
-        bSel->bands);
-    }
-  } else {
-    ESP_LOGI("mqtt_test", "Could not retrieve configured radio bands");
-    return;
-  }
-
   if(modem.setOpState(WALTER_MODEM_OPSTATE_NO_RF)) {
     ESP_LOGI("mqtt_test", "Successfully set operational state to NO RF");
   } else {
@@ -123,7 +113,7 @@ extern "C" void app_main(void)
   vTaskDelay(pdMS_TO_TICKS(2000));
 
   /* Create PDP context */
-  if(modem.definePDPContext()) {
+  if(modem.definePDPContext(1,CELLULAR_APN)) {
     ESP_LOGI("mqtt_test", "Created PDP context");
   } else {
     ESP_LOGI("mqtt_test", "Could not create PDP context");

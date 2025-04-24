@@ -65,6 +65,11 @@ void registrationEvent(WalterModemNetworkRegState state, void* args) {
 #define SERV_ADDR "64.225.64.140"
 
 /**
+ * @brief Cellular APN for SIM card. Leave empty to autodetect APN.
+ */
+#define CELLULAR_APN ""
+
+/**
  * @brief The UDP port on which the server is listening.
  */
 #define SERV_PORT 1999
@@ -137,7 +142,7 @@ extern "C" void app_main(void)
   vTaskDelay(pdMS_TO_TICKS(2000));
 
   /* Create PDP context */
-  if(modem.definePDPContext()) {
+  if(modem.definePDPContext(1,CELLULAR_APN)) {
     ESP_LOGI("socket_test", "Created PDP context");
   } else {
     ESP_LOGI("socket_test", "Could not create PDP context");

@@ -56,6 +56,11 @@
 
 WalterModem modem;
 
+/**
+ * @brief Cellular APN for SIM card. Leave empty to autodetect APN.
+ */
+#define CELLULAR_APN ""
+
 // Define BlueCherry cloud device ID
 #define BC_DEVICE_TYPE "walter01"
 
@@ -139,7 +144,7 @@ bool lteConnect()
   vTaskDelay(pdMS_TO_TICKS(2000));
 
   /* Create PDP context */
-  if (modem.definePDPContext()) {
+  if (modem.definePDPContext(1,CELLULAR_APN)) {
     ESP_LOGI("coap_test", "Created PDP context");
   } else {
     ESP_LOGI("coap_test", "Could not create PDP context");

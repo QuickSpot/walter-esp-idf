@@ -3,6 +3,12 @@
 #include <driver/uart.h>
 #include <cstring>
 #include "WalterModem.h"
+
+/**
+ * @brief Cellular APN for SIM card. Leave empty to autodetect APN.
+ */
+#define CELLULAR_APN ""
+
 /**
  * @brief HTTP profile
  */
@@ -72,7 +78,7 @@ extern "C" void app_main(void)
     /* Give the modem time to detect the SIM */
     vTaskDelay(pdMS_TO_TICKS(2000));
 
-    if(!modem.definePDPContext()) {
+    if(!modem.definePDPContext(1,CELLULAR_APN)) {
         ESP_LOGE("http_test", "Could not create PDP context");
         return;
     }
