@@ -162,9 +162,7 @@ bool lteConnect()
     return false;
   }
 
-  waitForNetwork();
-
-  return true;
+  return waitForNetwork();
 }
 // This function will poll the BlueCherry cloud platform to check if there is an
 // incoming MQTT message or new firmware version available. If a new firmware
@@ -240,6 +238,9 @@ void init()
     ESP_LOGI("bluecherry_test", "Modem communication error");
     return;
   }
+
+  lteConnect();
+
   WalterModemRsp rsp = {};
   unsigned short attempt = 0;
   while (!modem.blueCherryInit(BC_TLS_PROFILE, otaBuffer, &rsp))
