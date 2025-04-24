@@ -1,0 +1,17 @@
+menu "bluecherry example"
+    if WALTER_MODEM_KCONFIG
+        config CELLULAR_APN
+            string "cellular apn"
+            default ""
+            help
+                the apn to connect to
+        
+        config BC_DEVICE_TYPE
+            string "Bluecherry device type"
+            default "walter01"
+        
+        config BC_TLS_PROFILE
+            int "bluecherry TLS profile"
+            default 1
+    endif
+endmenu

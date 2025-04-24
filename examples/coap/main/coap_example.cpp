@@ -68,6 +68,11 @@ CONFIG_UINT8(MODEM_COAP_PROFILE,0)
 CONFIG_UINT16(SEND_DELAY_MS, 10000)
 
 /**
+ * @brief ESP-IDF log prefix.
+ */
+static constexpr const char *TAG = "coap_example";
+
+/**
  * @brief The modem instance.
  */
 WalterModem modem;

@@ -59,18 +59,32 @@ WalterModem modem;
 /**
  * @brief Cellular APN for SIM card. Leave empty to autodetect APN.
  */
-#define CELLULAR_APN ""
+CONFIG(CELLULAR_APN, const char *, "")
 
-// Define BlueCherry cloud device ID
-#define BC_DEVICE_TYPE "walter01"
+/** 
+ * @brief Define BlueCherry cloud device ID
+ */
+CONFIG(BC_DEVICE_TYPE, const char*, "walter01")
 
-// Define modem TLS profile used for BlueCherry cloud platform
-#define BC_TLS_PROFILE 1
+/**
+ * @brief Define modem TLS profile used for BlueCherry cloud platform
+ */
+CONFIG_UINT8(BC_TLS_PROFILE, 1)
 
+/**
+ * @brief ESP-IDF log prefix.
+ */
+static constexpr const char *TAG = "bluecherry_example";
+
+/**
+ * @brief Incomming Data buffer.
+ */
 uint8_t dataBuf[256] = { 0 };
-uint8_t otaBuffer[SPI_FLASH_BLOCK_SIZE] = {0};
-uint8_t counter = 0;
 
+/**
+ * @brief OTA flash block buffer
+ */
+uint8_t otaBuffer[SPI_FLASH_BLOCK_SIZE] = {0};
 
 /* The keys below are not valid and hence this example will not
  * work without your own keys, but it serves as an illustration
@@ -125,7 +139,7 @@ bool waitForNetwork()
     if (timeout > 300000)
       return false;
   }
-  ESP_LOGI("bluecherry_test", "Connected to the network");
+  ESP_LOGI(TAG, "Connected to the network");
   return true;
 }
 
@@ -134,9 +148,9 @@ bool lteConnect()
   WalterModemRsp rsp = {};
 
   if (modem.setOpState(WALTER_MODEM_OPSTATE_NO_RF)) {
-    ESP_LOGI("bluecherry_test", "Successfully set operational state to NO RF");
+    ESP_LOGI(TAG, "Successfully set operational state to NO RF");
   } else {
-    ESP_LOGI("bluecherry_test", "Could not set operational state to NO RF");
+    ESP_LOGI(TAG, "Could not set operational state to NO RF");
     return false;
   }
 
@@ -145,25 +159,25 @@ bool lteConnect()
 
   /* Create PDP context */
   if (modem.definePDPContext(1,CELLULAR_APN)) {
-    ESP_LOGI("coap_test", "Created PDP context");
+    ESP_LOGI(TAG, "Created PDP context");
   } else {
-    ESP_LOGI("coap_test", "Could not create PDP context");
+    ESP_LOGI(TAG, "Could not create PDP context");
     return false;
   }
 
   /* Set the operational state to full */
   if (modem.setOpState(WALTER_MODEM_OPSTATE_FULL)) {
-    ESP_LOGI("bluecherry_test", "Successfully set operational state to FULL");
+    ESP_LOGI(TAG, "Successfully set operational state to FULL");
   } else {
-    ESP_LOGI("bluecherry_test", "Could not set operational state to FULL");
+    ESP_LOGI(TAG, "Could not set operational state to FULL");
     return false;
   }
 
   /* Set the network operator selection to automatic */
   if (modem.setNetworkSelectionMode(WALTER_MODEM_NETWORK_SEL_MODE_AUTOMATIC)) {
-    ESP_LOGI("bluecherry_test", "Network selection mode to was set to automatic");
+    ESP_LOGI(TAG, "Network selection mode to was set to automatic");
   } else {
-    ESP_LOGI("bluecherry_test", "Could not set the network selection mode to automatic");
+    ESP_LOGI(TAG, "Could not set the network selection mode to automatic");
     return false;
   }
 
@@ -182,7 +196,7 @@ void syncBlueCherry()
     if (!modem.blueCherrySync(&rsp))
     {
       ESP_LOGE(
-          "bluecherry_test",
+          TAG,
           "Error during BlueCherry cloud platform synchronisation: %d",
           rsp.data.blueCherry.state);
       modem.softReset();
@@ -194,35 +208,33 @@ void syncBlueCherry()
     {
       if (rsp.data.blueCherry.messages[msgIdx].topic == 0)
       {
-        ESP_LOGI("bluecherry_test", "Downloading new firmware version");
+        ESP_LOGI(TAG, "Downloading new firmware version");
         break;
       }
       else
       {
-        ESP_LOGI("bluecherry_test", "Incoming message %d/%d:", msgIdx + 1, rsp.data.blueCherry.messageCount);
-        ESP_LOGI("bluecherry_test", "Topic: %02x\r\n", rsp.data.blueCherry.messages[msgIdx].topic);
-        ESP_LOGI("bluecherry_test", "Data size: %d\r\n", rsp.data.blueCherry.messages[msgIdx].dataSize);
+        ESP_LOGI(TAG, "Incoming message %d/%d:", msgIdx + 1, rsp.data.blueCherry.messageCount);
+        ESP_LOGI(TAG, "Topic: %02x\r\n", rsp.data.blueCherry.messages[msgIdx].topic);
+        ESP_LOGI(TAG, "Data size: %d\r\n", rsp.data.blueCherry.messages[msgIdx].dataSize);
 
         for (uint8_t byteIdx = 0; byteIdx < rsp.data.blueCherry.messages[msgIdx].dataSize; byteIdx++) {
-          ESP_LOGI("bluecherry_test", "%c", rsp.data.blueCherry.messages[msgIdx].data[byteIdx]);
+          ESP_LOGI(TAG, "%c", rsp.data.blueCherry.messages[msgIdx].data[byteIdx]);
         }
-
-        ESP_LOGI("bluecherry_test", "\r\n");
       }
     }
   } while (!rsp.data.blueCherry.syncFinished);
 
-  ESP_LOGI("bluecherry_test", "Synchronized with BlueCherry cloud platform");
+  ESP_LOGI(TAG, "Synchronized with BlueCherry cloud platform");
   return;
 }
 
 void init()
 {
-  ESP_LOGI("bluecherry_test", "Walter modem test v0.0.1");
+  ESP_LOGI(TAG, "Walter modem test v0.0.1");
 
   /* Get the MAC address for board validation */
   esp_read_mac(dataBuf, ESP_MAC_WIFI_STA);
-  ESP_LOGI("bluecherry_test", "Walter's MAC is: %02X:%02X:%02X:%02X:%02X:%02X",
+  ESP_LOGI(TAG, "Walter's MAC is: %02X:%02X:%02X:%02X:%02X:%02X",
            dataBuf[0],
            dataBuf[1],
            dataBuf[2],
@@ -231,16 +243,16 @@ void init()
            dataBuf[5]);
 
   if (WalterModem::begin(UART_NUM_1)) { 
-    ESP_LOGI("bluecherry_test", "Modem initialization OK");
+    ESP_LOGI(TAG, "Modem initialization OK");
   } else {
-    ESP_LOGI("bluecherry_test", "Modem initialization ERROR");
+    ESP_LOGE(TAG, "Modem initialization ERROR");
     return;
   }
 
   if (modem.checkComm()) {
-    ESP_LOGI("bluecherry_test", "Modem communication is ok");
+    ESP_LOGI(TAG, "Modem communication is ok");
   } else {
-    ESP_LOGI("bluecherry_test", "Modem communication error");
+    ESP_LOGE(TAG, "Modem communication error");
     return;
   }
 
@@ -254,8 +266,8 @@ void init()
             WALTER_MODEM_BLUECHERRY_STATUS_NOT_PROVISIONED &&
         attempt <= 2)
     {
-      ESP_LOGI(
-        "bluecherry_test",
+      ESP_LOGW(
+        TAG,
         "Device is not provisioned for BlueCherry \n communication, starting Zero Touch Provisioning");
 
       if (attempt == 0)
@@ -265,7 +277,7 @@ void init()
         if (!BlueCherryZTP::begin(BC_DEVICE_TYPE, BC_TLS_PROFILE, bc_ca_cert,
                                   &modem))
         {
-          ESP_LOGE("bluecherry_test", "Failed to initialize ZTP");
+          ESP_LOGE(TAG, "Failed to initialize ZTP");
           continue;
         }
 
@@ -275,19 +287,19 @@ void init()
         if (!BlueCherryZTP::addDeviceIdParameter(
                 BLUECHERRY_ZTP_DEVICE_ID_TYPE_MAC, mac))
         {
-          ESP_LOGE("bluecherry_test", "Could not add MAC address as ZTP device ID parameter");
+          ESP_LOGE(TAG, "Could not add MAC address as ZTP device ID parameter");
         }
 
         // Fetch IMEI number
         if (!modem.getIdentity(&rsp))
         {
-          ESP_LOGE("bluecherry_test", "Could not fetch IMEI number from modem");
+          ESP_LOGE(TAG, "Could not fetch IMEI number from modem");
         }
 
         if (!BlueCherryZTP::addDeviceIdParameter(
                 BLUECHERRY_ZTP_DEVICE_ID_TYPE_IMEI, rsp.data.identity.imei))
         {
-          ESP_LOGE("bluecherry_test", "Could not add IMEI as ZTP device ID parameter");
+          ESP_LOGE(TAG, "Could not add IMEI as ZTP device ID parameter");
         }
       }
       attempt++;
@@ -295,21 +307,21 @@ void init()
       // Request the BlueCherry device ID
       if (!BlueCherryZTP::requestDeviceId())
       {
-        ESP_LOGE("bluecherry_test", "Could not request device ID");
+        ESP_LOGE(TAG, "Could not request device ID");
         continue;
       }
 
       // Generate the private key and CSR
       if (!BlueCherryZTP::generateKeyAndCsr())
       {
-        ESP_LOGE("bluecherry_test", "Could not generate private key");
+        ESP_LOGE(TAG, "Could not generate private key");
       }
       vTaskDelay(pdMS_TO_TICKS(1000));
 
       // Request the signed certificate
       if (!BlueCherryZTP::requestSignedCertificate())
       {
-        ESP_LOGE("bluecherry_test", "Could not request signed certificate");
+        ESP_LOGE(TAG, "Could not request signed certificate");
         continue;
       }
 
@@ -317,18 +329,18 @@ void init()
       if (!modem.blueCherryProvision(BlueCherryZTP::getCert(),
                                      BlueCherryZTP::getPrivKey(), bc_ca_cert))
       {
-        ESP_LOGE("bluecherry_test", "Failed to upload the DTLS certificates");
+        ESP_LOGE(TAG, "Failed to upload the DTLS certificates");
         continue;
       }
     }
     else
     {
-      ESP_LOGE("bluecherry_test", "Failed to initialize BlueCherry cloud platform, \n restarting Walter in 10 seconds");
+      ESP_LOGE(TAG, "Failed to initialize BlueCherry cloud platform, \n restarting Walter in 10 seconds");
       vTaskDelay(pdMS_TO_TICKS(10000));
       esp_restart();
     }
   }
-  ESP_LOGI("bluecherry_test", "Successfully initialized BlueCherry cloud platform");
+  ESP_LOGI(TAG, "Successfully initialized BlueCherry cloud platform");
 }
 
 void loop()
