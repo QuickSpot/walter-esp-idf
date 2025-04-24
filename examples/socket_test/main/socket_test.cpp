@@ -134,28 +134,6 @@ extern "C" void app_main(void)
     return;
   }
 
-  if(modem.getOpState(&rsp)) {
-    ESP_LOGI("socket_test", "Modem operational state: %d", rsp.data.opState);
-  } else {
-    ESP_LOGI("socket_test", "Could not retrieve modem operational state");
-    return;
-  }
-
-  if(modem.getRadioBands(&rsp)) {
-    ESP_LOGI("socket_test", "Modem is configured for the following bands:");
-    
-    for(int i = 0; i < rsp.data.bandSelCfgSet.count; ++i) {
-      WalterModemBandSelection *bSel = rsp.data.bandSelCfgSet.config + i;
-      ESP_LOGI("socket_test", "  - Operator '%s' on %s: 0x%05lx",
-        bSel->netOperator.name,
-        bSel->rat == WALTER_MODEM_RAT_NBIOT ? "NB-IoT" : "LTE-M",
-        bSel->bands);
-    }
-  } else {
-    ESP_LOGI("socket_test", "Could not retrieve configured radio bands");
-    return;
-  }
-
   if(modem.setOpState(WALTER_MODEM_OPSTATE_NO_RF)) {
     ESP_LOGI("socket_test", "Successfully set operational state to NO RF");
   } else {
@@ -166,25 +144,11 @@ extern "C" void app_main(void)
   /* Give the modem time to detect the SIM */
   vTaskDelay(pdMS_TO_TICKS(2000));
 
-  if(modem.unlockSIM()) {
-    ESP_LOGI("socket_test", "Successfully unlocked SIM card");
-  } else {
-    ESP_LOGI("socket_test", "Could not unlock SIM card");
-    return;
-  }
-
   /* Create PDP context */
   if(modem.definePDPContext()) {
     ESP_LOGI("socket_test", "Created PDP context");
   } else {
     ESP_LOGI("socket_test", "Could not create PDP context");
-    return;
-  }
-
-  if(modem.setPDPAuthParams(WALTER_MODEM_PDP_AUTH_PROTO_NONE,"sora","sora")) {
-    ESP_LOGI("socket_test", "Authenticated the PDP context");
-  } else {
-    ESP_LOGI("socket_test", "Could not authenticate the PDP context");
     return;
   }
   
@@ -204,17 +168,6 @@ extern "C" void app_main(void)
   }
   /* Wait for the network to become available */
   waitForNetwork();
-
-  if(modem.getPDPAddress(&rsp)) {
-    ESP_LOGI("socket_test", "PDP context address list:");
-    ESP_LOGI("socket_test", "  - %s", rsp.data.pdpAddressList.pdpAddress);
-    if(rsp.data.pdpAddressList.pdpAddress2[0] != '\0') {
-      ESP_LOGI("socket_test", "  - %s", rsp.data.pdpAddressList.pdpAddress2);
-    }
-  } else {
-    ESP_LOGI("socket_test", "Could not retrieve PDP context addresses");
-    return;
-  }
 
   /* Construct a socket */
   if(modem.createSocket(&rsp)) {

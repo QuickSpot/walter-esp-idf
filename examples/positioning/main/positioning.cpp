@@ -120,18 +120,13 @@ bool lteInit(const char *apn, const char *user = NULL, const char *pass = NULL)
 {
   /* Create PDP context */
   
-  if(!modem.createPDPContext(apn))
+  if(!modem.definePDPContext(1,apn))
   {
     ESP_LOGI("positioning", "Could not create PDP context");
     return false;
   }
 
   /* Authenticate the PDP context */
-  if (!modem.setPDPAuthParams(WALTER_MODEM_PDP_AUTH_PROTO_NONE, "sora", "sora"))
-  {
-    ESP_LOGI("positioning", "Could not authenticate the PDP context");
-    return false;
-  }
   return true;
 }
 

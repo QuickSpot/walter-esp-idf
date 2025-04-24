@@ -137,25 +137,11 @@ extern "C" void app_main(void)
     /* Give the modem time to detect the SIM */
     vTaskDelay(pdMS_TO_TICKS(2000));
 
-    if(modem.unlockSIM()) {
-        ESP_LOGI("mqtt_test", "Successfully unlocked SIM card");
-    } else {
-        ESP_LOGI("mqtt_test", "Could not unlock SIM card");
-        return;
-    }
-
     /* Create PDP context */
     if(modem.definePDPContext()) {
         ESP_LOGI("coap_test", "Created PDP context");
     } else {
         ESP_LOGI("coap_test", "Could not create PDP context");
-        return;
-    }
-
-    if(modem.setPDPAuthParams(WALTER_MODEM_PDP_AUTH_PROTO_NONE,"sora","sora")) {
-        ESP_LOGI("coap_test", "Authenticated the PDP context");
-    } else {
-        ESP_LOGI("coap_test", "Could not authenticate the PDP context");
         return;
     }
 
@@ -182,18 +168,6 @@ extern "C" void app_main(void)
         ESP_LOGI("coap_test", "Attached to the PDP context");
     } else {
         ESP_LOGI("coap_test", "Could not attach to the PDP context");
-        return;
-    }
-
-
-    if(modem.getPDPAddress(&rsp)) {
-        ESP_LOGI("coap_test", "PDP context address list:");
-        ESP_LOGI("coap_test", "  - %s", rsp.data.pdpAddressList.pdpAddress);
-        if(rsp.data.pdpAddressList.pdpAddress2[0] != '\0') {
-        ESP_LOGI("coap_test", "  - %s", rsp.data.pdpAddressList.pdpAddress2);
-        }
-    } else {
-        ESP_LOGI("coap_test", "Could not retrieve PDP context addresses");
         return;
     }
 

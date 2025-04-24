@@ -80,19 +80,8 @@ extern "C" void app_main(void)
     /* Give the modem time to detect the SIM */
     vTaskDelay(pdMS_TO_TICKS(2000));
 
-    if(!modem.unlockSIM()) {
-        ESP_LOGE("http_test", "Could not unlock SIM card");
-        return;
-    }
-
-    if(!modem.definePDPContext("", WALTER_MODEM_PDP_AUTH_PROTO_NONE,"","")) {
+    if(!modem.definePDPContext()) {
         ESP_LOGE("http_test", "Could not create PDP context");
-        return;
-    }
-
-
-    if(!modem.authenticatePDPContext()) {
-        ESP_LOGE("http_test", "Could not authenticate the PDP context");
         return;
     }
 
