@@ -56,12 +56,27 @@
 /**
  * @brief Cellular APN for SIM card. Leave empty to autodetect APN.
  */
-#define CELLULAR_APN ""
+CONFIG(CELLULAR_APN, const char *, "")
 
 /**
  * @brief HTTP profile
  */
-#define HTTP_PROFILE 1
+CONFIG_UINT8(MODEM_HTTP_PROFILE, 1)
+
+/**
+ * @brief Time delay in ms of data sent to the http server.
+ */
+CONFIG_UINT16(SEND_DELAY_MS, 10000)
+
+/**
+ * @brief The Max Receive Attempt amount
+ */
+CONFIG_UINT16(MAX_RECEIVE_COUNT, 3)
+
+/**
+ * @brief ESP-IDF log prefix.
+ */
+static constexpr const char *TAG = "http_example";
 
 /**
  * @brief The modem instance.
@@ -95,14 +110,14 @@ void waitForNetwork()
         vTaskDelay(pdMS_TO_TICKS(100));
         regState = modem.getNetworkRegState();
     }
-    ESP_LOGI("http_test", "Connected to the network");
+    ESP_LOGI(TAG, "Connected to the network");
 }
 
 
 
 extern "C" void app_main(void)
 {
-    ESP_LOGI("http_test","WalterModem test example.");
+    ESP_LOGI(TAG,"WalterModem http example v1.0.0");
     esp_read_mac(dataBuf, ESP_MAC_WIFI_STA);
     ESP_LOGI("socket_test", "Walter's MAC is: %02X:%02X:%02X:%02X:%02X:%02X",
              dataBuf[0],
@@ -112,40 +127,44 @@ extern "C" void app_main(void)
              dataBuf[4],
              dataBuf[5]);
     
-    if(!WalterModem::begin(UART_NUM_1)){
-        ESP_LOGE("http_test","unable to start walterModem!");
+    /* Initialize the modem */
+    if(WalterModem::begin(UART_NUM_1)) {
+        ESP_LOGI(TAG, "Successfully initialized modem");
+    } else {
+        ESP_LOGE(TAG, "Could not initialize modem");
         return;
     }
-
+    
     WalterModemRsp rsp = {};
 
-    if(!modem.setOpState(WALTER_MODEM_OPSTATE_NO_RF)) {
-        ESP_LOGE("http_test", "Could not set operational state to NO RF");
+    /* Define PDP context */
+    if(modem.definePDPContext(1, CELLULAR_APN)) {
+        ESP_LOGI(TAG, "Successfully defined PDP context");
+    } else {
+        ESP_LOGE(TAG, "Could not define PDP context");
         return;
     }
 
-    /* Give the modem time to detect the SIM */
-    vTaskDelay(pdMS_TO_TICKS(2000));
-
-    if(!modem.definePDPContext(1,CELLULAR_APN)) {
-        ESP_LOGE("http_test", "Could not create PDP context");
+    /* Set the operational state to full */
+    if(modem.setOpState(WALTER_MODEM_OPSTATE_FULL)) {
+        ESP_LOGI(TAG, "Successfully set operational state to FULL");
+    } else {
+        ESP_LOGE(TAG, "Could not set operational state to FULL");
+        return;
+    }
+    /* Set the network operator selection to automatic */
+    if(modem.setNetworkSelectionMode(WALTER_MODEM_NETWORK_SEL_MODE_AUTOMATIC)) {
+        ESP_LOGI(TAG, "Network selection mode set to automatic");
+    } else {
+        ESP_LOGE(TAG, "Could not set the network selection mode to automatic");
         return;
     }
 
-    if(!modem.setOpState(WALTER_MODEM_OPSTATE_FULL)) {
-        ESP_LOGE("http_test", "Could not set operational state to FULL");
-        return;
-    }
-
-    if(!modem.setNetworkSelectionMode(WALTER_MODEM_NETWORK_SEL_MODE_AUTOMATIC)) {
-        ESP_LOGE("http_test", "Could not set the network selection mode to automatic");
-        return;
-    }
-
+    /* Wait for the network connection to become available */
     waitForNetwork();
 
-    if (!modem.httpConfigProfile(HTTP_PROFILE, "coap.bluecherry.io", 80)) {
-        ESP_LOGE("http_test","Could not configure the http profile");
+    if (!modem.httpConfigProfile(MODEM_HTTP_PROFILE, "example.com", 80)) {
+        ESP_LOGE(TAG,"Could not configure the http profile");
     }
 
 
@@ -155,32 +174,32 @@ extern "C" void app_main(void)
 
         WalterModemRsp rsp = {};
 
-        /* HTTP test */
+        /* HTTP example */
         static short httpReceiveAttemptsLeft = 0;
         static char ctbuf[32];
 
         if (!httpReceiveAttemptsLeft) {
             if(modem.httpSend(HTTP_PROFILE, "/", dataBuf, 8, WALTER_MODEM_HTTP_SEND_CMD_POST, WALTER_MODEM_HTTP_POST_PARAM_OCTET_STREAM, ctbuf, sizeof(ctbuf))) {
-                ESP_LOGI("http_test","query performed\r\n");
-                httpReceiveAttemptsLeft = 3;
+                ESP_LOGI(TAG,"query performed\r\n");
+                httpReceiveAttemptsLeft = MAX_RECEIVE_COUNT;
             } else {
-                ESP_LOGI("http_test","query failed\r\n");
-                vTaskDelay(pdMS_TO_TICKS(1000));
+                ESP_LOGE(TAG,"query failed\r\n");
+                vTaskDelay(pdMS_TO_TICKS(SEND_DELAY_MS));
             }
         } else {
             while (modem.httpDidRing(HTTP_PROFILE, incomingBuf, sizeof(incomingBuf), &rsp)){
                 httpReceiveAttemptsLeft = 0;
 
-                ESP_LOGI("http_test","status code: %d\r\n", rsp.data.httpResponse.httpStatus);
-                ESP_LOGI("http_test","content type: %s\r\n", ctbuf);
-                ESP_LOGI("http_test","[%s]\r\n", incomingBuf);
+                ESP_LOGI(TAG,"status code: %d\r\n", rsp.data.httpResponse.httpStatus);
+                ESP_LOGI(TAG,"content type: %s\r\n", ctbuf);
+                ESP_LOGI(TAG,"[%s]\r\n", incomingBuf);
             }
 
             if (httpReceiveAttemptsLeft) {
                 ESP_LOGW("htpp_test","response not yet received\r\n");
                 httpReceiveAttemptsLeft--;
             }
-            vTaskDelay(pdMS_TO_TICKS(1000));
+            vTaskDelay(pdMS_TO_TICKS(SEND_DELAY_MS));
         }
     }
 }

@@ -1,5 +1,5 @@
 /**
- * @file mqtt_test.cpp
+ * @file mqtt_example.cpp
  * @author Jonas Maes <jonas@dptechnics.com>
  * @date 24 Apr 2025
  * @copyright DPTechnics bv
@@ -7,7 +7,7 @@
  *
  * @section LICENSE
  *
- * Copyright (C) 2023, DPTechnics bv
+ * Copyright (C) 2025, DPTechnics bv
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -43,8 +43,8 @@
  *
  * @section DESCRIPTION
  *
- * This program sends and receives mqtt data using the DPTechnics BlueCherry cloud platform.
- * It also supports OTA updates which are scheduled through the BlueCherry web interface.
+ * This program publishes data to an MQTT broker and listens to the same topic for incoming
+ * messages.
  */
 
 #include <esp_mac.h>
@@ -56,14 +56,36 @@
 /**
  * @brief Cellular APN for SIM card. Leave empty to autodetect APN.
  */
-#define CELLULAR_APN ""
+CONFIG(CELLULAR_APN, const char*, "")
 
-#define TLS_PROFILE 1
+/**
+ * @brief Time delay in ms of data sent to the Walter demo server.
+ */
+CONFIG_UINT16(SEND_DELAY_MS, 10000)
 
+/**
+ * @brief The Modem TLS profile
+ */
+CONFIG_UINT8(MODEM_TLS_PROFILE, 1)
+
+/**
+ * @brief ESP-IDF log prefix.
+ */
+static constexpr const char *TAG = "mqtt_example";
+
+/**
+ * @brief The modem instance.
+ */
 WalterModem modem;
 
+/**
+ * @brief Incoming data buffer.
+ */
 uint8_t incomingBuf[256] = { 0 };
 
+/**
+ * @brief String which holds the MAC address of the Walter.
+ */
 char macString[32];
 
 void waitForNetwork()
@@ -76,12 +98,12 @@ void waitForNetwork()
     vTaskDelay(pdMS_TO_TICKS(100));
     regState = modem.getNetworkRegState();
   }
-  ESP_LOGI("mqtt_test", "Connected to the network");
+  ESP_LOGI(TAG, "Connected to the network");
 }
 
 extern "C" void app_main(void)
 {
-  ESP_LOGI("mqtt_test", "Walter modem test v0.0.1");
+  ESP_LOGI(TAG, "Walter modem mqtt example v1.0.0");
 
   /* Get the MAC address for board validation */
   esp_read_mac(incomingBuf, ESP_MAC_WIFI_STA);
@@ -93,75 +115,65 @@ extern "C" void app_main(void)
     incomingBuf[4],
     incomingBuf[5]);
 
+  /* Initialize the modem */
   if(WalterModem::begin(UART_NUM_1)) {
-    ESP_LOGI("mqtt_test", "Modem initialization OK");
+    ESP_LOGI(TAG, "Successfully initialized modem");
   } else {
-    ESP_LOGI("mqtt_test", "Modem initialization ERROR");
+    ESP_LOGE(TAG, "Could not initialize modem");
     return;
   }
-
+  
   WalterModemRsp rsp = {};
 
-  if(modem.setOpState(WALTER_MODEM_OPSTATE_NO_RF)) {
-    ESP_LOGI("mqtt_test", "Successfully set operational state to NO RF");
+  /* Define PDP context */
+  if(modem.definePDPContext(1, CELLULAR_APN)) {
+    ESP_LOGI(TAG, "Successfully defined PDP context");
   } else {
-    ESP_LOGI("mqtt_test", "Could not set operational state to NO RF");
-    return;
-  }
-
-  /* Give the modem time to detect the SIM */
-  vTaskDelay(pdMS_TO_TICKS(2000));
-
-  /* Create PDP context */
-  if(modem.definePDPContext(1,CELLULAR_APN)) {
-    ESP_LOGI("mqtt_test", "Created PDP context");
-  } else {
-    ESP_LOGI("mqtt_test", "Could not create PDP context");
+    ESP_LOGE(TAG, "Could not define PDP context");
     return;
   }
 
   /* Set the operational state to full */
   if(modem.setOpState(WALTER_MODEM_OPSTATE_FULL)) {
-    ESP_LOGI("mqtt_test", "Successfully set operational state to FULL");
+    ESP_LOGI(TAG, "Successfully set operational state to FULL");
   } else {
-    ESP_LOGI("mqtt_test", "Could not set operational state to FULL");
+    ESP_LOGE(TAG, "Could not set operational state to FULL");
     return;
   }
-
   /* Set the network operator selection to automatic */
   if(modem.setNetworkSelectionMode(WALTER_MODEM_NETWORK_SEL_MODE_AUTOMATIC)) {
-    ESP_LOGI("mqtt_test", "Network selection mode to was set to automatic");
+    ESP_LOGI(TAG, "Network selection mode set to automatic");
   } else {
-    ESP_LOGI("mqtt_test", "Could not set the network selection mode to automatic");
+    ESP_LOGE(TAG, "Could not set the network selection mode to automatic");
     return;
   }
 
+  /* Wait for the network connection to become available */
   waitForNetwork();
 
-  // other public mqtt broker with web client: mqtthq.com
-  if (modem.mqttConfig("walter-mqtt-test-topic", "", ""))
-  {
-    if (modem.mqttConnect("test.mosquitto.org", 1883))
-    {
-      ESP_LOGI("mqtt_test", "MQTT connection succeeded");
-
-      if (modem.mqttSubscribe("waltertopic"))
-      {
-        ESP_LOGI("mqtt_test", "MQTT subscribed to topic 'waltertopic'");
-      } else {
-      ESP_LOGI("mqtt_test", "MQTT subscribe failed");
-      }
-    } else {
-      ESP_LOGI("mqtt_test", "MQTT connection failed");
-    }
-  } else{
-    ESP_LOGI("mqtt_test", "MQTT configuration failed");
+  /* other public mqtt broker with web client: mqtthq.com */
+  if (modem.mqttConfig("walter-mqtt-test-topic", "", "")) {
+    ESP_LOGI(TAG, "MQTT configuration succeeded");
+  } else {
+    ESP_LOGE(TAG, "MQTT configuration failed");
+    return;
   }
 
-  /* this loop is basically the Arduino loop function */
+  if (modem.mqttConnect("test.mosquitto.org", 1883)) {
+    ESP_LOGI(TAG, "MQTT connection succeeded");
+  } else {
+    ESP_LOGE(TAG, "MQTT connection failed");
+    return;
+  }
+
+  if (modem.mqttSubscribe("walter-mqtt-test-topic")) {
+    ESP_LOGI(TAG, "MQTT subscribed to topic 'walter-mqtt-test-topic'");
+  } else {
+    ESP_LOGE(TAG, "MQTT subscribe failed");
+    return;
+  }
+
   for(;;) {
-    vTaskDelay(pdMS_TO_TICKS(1000));
-    
     WalterModemRsp rsp = {};
   
     static int seq = 0;
@@ -171,20 +183,21 @@ extern "C" void app_main(void)
       sprintf(outgoingMsg, "%s-%d", macString, seq);
 
       if(modem.mqttPublish("waltertopic", (uint8_t *) outgoingMsg, strlen(outgoingMsg),2,&rsp)) {
-        ESP_LOGI("mqtt_test", "published '%s' on topic 'waltertopic'", outgoingMsg);
+        ESP_LOGI(TAG, "published '%s' on topic 'waltertopic'", outgoingMsg);
       } else {
-        
-        ESP_LOGI("mqtt_test", "MQTT publish failed");
+        ESP_LOGE(TAG, "MQTT publish failed");
       }
     }
 
     while(modem.mqttDidRing("waltertopic", incomingBuf, sizeof(incomingBuf), &rsp)) {
-      ESP_LOGI("mqtt_test", "incoming: qos=%d msgid=%d len=%d:",
+      ESP_LOGI(TAG, "incoming: qos=%d msgid=%d len=%d:",
           rsp.data.mqttResponse.qos,
           rsp.data.mqttResponse.messageId,
           rsp.data.mqttResponse.length);
       incomingBuf[rsp.data.mqttResponse.length] = '\0';
-      ESP_LOGI("mqtt_test","%s",incomingBuf);
+      ESP_LOGI(TAG,"%s",incomingBuf);
     }
+
+    vTaskDelay(pdMS_TO_TICKS(SEND_DELAY_MS));
   }
 }

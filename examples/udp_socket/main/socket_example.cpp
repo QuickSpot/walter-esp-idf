@@ -1,5 +1,5 @@
 /**
- * @file socket_test.cpp
+ * @file socket_example.cpp
  * @author Daan Pape <daan@dptechnics.com>
  * @date 24 Apr 2025
  * @copyright DPTechnics bv
@@ -58,9 +58,9 @@
 CONFIG(CELLULAR_APN,const char*, "")
 
 /**
- * @brief Time interval in ms of data sent to the Walter demo server.
+ * @brief Time delay in ms of data sent to the Walter demo server.
  */
-CONFIG_UINT16(SEND_INTERVAL_MS, 10000)
+CONFIG_UINT16(SEND_DELAY_MS, 10000)
 
 /**
  * @brief The address of the Walter demo server.
@@ -71,6 +71,11 @@ CONFIG(SERV_ADDR,const char*, "walterdemo.quickspot.io")
  * @brief The UDP port of the Walter demo server.
  */
 CONFIG_INT(SERV_PORT, 1999)
+
+/**
+ * @brief ESP-IDF log prefix.
+ */
+static constexpr const char* TAG = "socket_example";
 
 /**
  * @brief The modem instance.
@@ -103,16 +108,16 @@ void waitForNetwork()
     vTaskDelay(pdMS_TO_TICKS(100));
     regState = modem.getNetworkRegState();
   }
-  ESP_LOGI("socket_test", "Connected to the cellular network");
+  ESP_LOGI(TAG, "Connected to the cellular network");
 }
 
 extern "C" void app_main(void)
 {
-  ESP_LOGI("socket_test", "Walter UDP Socket example v1");
+  ESP_LOGI(TAG, "Walter UDP Socket example v1");
 
   /* Get the MAC address for board validation */
   esp_read_mac(dataBuf, ESP_MAC_WIFI_STA);
-  ESP_LOGI("socket_test", "Walter's MAC is: %02X:%02X:%02X:%02X:%02X:%02X",
+  ESP_LOGI(TAG, "Walter's MAC is: %02X:%02X:%02X:%02X:%02X:%02X",
     dataBuf[0],
     dataBuf[1],
     dataBuf[2],
@@ -122,32 +127,32 @@ extern "C" void app_main(void)
 
   /* Initialize the modem */
   if(WalterModem::begin(UART_NUM_1)) {
-    ESP_LOGI("socket_test", "Successfully initialized modem");
+    ESP_LOGI(TAG, "Successfully initialized modem");
   } else {
-    ESP_LOGE("socket_test", "Could not initialize modem");
+    ESP_LOGE(TAG, "Could not initialize modem");
     return;
   }
 
-  /* Create PDP context */
+  /* Define PDP context */
   if(modem.definePDPContext(1, CELLULAR_APN)) {
-    ESP_LOGI("socket_test", "Successfully defined PDP context");
+    ESP_LOGI(TAG, "Successfully defined PDP context");
   } else {
-    ESP_LOGE("socket_test", "Could not define PDP context");
+    ESP_LOGE(TAG, "Could not define PDP context");
     return;
   }
   
   /* Set the operational state to full */
   if(modem.setOpState(WALTER_MODEM_OPSTATE_FULL)) {
-    ESP_LOGI("socket_test", "Successfully set operational state to FULL");
+    ESP_LOGI(TAG, "Successfully set operational state to FULL");
   } else {
-    ESP_LOGE("socket_test", "Could not set operational state to FULL");
+    ESP_LOGE(TAG, "Could not set operational state to FULL");
     return;
   }
   /* Set the network operator selection to automatic */
   if(modem.setNetworkSelectionMode(WALTER_MODEM_NETWORK_SEL_MODE_AUTOMATIC)) {
-    ESP_LOGI("socket_test", "Network selection mode set to automatic");
+    ESP_LOGI(TAG, "Network selection mode set to automatic");
   } else {
-    ESP_LOGE("socket_test", "Could not set the network selection mode to automatic");
+    ESP_LOGE(TAG, "Could not set the network selection mode to automatic");
     return;
   }
 
@@ -156,17 +161,17 @@ extern "C" void app_main(void)
 
   /* Construct a socket */
   if(modem.createSocket(&rsp)) {
-    ESP_LOGI("socket_test", "Created a new socket");
+    ESP_LOGI(TAG, "Created a new socket");
   } else {
-    ESP_LOGE("socket_test", "Could not create a new socket");
+    ESP_LOGE(TAG, "Could not create a new socket");
     return;
   }
 
   /* Connect to the demo server */
   if(modem.dialSocket(SERV_ADDR, SERV_PORT)) {
-    ESP_LOGI("socket_test", "Connected to demo server %s:%d", SERV_ADDR, SERV_PORT);
+    ESP_LOGI(TAG, "Connected to demo server %s:%d", SERV_ADDR, SERV_PORT);
   } else {
-    ESP_LOGE("socket_test", "Could not connect demo socket");
+    ESP_LOGE(TAG, "Could not connect demo socket");
     return;
   }
 
@@ -175,14 +180,14 @@ extern "C" void app_main(void)
     dataBuf[7] = counter & 0xFF;
   
     if(modem.socketSend(dataBuf, 8)) {
-      ESP_LOGI("socket_test", "Transmitted counter value %d", counter);
+      ESP_LOGI(TAG, "Transmitted counter value %d", counter);
       counter += 1;
     } else {
-      ESP_LOGE("socket_test", "Could not transmit data");
+      ESP_LOGE(TAG, "Could not transmit data");
       vTaskDelay(pdMS_TO_TICKS(1000));
       esp_restart();
     }
 
-    vTaskDelay(pdMS_TO_TICKS(SEND_INTERVAL_MS));
+    vTaskDelay(pdMS_TO_TICKS(SEND_DELAY_MS));
   }
 }

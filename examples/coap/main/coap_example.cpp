@@ -55,17 +55,26 @@
 /**
  * @brief Cellular APN for SIM card. Leave empty to autodetect APN.
  */
-#define CELLULAR_APN ""
+CONFIG(CELLULAR_APN, const char *, "")
 
 /**
  * @brief COAP profile used for COAP tests
  */
-#define COAP_PROFILE 0
+CONFIG_UINT8(MODEM_COAP_PROFILE,0)
+
+/**
+ * @brief Time delay in ms of data sent to the coap demo server.
+ */
+CONFIG_UINT16(SEND_DELAY_MS, 10000)
 
 /**
  * @brief The modem instance.
  */
 WalterModem modem;
+
+/**
+ * @brief Response object containing command response information.
+ */
 WalterModemRsp rsp = {};
 
 /**
@@ -111,49 +120,43 @@ extern "C" void app_main(void)
         dataBuf[5]);
 
     if (WalterModem::begin(UART_NUM_1)) {
-        ESP_LOGI("coap_test", "Modem initialization OK");
+        ESP_LOGI(TAG, "Modem initialization OK");
     } else {
-        ESP_LOGI("coap_test", "Modem initialization ERROR");
+        ESP_LOGI(TAG, "Modem initialization ERROR");
         return;
     }
 
     WalterModemRsp rsp = {};
 
-    if(modem.setOpState(WALTER_MODEM_OPSTATE_NO_RF)) {
-        ESP_LOGI("mqtt_test", "Successfully set operational state to NO RF");
-    } else {
-        ESP_LOGI("mqtt_test", "Could not set operational state to NO RF");
-        return;
-    }
-
     /* Create PDP context */
     if(modem.definePDPContext(1, CELLULAR_APN)) {
-        ESP_LOGI("coap_test", "Created PDP context");
+        ESP_LOGI(TAG, "Created PDP context");
     } else {
-        ESP_LOGI("coap_test", "Could not create PDP context");
+        ESP_LOGI(TAG, "Could not create PDP context");
         return;
     }
 
     /* Set the operational state to full */
     if(modem.setOpState(WALTER_MODEM_OPSTATE_FULL)) {
-        ESP_LOGI("coap_test", "Successfully set operational state to FULL");
+        ESP_LOGI(TAG, "Successfully set operational state to FULL");
     } else {
-        ESP_LOGI("coap_test", "Could not set operational state to FULL");
+        ESP_LOGI(TAG, "Could not set operational state to FULL");
         return;
     }
 
     /* Set the network operator selection to automatic */
     if(modem.setNetworkSelectionMode(WALTER_MODEM_NETWORK_SEL_MODE_AUTOMATIC)) {
-        ESP_LOGI("coap_test", "Network selection mode to was set to automatic");
+        ESP_LOGI(TAG, "Network selection mode to was set to automatic");
     } else {
-        ESP_LOGI("coap_test", "Could not set the network selection mode to automatic");
+        ESP_LOGI(TAG, "Could not set the network selection mode to automatic");
         return;
     }
 
     waitForNetwork();
     
     for(;;) {
-        vTaskDelay(pdMS_TO_TICKS(10000));
+        vTaskDelay(pdMS_TO_TICKS(SEND_DELAY_MS));
+        
         dataBuf[6] = counter >> 8;
         dataBuf[7] = counter & 0xFF;
 
@@ -161,52 +164,52 @@ extern "C" void app_main(void)
 
         static short receiveAttemptsLeft = 0;
 
-        if(!modem.coapCreateContext(COAP_PROFILE, "coap.me", 5683)) {
-            ESP_LOGE("coap_test", "Could not create COAP context. Better luck next iteration?\r\n");
+        if(!modem.coapCreateContext(MODEM_COAP_PROFILE, "coap.me", 5683)) {
+            ESP_LOGE(TAG, "Could not create COAP context. Better luck next iteration?");
             continue;
         } else {
-            ESP_LOGI("coap_test", "Successfully created or refreshed COAP context\r\n");
+            ESP_LOGI(TAG, "Successfully created or refreshed COAP context");
         }
 
         if(!receiveAttemptsLeft) {
-            if(modem.coapSetHeader(COAP_PROFILE, counter)) {
-                ESP_LOGI("coap_test", "Set COAP header with message id %d\r\n", counter);
+            if(modem.coapSetHeader(MODEM_COAP_PROFILE, counter)) {
+                ESP_LOGI(TAG, "Set COAP header with message id %d", counter);
             } else {
-                ESP_LOGE("coap_test","Could not set COAP header\r\n");
+                ESP_LOGE(TAG,"Could not set COAP header");
                 vTaskDelay(pdMS_TO_TICKS(1000));
                 esp_restart();
             }
 
-            if(modem.coapSendData(COAP_PROFILE, WALTER_MODEM_COAP_SEND_TYPE_CON,
+            if(modem.coapSendData(MODEM_COAP_PROFILE, WALTER_MODEM_COAP_SEND_TYPE_CON,
             WALTER_MODEM_COAP_SEND_METHOD_GET, 8, dataBuf)) {
-                ESP_LOGI("coap_test", "Sent COAP datagram\r\n");
+                ESP_LOGI(TAG, "Sent COAP datagram");
                 receiveAttemptsLeft = 3;
             } else {
-                ESP_LOGE("coap_test", "Could not send COAP datagram\r\n");
+                ESP_LOGE(TAG, "Could not send COAP datagram");
                 vTaskDelay(pdMS_TO_TICKS(1000));
                 esp_restart();
             }
         } else {
             receiveAttemptsLeft--;
-            ESP_LOGI("coap_test", "Checking for incoming COAP message or response\r\n");
+            ESP_LOGI(TAG, "Checking for incoming COAP message or response");
 
-            while(modem.coapDidRing(COAP_PROFILE, incomingBuf, sizeof(incomingBuf), &rsp)) {
+            while(modem.coapDidRing(MODEM_COAP_PROFILE, incomingBuf, sizeof(incomingBuf), &rsp)) {
             receiveAttemptsLeft = 0;
 
-            ESP_LOGI("coap_test", "COAP incoming:\r\n");
-            ESP_LOGI("coap_test", "profileId: %d (profile ID used by us: %d)\r\n",
-                    rsp.data.coapResponse.profileId, COAP_PROFILE);
-            ESP_LOGI("coap_test", "Message id: %d\r\n", rsp.data.coapResponse.messageId);
-            ESP_LOGI("coap_test", "Send type (CON, NON, ACK, RST): %d\r\n",
+            ESP_LOGI(TAG, "COAP incoming:\r\n");
+            ESP_LOGI(TAG, "profileId: %d (profile ID used by us: %d)\r\n",
+                    rsp.data.coapResponse.profileId, MODEM_COAP_PROFILE);
+            ESP_LOGI(TAG, "Message id: %d\r\n", rsp.data.coapResponse.messageId);
+            ESP_LOGI(TAG, "Send type (CON, NON, ACK, RST): %d\r\n",
                     rsp.data.coapResponse.sendType);
-            ESP_LOGI("coap_test", "Method or response code: %d\r\n",
+            ESP_LOGI(TAG, "Method or response code: %d\r\n",
                     rsp.data.coapResponse.methodRsp);
-            ESP_LOGI("coap_test", "Data (%d bytes):\r\n", rsp.data.coapResponse.length);
+            ESP_LOGI(TAG, "Data (%d bytes):\r\n", rsp.data.coapResponse.length);
 
             for(size_t i = 0; i < rsp.data.coapResponse.length; i++) {
-                ESP_LOGI("coap_test", "[%02x  %c] ", incomingBuf[i], incomingBuf[i]);
+                ESP_LOGI(TAG, "[%02x  %c] ", incomingBuf[i], incomingBuf[i]);
             }
-            ESP_LOGI("coap_test", "\r\n");
+            ESP_LOGI(TAG, "\r\n");
             }
         }
     }
