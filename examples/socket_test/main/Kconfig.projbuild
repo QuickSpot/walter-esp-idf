@@ -1,4 +1,4 @@
-menu "scoket Example"
+menu "socket Example"
     if WALTER_MODEM_KCONFIG
         config CELLULAR_APN
             string "cellular apn"
