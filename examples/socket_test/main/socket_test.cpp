@@ -152,15 +152,9 @@ extern "C" void app_main(void)
   if(modem.createSocket(&rsp)) {
     ESP_LOGI("socket_test", "Created a new socket");
   } else {
-    ESP_LOGI("socket_test", "Could not create a new socket");
+    ESP_LOGE("socket_test", "Could not create a new socket");
+    return;
   }
-
-  // /* Configure the socket */
-  // if(modem.configSocket()) {
-  //   ESP_LOGI("socket_test", "Successfully configured the socket");
-  // } else {
-  //   ESP_LOGI("socket_test", "Could not configure the socket");
-  // }
 
   /* Connect to the demo server */
   if(modem.dialSocket(SERV_ADDR, SERV_PORT)) {
@@ -179,7 +173,7 @@ extern "C" void app_main(void)
       ESP_LOGI("socket_test", "Transmitted counter value %d", counter);
       counter += 1;
     } else {
-      ESP_LOGI("socket_test", "Could not transmit data");
+      ESP_LOGE("socket_test", "Could not transmit data");
       vTaskDelay(pdMS_TO_TICKS(1000));
       esp_restart();
     }

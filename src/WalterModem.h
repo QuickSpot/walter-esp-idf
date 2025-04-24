@@ -4532,10 +4532,10 @@ class WalterModem {
             int socketId = -1);
 
         /**
-         * @brief Connect a socket after which data can be exchanged.
+         * @brief Dial a socket after which data can be exchanged.
          *
-         * This function will connect a socket to a remote host. When the connection was successful
-         * data can be exchanged.
+         * This function will dial a socket to a remote host. When the dial is successful data can 
+         * be exchanged.
          *
          * @param remoteHost The remote IPv4/IPv6 or hostname to connect to.
          * @param remotePort The remote port to connect on.
