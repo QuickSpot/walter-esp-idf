@@ -1,7 +1,7 @@
 /**
  * @file socket_test.cpp
  * @author Daan Pape <daan@dptechnics.com>
- * @date 15 Feb 2023
+ * @date 24 Apr 2025
  * @copyright DPTechnics bv
  * @brief Walter Modem library examples
  *

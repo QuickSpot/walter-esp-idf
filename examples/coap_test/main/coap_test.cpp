@@ -1,7 +1,7 @@
 /**
- * @file ModemCoapTest.ino
+ * @file coap_test.cpp
  * @author Dries Vandenbussche <dries@dptechnics.com>
- * @date 01 Jun 2023
+ * @date 24 Apr 2025
  * @copyright DPTechnics bv
  * @brief Walter Modem library examples
  *
