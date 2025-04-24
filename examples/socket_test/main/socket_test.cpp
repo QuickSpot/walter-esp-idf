@@ -7,7 +7,7 @@
  *
  * @section LICENSE
  *
- * Copyright (C) 2023, DPTechnics bv
+ * Copyright (C) 2025, DPTechnics bv
  * All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
@@ -43,36 +43,30 @@
  *
  * @section DESCRIPTION
  *
- * This program uses the modem in Walter to make a connection to a network
- * and upload counter values to the Walter demo server.
+ * This example demonstrates how to configure the modem in Walter to send sample
+ * data to the Walter Demo server on walterdemo.quickspot.io.
  */
 
 #include <esp_mac.h>
 #include <esp_log.h>
 #include <driver/uart.h>
 #include "WalterModem.h"
-
-void registrationEvent(WalterModemNetworkRegState state, void* args) {
-  if (state == WALTER_MODEM_NETWORK_REG_REGISTERED_HOME || state == WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING)
-  {
-    ESP_LOGE("event", "connection event: %i",state);
-  }
-}
-
-/**
- * @brief The address of the server to upload the data to. 
- */
-#define SERV_ADDR "64.225.64.140"
-
 /**
  * @brief Cellular APN for SIM card. Leave empty to autodetect APN.
  */
-#define CELLULAR_APN ""
+CONFIG(CELLULAR_APN,const char*, "")
+
+
 
 /**
- * @brief The UDP port on which the server is listening.
+ * @brief The address of the Walter Demo server.
  */
-#define SERV_PORT 1999
+CONFIG(SERV_ADDR,const char* ,"walterdemo.quickspot.io")
+
+/**
+ * @brief The UDP port of the Walter Demo server.
+ */
+CONFIG_INT(SERV_PORT,1999)
 
 /**
  * @brief The modem instance.
@@ -80,18 +74,18 @@ void registrationEvent(WalterModemNetworkRegState state, void* args) {
 WalterModem modem;
 
 /**
- * @brief rsp
+ * @brief Response object containing command response information.
  */
 WalterModemRsp rsp;
 
 /**
- * @brief The buffer to transmit to the UDP server. The first 6 bytes will be
+ * @brief The buffer to transmit to the demo server. The first 6 bytes will be
  * the MAC address of the Walter this code is running on.
  */
 uint8_t dataBuf[8] = { 0 };
 
 /**
- * @brief The counter used in the ping packets.
+ * @brief Incrementing counter value sent as payload data.
  */
 uint16_t counter = 0;
 
@@ -110,7 +104,7 @@ void waitForNetwork()
 
 extern "C" void app_main(void)
 {
-  ESP_LOGI("socket_test", "Walter modem test v0.0.1");
+  ESP_LOGI("socket_test", "Walter Socket Example v1.0.0");
 
   /* Get the MAC address for board validation */
   esp_read_mac(dataBuf, ESP_MAC_WIFI_STA);
@@ -123,29 +117,17 @@ extern "C" void app_main(void)
     dataBuf[5]);
 
   if(WalterModem::begin(UART_NUM_1)) {
-    ESP_LOGI("socket_test", "Modem initialization OK");
+    ESP_LOGI("socket_test", "Successfully initialized modem");
   } else {
-    ESP_LOGI("socket_test", "Modem initialization ERROR");
+    ESP_LOGE("socket_test", "Could not initialize modem");
     return;
   }
-  
-  modem.setRegistrationEventHandler(registrationEvent);
-
-  if(modem.setOpState(WALTER_MODEM_OPSTATE_NO_RF)) {
-    ESP_LOGI("socket_test", "Successfully set operational state to NO RF");
-  } else {
-    ESP_LOGI("socket_test", "Could not set operational state to NO RF");
-    return;
-  }
-
-  /* Give the modem time to detect the SIM */
-  vTaskDelay(pdMS_TO_TICKS(2000));
 
   /* Create PDP context */
-  if(modem.definePDPContext(1,CELLULAR_APN)) {
-    ESP_LOGI("socket_test", "Created PDP context");
+  if(modem.definePDPContext(1, CELLULAR_APN)) {
+    ESP_LOGI("socket_test", "Successfully defined PDP context");
   } else {
-    ESP_LOGI("socket_test", "Could not create PDP context");
+    ESP_LOGE("socket_test", "Could not define PDP context");
     return;
   }
   
@@ -153,14 +135,14 @@ extern "C" void app_main(void)
   if(modem.setOpState(WALTER_MODEM_OPSTATE_FULL)) {
     ESP_LOGI("socket_test", "Successfully set operational state to FULL");
   } else {
-    ESP_LOGI("socket_test", "Could not set operational state to FULL");
+    ESP_LOGE("socket_test", "Could not set operational state to FULL");
     return;
   }
   /* Set the network operator selection to automatic */
   if(modem.setNetworkSelectionMode(WALTER_MODEM_NETWORK_SEL_MODE_AUTOMATIC)) {
-    ESP_LOGI("socket_test", "Network selection mode to was set to automatic");
+    ESP_LOGI("socket_test", "Network selection mode set to automatic");
   } else {
-    ESP_LOGI("socket_test", "Could not set the network selection mode to automatic");
+    ESP_LOGE("socket_test", "Could not set the network selection mode to automatic");
     return;
   }
   /* Wait for the network to become available */
@@ -173,18 +155,19 @@ extern "C" void app_main(void)
     ESP_LOGI("socket_test", "Could not create a new socket");
   }
 
-  /* Configure the socket */
-  if(modem.configSocket()) {
-    ESP_LOGI("socket_test", "Successfully configured the socket");
-  } else {
-    ESP_LOGI("socket_test", "Could not configure the socket");
-  }
+  // /* Configure the socket */
+  // if(modem.configSocket()) {
+  //   ESP_LOGI("socket_test", "Successfully configured the socket");
+  // } else {
+  //   ESP_LOGI("socket_test", "Could not configure the socket");
+  // }
 
-  /* Connect to the UDP test server */
-  if(modem.connectSocket(SERV_ADDR, SERV_PORT, SERV_PORT)) {
-    ESP_LOGI("socket_test", "Connected to UDP server %s:%d", SERV_ADDR, SERV_PORT);
+  /* Connect to the demo server */
+  if(modem.dialSocket(SERV_ADDR, SERV_PORT)) {
+    ESP_LOGI("socket_test", "Connected to demo server %s:%d", SERV_ADDR, SERV_PORT);
   } else {
-    ESP_LOGI("socket_test", "Could not connect UDP socket");
+    ESP_LOGE("socket_test", "Could not connect demo socket");
+    return;
   }
 
   /* this loop is basically the Arduino loop function */

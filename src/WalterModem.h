@@ -4549,7 +4549,7 @@ class WalterModem {
          *
          * @return True on success, false otherwise.
          */
-        static bool connectSocket(
+        static bool dialSocket(
             const char *remoteHost,
             uint16_t remotePort,
             uint16_t localPort = 0,

@@ -186,7 +186,7 @@ bool WalterModem::configSocket(
     _returnAfterReply();
 }
 
-bool WalterModem::connectSocket(
+bool WalterModem::dialSocket(
     const char *remoteHost,
     uint16_t remotePort,
     uint16_t localPort,

@@ -412,7 +412,7 @@ bool socketConnect(const char *ip, uint16_t port)
   }
 
   /* Connect to the UDP test server */
-  if(modem.connectSocket(ip, port, port)) {
+  if(modem.dialSocket(ip, port, port)) {
     ESP_LOGI("positioning", "Connected to UDP server %s:%d", ip, port);
   } else {
     ESP_LOGI("positioning", "Could not connect UDP socket");

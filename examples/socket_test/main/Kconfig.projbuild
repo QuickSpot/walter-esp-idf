@@ -1,0 +1,21 @@
+menu "scoket Example"
+    if WALTER_MODEM_KCONFIG
+        config CELLULAR_APN
+            string "cellular apn"
+            default ""
+            help
+                the default apn to connect to
+        
+        config SERV_ADDR
+            string "demo server address"
+            default "walterdemo.quickspot.io"
+            help
+                the server address of the walter demo server
+        
+        config SERV_PORT
+            int "demo server port"
+            default 1999
+            help
+                the server port of the walter demo server
+    endif  
+endmenu
