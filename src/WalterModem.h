@@ -1342,6 +1342,11 @@ typedef enum {
     WALTER_MODEM_EVENT_TYPE_COAP,
 
     /**
+     * @brief Socket related events.
+     */
+    WALTER_MODEM_EVENT_TYPE_SOCKET,
+
+    /**
      * @brief The number of event types supported by the library.
      */
     WALTER_MODEM_EVENT_TYPE_COUNT
@@ -2274,12 +2279,12 @@ typedef struct {
     /**
      * @brief Data amount received (0-1500)
      */
-    uint16_t dataReceivedCount;
+    uint16_t dataReceived;
 
     /**
      * @brief Data received (0-1500)
      */
-    uint8_t data[MAX_SOCKET_PACKET_SIZE];
+    uint8_t data[1500];
 } WalterModemSocket;
 #endif
 #pragma endregion
