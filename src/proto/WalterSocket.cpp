@@ -343,9 +343,7 @@ bool WalterModem::socketListen(
             args,
             NULL,
             NULL,
-            WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT,
-            data,
-            dataSize);
+            WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT);
     } else {
         _runCmd(
             arr("AT+SQNSLUDP=",
@@ -360,26 +358,48 @@ bool WalterModem::socketListen(
             args,
             NULL,
             NULL,
-            WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT,
-            data,
-            dataSize);
+            WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT);
     }
 
     _returnAfterReply();
 }
 
-bool WalterModem::socketDidRing(
-    int socketId, uint8_t targetBUfSize, uint8_t *targetBuf)
+bool WalterModem::socketDidRing(int socketId, uint8_t targetBufSize, uint8_t *targetBuf)
 {
     WalterModemSocket *sock = _socketGet(socketId);
     if (sock == NULL) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_SOCKET);
     }
-    if(sock->didRing);{
-        if(targetBuf != nullptr && targetBufSize != 0){
-            memcpy(targetBuf,sock->data,targetBufSize)
+
+    if (sock->didRing) {
+        if (targetBuf != nullptr && targetBufSize != 0) {
+            memcpy(targetBuf, sock->data, targetBufSize)
         }
     }
+}
+
+bool WalterModem::socketReceive(
+    uint8_t targetBufSize, uint8_t *targetBuf, int socketId, WalterModemRsp *rsp)
+{
+    WalterModemSocket *sock = _socketGet(socketId);
+    if (sock == NULL) {
+        _returnState(WALTER_MODEM_STATE_NO_SUCH_SOCKET);
+    }
+
+    if (targetBufSize > 1500) {
+        _returnState(WALTER_MODEM_STATE_NO_MEMORY);
+        ESP_LOGW("WalterModem", "only 1500 bytes can be received at a time!");
+    }
+    _runCmd(
+        arr("AT+SQNSRECV=", _digitStr(sock->id), ",", _digitStr(targetBufSize)),
+        "ok",
+        rsp,
+        NULL,
+        NULL,
+        WALTER_MODEM_CMD_TYPE_TX_WAIT,
+        targetBuf,
+        targetBufSize);
+    _returnAfterReply();
 }
 
 void WalterModem::setSocketEventHandler(walterModemSocketEventHandler handler, void *args = NULL)

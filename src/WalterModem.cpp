@@ -933,12 +933,18 @@ uint16_t WalterModem::_extractRawBufferChunkSize()
 
     /* parse +SQNCOAPRCV raw data chunk size */
     if (_parserData.buf->size > _strLitLen("+SQNCOAPRCV: ") && _parserData.buf->data[0] == '+' &&
-        _parserData.buf->data[1] == 'S' && _parserData.buf->data[2] == 'Q' &&
-        _parserData.buf->data[3] == 'N' && _parserData.buf->data[4] == 'C' &&
-        _parserData.buf->data[5] == 'O' && _parserData.buf->data[6] == 'A' &&
-        _parserData.buf->data[7] == 'P' && _parserData.buf->data[8] == 'R' &&
-        _parserData.buf->data[9] == 'C' && _parserData.buf->data[10] == 'V' &&
-        _parserData.buf->data[11] == ':' && _parserData.buf->data[12] == ' ') {
+        _parserData.buf->data[1] == 'S' && 
+        _parserData.buf->data[2] == 'Q' &&
+        _parserData.buf->data[3] == 'N' && 
+        _parserData.buf->data[4] == 'C' &&
+        _parserData.buf->data[5] == 'O' &&
+        _parserData.buf->data[6] == 'A' &&
+        _parserData.buf->data[7] == 'P' &&
+        _parserData.buf->data[8] == 'R' &&
+        _parserData.buf->data[9] == 'C' && 
+        _parserData.buf->data[10] == 'V' &&
+        _parserData.buf->data[11] == ':' &&
+        _parserData.buf->data[12] == ' ') {
         uint8_t nrCommasSeen = 0;
         short i = _strLitLen("+SQNCOAPRCV: ");
         for (; i < _parserData.buf->size && nrCommasSeen < 6; i++) {
@@ -2575,6 +2581,37 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         }
 
         _dispatchEvent(WALTER_MODEM_SOCKET_EVENT_RING, sock->id, sock->dataReceived, sock->data);
+    }
+
+    if(_buffStartsWith(buffn, "+SQNSRECV: "))
+    {
+        const char *rspStr = _buffStr(buff);
+        char *start = (char *)rspStr + _strLitLen("+SQNSRECV: ");
+        int sockId = atoi(start);
+
+        WalterModemSocket *sock = _socketGet(sockId);
+        if (sock) {
+            sock->didRing = true;
+        }
+
+        const char *commapPos = strchr(start, ',');
+        const char *commapPos = strchr(start, ',');
+        if (commaPos) {
+            *commaPos = '\0';
+            sock->dataReceived = sock->atoi(commaPos);
+            start = ++commaPos;
+            commaPos = strchr(commaPos, ',');
+        }
+
+        char *data = strchr(rspStr, '\r');
+
+        /*
+         * If data and dataSize are null, we cannot store the result. We can only hope the user
+         * is using a callback which has access to the raw buffer.
+         */
+        if (cmd->data) {
+            memcpy(cmd->data, data, sock->dataReceived);
+        }
     }
 #endif
 #pragma endregion
