@@ -44,6 +44,7 @@
  */
 
 #include <WalterDefines.h>
+#include <WalterModem.h>
 
 #if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
     #pragma region PRIVATE_METHODS
@@ -380,7 +381,7 @@ bool WalterModem::socketDidRing(int socketId, uint8_t targetBufSize, uint8_t *ta
 }
 
 bool WalterModem::socketReceive(
-    uint8_t targetBufSize, uint8_t *targetBuf, int socketId, WalterModemRsp *rsp)
+    uint16_t targetBufSize, uint8_t *targetBuf, int socketId, WalterModemRsp *rsp)
 {
     WalterModemSocket *sock = _socketGet(socketId);
     if (sock == NULL) {

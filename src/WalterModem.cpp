@@ -2571,19 +2571,19 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         char *commaPos = strchr(start, ',');
         if (commaPos) {
             *commaPos = '\0';
-            sock->dataReceived = sock->atoi(commaPos);
+            sock->dataReceived = atoi(commaPos);
             start = ++commaPos;
             commaPos = strchr(commaPos, ',');
         }
 
         if (commaPos) {
-            memcpy(sock->data, commaPos, sock->dataReceived)
+            memcpy(sock->data, commaPos, sock->dataReceived);
         }
 
         _dispatchEvent(WALTER_MODEM_SOCKET_EVENT_RING, sock->id, sock->dataReceived, sock->data);
     }
 
-    if(_buffStartsWith(buffn, "+SQNSRECV: "))
+    if(_buffStartsWith(buff, "+SQNSRECV: "))
     {
         const char *rspStr = _buffStr(buff);
         char *start = (char *)rspStr + _strLitLen("+SQNSRECV: ");
@@ -2594,8 +2594,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             sock->didRing = true;
         }
 
-        const char *commapPos = strchr(start, ',');
-        const char *commapPos = strchr(start, ',');
+        char *commaPos = strchr(start, ',');
         if (commaPos) {
             *commaPos = '\0';
             sock->dataReceived = sock->atoi(commaPos);
@@ -3771,7 +3770,7 @@ bool WalterModem::tlsConfigProfile(
         stringsBuffer);
 
     _returnAfterReply();
-
+}
 #pragma region MODEM_STATE
 WalterModemNetworkRegState WalterModem::getNetworkRegState()
 {

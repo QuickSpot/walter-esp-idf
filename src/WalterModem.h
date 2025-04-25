@@ -4737,7 +4737,7 @@ public:
      * @return True on success, false otherwise.
      */
     static bool socketReceive(
-        uint8_t targetBufSize, uint8_t *targetBuf, int socketId = -1, WalterModemRsp *rsp = NULL)
+        uint16_t targetBufSize, uint8_t *targetBuf, int socketId = -1, WalterModemRsp *rsp = NULL);
 #endif
 #pragma endregion
 
@@ -5044,7 +5044,7 @@ public:
         WalterModemPSMMode mode = WALTER_MODEM_PSM_DISABLE,
         const char *reqTAU = NULL,
         const char *reqActive = NULL,
-        F WalterModemRsp *rsp = NULL,
+        WalterModemRsp *rsp = NULL,
         walterModemCb cb = NULL,
         void *args = NULL);
 

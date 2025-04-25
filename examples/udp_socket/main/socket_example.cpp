@@ -182,7 +182,7 @@ extern "C" void app_main(void)
         ESP_LOGI(TAG, "Successfully initialized modem");
     } else {
         ESP_LOGE(TAG, "Could not initialize modem");
-        return false;
+        return;
     }
 
     if (!lteConnect()) {
