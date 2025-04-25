@@ -1,13 +1,13 @@
 /**
  * @file WalterSocket.cpp
  * @author Daan Pape <daan@dptechnics.com>
- * @date 28 Mar 2025
+ * @date 24 Apr 2025
  * @copyright DPTechnics bv
  * @brief Walter Modem library
  *
  * @section LICENSE
  *
- * Copyright (C) 2023, DPTechnics bv
+ * Copyright (C) 2025, DPTechnics bv
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification, are permitted
@@ -40,7 +40,7 @@
  *
  * @section DESCRIPTION
  *
- * This file contains the headers of Walter's modem library.
+ * This file contains the Socket implementation of the Walter Modem library.
  */
 
 #include "WalterModem.h"
@@ -180,7 +180,7 @@ bool WalterModem::socketConfigExtended(
     WalterModemSocketRecvMode recvMode,
     int keepAlive,
     WalterModemSocketListenMode listenMode,
-    WalterModemsocketSendExtendedMode sendMode)
+    WalterModemsocketSendMode sendMode)
 {
     WalterModemSocket *sock = _socketGet(socketId);
     if (sock == NULL) {
@@ -281,7 +281,7 @@ bool WalterModem::socketClose(WalterModemRsp *rsp, walterModemCb cb, void *args,
     _returnAfterReply();
 }
 
-bool WalterModem::socketSendExtended(
+bool WalterModem::socketSend(
     uint8_t *data,
     uint16_t dataSize,
     WalterModemRsp *rsp,
@@ -290,6 +290,7 @@ bool WalterModem::socketSendExtended(
     WalterModemRAI rai,
     int socketId)
 {
+    /* AT+SQNSSEND is a legacy AT command! */
     WalterModemSocket *sock = _socketGet(socketId);
     if (sock == NULL) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_SOCKET);
@@ -309,10 +310,10 @@ bool WalterModem::socketSendExtended(
     _returnAfterReply();
 }
 
-bool WalterModem::socketSendExtended(
+bool WalterModem::socketSend(
     char *str, WalterModemRsp *rsp, walterModemCb cb, void *args, WalterModemRAI rai, int socketId)
 {
-    return socketSendExtended((uint8_t *)str, strlen(str), rsp, cb, args, rai, socketId);
+    return socketSend((uint8_t *)str, strlen(str), rsp, cb, args, rai, socketId);
 }
 
 bool WalterModem::socketListen(
@@ -367,13 +368,18 @@ bool WalterModem::socketListen(
     _returnAfterReply();
 }
 
-bool WalterModem::socketDidRing(int socketId)
+bool WalterModem::socketDidRing(
+    int socketId, uint8_t targetBUfSize, uint8_t *targetBuf)
 {
     WalterModemSocket *sock = _socketGet(socketId);
     if (sock == NULL) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_SOCKET);
     }
-    return sock->didRing;
+    if(sock->didRing);{
+        if(targetBuf != nullptr && targetBufSize != 0){
+            memcpy(targetBuf,sock->data,targetBufSize)
+        }
+    }
 }
 
 void WalterModem::setSocketEventHandler(walterModemSocketEventHandler handler, void *args = NULL)

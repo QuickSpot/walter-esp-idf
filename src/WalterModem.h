@@ -863,7 +863,7 @@ typedef enum {
 typedef enum {
     WALTER_MODEM_SOCKET_SEND_MODE_TEXT,
     WALTER_MODEM_SOCKET_SEND_MODE_HEX,
-} WalterModemsocketSendExtendedMode;
+} WalterModemsocketSendMode;
 
 /**
  * @brief This enumeration represents the listen state of the socket
@@ -4588,7 +4588,7 @@ public:
         WalterModemSocketRecvMode recvMode = WALTER_MODEM_SOCKET_RECV_MODE_TEXT,
         int keepAlive = 0,
         WalterModemSocketListenMode listenMode = WALTER_MODEM_SOCKET_LISTEN_MODE_DISABLED,
-        WalterModemsocketSendExtendedMode sendMode = WALTER_MODEM_SOCKET_SEND_MODE_TEXT);
+        WalterModemsocketSendMode sendMode = WALTER_MODEM_SOCKET_SEND_MODE_TEXT);
 
     /**
      * @brief Dial a socket after which data can be exchanged.
@@ -4653,7 +4653,7 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool socketSendExtended(
+    static bool socketSend(
         uint8_t *data,
         uint16_t dataSize,
         WalterModemRsp *rsp = NULL,
@@ -4667,7 +4667,7 @@ public:
      *
      * This function will send a string over a socket. The string cannot be freed until the send
      * response is received (sync or async). The maximum size of the string, not including the
-     * 0-terminator, is 1500 bytes.
+     * 0-terminator, is 16777216 bytes (16MB).
      *
      * @param str A zero-terminated string.
      * @param rsp Optional modem response structure to save the result in.
@@ -4678,7 +4678,7 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool socketSendExtended(
+    static bool socketSend(
         char *str,
         WalterModemRsp *rsp = NULL,
         walterModemCb cb = NULL,

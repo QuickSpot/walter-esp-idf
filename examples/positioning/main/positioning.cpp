@@ -590,7 +590,7 @@ extern "C" void app_main(void)
       return;
     }
   
-    if(!modem.socketSendExtended(dataBuf, PACKET_SIZE)) {
+    if(!modem.socketSend(dataBuf, PACKET_SIZE)) {
       ESP_LOGI("positioning", "Could not transmit data");
       return;
     }

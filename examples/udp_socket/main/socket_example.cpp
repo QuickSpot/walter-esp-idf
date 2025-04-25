@@ -191,7 +191,7 @@ extern "C" void app_main(void)
         dataBuf[6] = counter >> 8;
         dataBuf[7] = counter & 0xFF;
 
-        if (modem.socketSendExtended(dataBuf, 8)) {
+        if (modem.socketSend(dataBuf, 8)) {
             ESP_LOGI(TAG, "Transmitted counter value %d", counter);
             counter += 1;
         } else {
