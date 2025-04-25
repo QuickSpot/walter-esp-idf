@@ -3543,6 +3543,46 @@ bool WalterModem::sendCmd(const char *cmd)
 bool WalterModem::softReset(WalterModemRsp *rsp, walterModemCb cb, void *args)
 {
     _runCmd({"AT^RESET"}, "+SYSSTART", rsp, cb, args);
+
+    /* Also (re)initialize internal modem related library state */
+    _regState = WALTER_MODEM_NETWORK_REG_NOT_SEARCHING;
+    _opState = WALTER_MODEM_OPSTATE_MINIMUM;
+    _networkSelMode = WALTER_MODEM_NETWORK_SEL_MODE_AUTOMATIC;
+
+    _pdpCtx = NULL;
+    _simPIN = NULL;
+
+    for (int i = 0; i < WALTER_MODEM_MAX_PDP_CTXTS; ++i) {
+        _pdpCtxSet[i] = {};
+    }
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+    _socket = NULL;
+    for (int i = 0; i < WALTER_MODEM_MAX_SOCKETS; ++i) {
+        _socketSet[i] = {};
+    }
+#endif
+
+#if CONFIG_WALTER_MODEM_ENABLE_COAP
+    for (int i = 0; i < WALTER_MODEM_MAX_COAP_PROFILES; ++i) {
+        _coapContextSet[i] = {};
+    }
+#endif
+
+#if CONFIG_WALTER_MODEM_ENABLE_HTTP
+    _httpCurrentProfile = 0xff;
+
+    for (int i = 0; i < WALTER_MODEM_MAX_HTTP_PROFILES; ++i) {
+        _httpContextSet[i] = {};
+    }
+#endif
+
+#if CONFIG_WALTER_MODEM_ENABLE_MQTT
+    for (int i = 0; i < WALTER_MODEM_MQTT_MAX_PENDING_RINGS; i++) {
+        _mqttRings[i] = {};
+    }
+#endif
+    _operator = {};
+
     _returnAfterReply();
 }
 
