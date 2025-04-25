@@ -93,16 +93,16 @@ void WalterModem::_socketRelease(WalterModemSocket *sock)
     sock->state = WALTER_MODEM_SOCKET_STATE_FREE;
 }
 
-static void WalterModem::_dispatchEvent(
+void WalterModem::_dispatchEvent(
     WalterModemSocketEvent event, int socketId, uint16_t dataReceived, uint8_t *dataBuffer)
 {
     WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_SOCKET;
-    if (handler->httpHandler == nullptr) {
+    if (handler->socketHandler == nullptr) {
         return;
     }
 
     auto start = std::chrono::steady_clock::now();
-    handler->httpHandler(event, profileId, handler->args);
+    handler->socketHandler(event, socketId,dataReceived, dataBuffer, handler->args);
     _checkEventDuration(start);
 }
     #pragma endregion
@@ -145,7 +145,7 @@ bool WalterModem::socketConfig(
         cmd->rsp->data.socketId = sock->id;
 
         if (result == WALTER_MODEM_STATE_OK) {
-            sock->state = WALTER_MODEM_SOCKET_STATE_CREATED;
+            sock->state = WALTER_MODEM_SOCKET_STATE_CONFIGURED;
         }
     };
 
@@ -374,8 +374,11 @@ bool WalterModem::socketDidRing(int socketId, uint8_t targetBufSize, uint8_t *ta
     if (sock->didRing) {
         if (targetBuf != nullptr && targetBufSize != 0) {
             memcpy(targetBuf, sock->data, targetBufSize)
+            return true;
         }
     }
+
+    return false;
 }
 
 bool WalterModem::socketReceive(
@@ -390,7 +393,7 @@ bool WalterModem::socketReceive(
         _returnState(WALTER_MODEM_STATE_NO_MEMORY);
         ESP_LOGW("WalterModem", "only 1500 bytes can be received at a time!");
     }
-    
+
     _runCmd(
         arr("AT+SQNSRECV=", _digitStr(sock->id), ",", _digitStr(targetBufSize)),
         "ok",

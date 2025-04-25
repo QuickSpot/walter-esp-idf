@@ -807,10 +807,10 @@ typedef enum {
 typedef enum {
     WALTER_MODEM_SOCKET_STATE_FREE = 0,
     WALTER_MODEM_SOCKET_STATE_RESERVED = 1,
-    WALTER_MODEM_SOCKET_STATE_CONFIGURED = 3,
-    WALTER_MODEM_SOCKET_STATE_OPENED = 4,
-    WALTER_MODEM_SOCKET_STATE_LISTENING = 5,
-    WALTER_MODEM_SOCKET_STATE_CLOSED = 6
+    WALTER_MODEM_SOCKET_STATE_CONFIGURED = 2,
+    WALTER_MODEM_SOCKET_STATE_OPENED = 3,
+    WALTER_MODEM_SOCKET_STATE_LISTENING = 4,
+    WALTER_MODEM_SOCKET_STATE_CLOSED = 5
 } WalterModemSocketState;
 
 /**
@@ -4728,7 +4728,8 @@ public:
      * @param targetBuf The target buffer to write the data to
      * @param socketId The socket id to receive from.
      * @param rsp Optional modem response structure to save the result in.
-
+     *
+     * @return True on success, false otherwise.
      */
     static bool socketReceive(
         uint8_t targetBufSize, uint8_t *targetBuf, int socketId - 1, WalterModemRsp *rsp = NULL)
@@ -5366,7 +5367,7 @@ public:
      * When this function is called multiple times, only the last handler will be set. To remove
      * the Socket event handler, this function must be called with a nullptr as the handler.
      */
-    static void setSocketEventHandler(walterModemSocketEventHandler handler, void *args = NULL);
+    static void setSocketEventHandler(walterModemSocketEventHandler handler, void *args);
 #endif
 #pragma endregion
 
