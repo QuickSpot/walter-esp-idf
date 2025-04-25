@@ -400,19 +400,19 @@ bool socketConnect(const char *ip, uint16_t port)
   }
 
   /* Construct a socket */
-  if(!modem.createSocket(&rsp)) {
+  if(!modem.socketConfig(&rsp)) {
     ESP_LOGI("positioning", "Could not create a new socket");
     return false;
   }
 
   /* Configure the socket */
-  if(!modem.configSocket()) {
+  if(!modem.socketConfigExtended()) {
     ESP_LOGI("positioning", "Could not configure the socket");
     return false;
   }
 
   /* Connect to the UDP test server */
-  if(modem.dialSocket(ip, port, port)) {
+  if(modem.socketDial(ip, port, port)) {
     ESP_LOGI("positioning", "Connected to UDP server %s:%d", ip, port);
   } else {
     ESP_LOGI("positioning", "Could not connect UDP socket");
@@ -597,7 +597,7 @@ extern "C" void app_main(void)
   
     vTaskDelay(pdMS_TO_TICKS(5000));
   
-    if(!modem.closeSocket()) {
+    if(!modem.socketClose()) {
       ESP_LOGI("positioning", "Could not close the socket");
       return;
     }

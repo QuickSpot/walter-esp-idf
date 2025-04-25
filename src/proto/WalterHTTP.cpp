@@ -244,6 +244,7 @@ bool WalterModem::httpSend(
 
     _returnAfterReply();
 }
+
 bool WalterModem::httpDidRing(
     uint8_t profileId,
     uint8_t *targetBuf,

@@ -96,8 +96,8 @@ for efficient configuration management."
 #define CONFIG_WALTER_MODEM_ENABLE_MOTA 1
 #endif
 
-#ifndef CONFIG_WALTER_MODEM_ENABLE_OTA
-#define CONFIG_WALTER_MODEM_ENABLE_OTA 1
+#ifndef CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
+#define CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY 1
 #endif
 #endif
 
@@ -806,7 +806,6 @@ typedef enum
 {
     WALTER_MODEM_SOCKET_STATE_FREE = 0,
     WALTER_MODEM_SOCKET_STATE_RESERVED = 1,
-    WALTER_MODEM_SOCKET_STATE_CREATED = 2,
     WALTER_MODEM_SOCKET_STATE_CONFIGURED = 3,
     WALTER_MODEM_SOCKET_STATE_OPENED = 4,
     WALTER_MODEM_SOCKET_STATE_LISTENING = 5,
@@ -831,6 +830,48 @@ typedef enum {
     WALTER_MODEM_ACCEPT_ANY_REMOTE_RX_AND_TX = 2
 } WalterModemSocketAcceptAnyRemote;
 
+/**
+ * @brief This enumeration determines how the SQNSRING message should be formatted.
+ */
+typedef enum {
+    WALTER_MODEM_SOCKET_RING_MODE_NORMAL = 0,
+    WALTER_MODEM_SOCKET_RING_MODE_DATA_AMOUNT = 1,
+    WALTER_MODEM_SOCKET_RING_MODE_DATA_VIEW = 2
+} WalterModemSocketRingMode;
+
+/**
+ * @brief This enumeration determines in what way the data should be returned
+ */
+typedef enum {
+    WALTER_MODEM_SOCKET_RECV_MODE_TEXT = 0,
+    WALTER_MODEM_SOCKET_RECV_MODE_HEX = 1
+} WalterModemSocketRecvMode;
+
+/**
+ * @brief This enumeration determines whether an incomming socket connection should be auto
+ * accepted
+ */
+typedef enum {
+    WALTER_MODEM_SOCKET_LISTEN_MODE_DISABLED = 0,
+    WALTER_MODEM_SOCKET_LISTEN_MODE_ENABLED = 1
+} WalterModemSocketListenMode;
+
+/**
+ * @brief This enumeration determines how the send data should be expected
+ */
+typedef enum {
+    WALTER_MODEM_SOCKET_SEND_MODE_TEXT,
+    WALTER_MODEM_SOCKET_SEND_MODE_HEX,
+} WalterModemSocketSendMode;
+
+/**
+ * @brief This enumeration represents the listen state of the socket
+ */
+typedef enum {
+    WALTER_MODEM_SOCKET_LISTEN_STATE_CLOSE,
+    WALTER_MODEM_SOCKET_LISTEN_STATE_IPV4,
+    WALTER_MODEM_SOCKET_LISTEN_STATE_IPV6
+} WalterModemSocketListenState;
 #endif
 #pragma endregion
 
@@ -1345,6 +1386,7 @@ typedef enum
     WALTER_MODEM_HTTP_EVENT_RING
 } WalterModemHttpEvent;
 #endif
+
 #if CONFIG_WALTER_MODEM_ENABLE_COAP
 /**
  * @brief This enumeration groups the different types of CoAP events.
@@ -1355,6 +1397,13 @@ typedef enum
     WALTER_MODEM_COAP_EVENT_DISCONNECTED,
     WALTER_MODEM_COAP_EVENT_RING
 } WalterModemCoapEvent;
+#endif
+
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+/** */
+typedef enum {
+    
+}
 #endif
 #pragma endregion
 #pragma endregion
@@ -1441,6 +1490,29 @@ typedef void (*walterModemHttpEventHandler)(WalterModemHttpEvent ev, int profile
  * @return None.
  */
 typedef void (*walterModemCoAPEventHandler)(WalterModemCoapEvent ev, int profileId, void *args);
+#endif
+
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+/**
+ * @brief Header of an Socket event handler
+ *
+ * @param ev The Type of SocketEvent
+ * @param socketId the id of the Socket
+ * @param dataReceived The amount of data that has been received
+ * @param dataBuffer The data buffer to hold the data in
+ * @param args Optional arguments set by the application layer.
+ *
+ * @warning the dataReceived and dataBuffer params will be used based
+ * on the WalterModemSocketRingMode.
+ * 
+ * @return None.
+ */
+typedef void (*walterModemSocketEventHandler)(
+    WalterModemSocketEvent ev,
+    int socketId,
+    uint16_t dataReceived,
+    uint8_t* dataBuffer,
+    void *args);
 #endif
 #pragma endregion
 
@@ -2206,6 +2278,21 @@ typedef struct
      * answer.
      */
     uint16_t localPort = 0;
+
+    /**
+     * @brief Has the listening socket received a ring URC.
+     */
+    bool didRing = false;
+
+    /**
+     * @brief Data amount received (0-1500)
+     */
+    uint16_t dataReceivedCount;
+
+    /**
+     * @brief Data received (0-1500)
+     */
+    uint8_t data[1500];
 } WalterModemSocket;
 #endif
 #pragma endregion
@@ -3313,7 +3400,7 @@ class WalterModem {
 #endif
 
 #pragma region OTA
-#if CONFIG_WALTER_MODEM_ENABLE_OTA && CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
+#if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY && CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
         /**
          * @brief Process OTA init event
          *
@@ -4355,7 +4442,7 @@ class WalterModem {
         static bool coapCreateContext(
             uint8_t profileId,
             const char *serverName,
-            int port,    
+            int port,
             uint8_t tlsProfileId = 0,
             int localPort = -1,
             WalterModemRsp *rsp = NULL,
@@ -4487,9 +4574,9 @@ class WalterModem {
 #pragma region SOCKETS
 #if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
         /**
-         * @brief Create a new socket in a certain PDP context.
+         * @brief Configure a new socket in a certain PDP context.
          *
-         * This function will create a new socket. After socket creation one can set additional
+         * This function will configure a new socket. After socket configuration one can set additional
          * socket settings and use the socket for communication.
          *
          * @param rsp Optional modem response structure to save the result in.
@@ -4503,7 +4590,7 @@ class WalterModem {
          *
          * @return True on success, false otherwise.
          */
-        static bool createSocket(
+        static bool socketConfig(
             WalterModemRsp *rsp = NULL,
             walterModemCb cb = NULL,
             void *args = NULL,
@@ -4514,22 +4601,33 @@ class WalterModem {
             uint16_t sendDelayMs = 5000);
 
         /**
-         * @brief Configure a socket.
+         * @brief Configure the socket extended parameters
          *
-         * This function configures a newly created socket.
+         * This function confiures the sockett extended parameters.
          *
          * @param rsp Optional modem response structure to save the result in.
          * @param cb Optional callback function, if set this function will not block.
          * @param args Optional argument to pass to the callback.
          * @param socketId The id of the socket to connect or -1 to re-use the last one.
-         *
+         * @param ringMode The format of the ring notification.
+         * @param recvMode The data recv mode of the socket
+         * @param keepAlive The keepAlive time (currently unused)
+         * @param listenMode Should the socket auto accept incomming connections.
+         * @param sendMode The format of the send data.
+         * 
          * @return True on success, false otherwise.
          */
-        static bool configSocket(
+        static bool socketConfigExtended(
             WalterModemRsp *rsp = NULL,
             walterModemCb cb = NULL,
             void *args = NULL,
-            int socketId = -1);
+            int socketId = -1,
+            WalterModemSocketRingMode ringMode = WALTER_MODEM_SOCKET_RING_MODE_DATA_VIEW,
+            WalterModemSocketRecvMode recvMode = WALTER_MODEM_SOCKET_RECV_MODE_TEXT,
+            int keepAlive = 0,
+            WalterModemSocketListenMode listenMode = WALTER_MODEM_SOCKET_LISTEN_MODE_DISABLED,
+            WalterModemSocketSendMode sendMode = WALTER_MODEM_SOCKET_SEND_MODE_TEXT
+        );
 
         /**
          * @brief Dial a socket after which data can be exchanged.
@@ -4550,7 +4648,7 @@ class WalterModem {
          *
          * @return True on success, false otherwise.
          */
-        static bool dialSocket(
+        static bool socketDial(
             const char *remoteHost,
             uint16_t remotePort,
             uint16_t localPort = 0,
@@ -4575,7 +4673,7 @@ class WalterModem {
          *
          * @return True on success, false otherwise.
          */
-        static bool closeSocket(
+        static bool socketClose(
             WalterModemRsp *rsp = NULL,
             walterModemCb cb = NULL,
             void *args = NULL,
@@ -4630,35 +4728,67 @@ class WalterModem {
             void *args = NULL,
             WalterModemRAI rai = WALTER_MODEM_RAI_NO_INFO,
             int socketId = -1);
+
+        /**
+         * @brief This function listens for incomming socket connections.
+         *
+         * @param rsp Optional modem response structure to save the result in.
+         * @param cb Optional callback function, if set this function will not block.
+         * @param args Optional argument to pass to the callback.
+         * @param socketId The id of the socket to listen or -1 to re-use the last one.
+         * @param listenState The state to listen on.
+         * @param socketListenPort The port to listen on.
+         */
+        static bool socketListen(
+            WalterModemRsp *rsp = NULL,
+            walterModemCb cb = NULL,
+            void *args = NULL,
+            int socketId = -1,
+            WalterModemSocketListenState listenState = WALTER_MODEM_SOCKET_LISTEN_STATE_IPV4,
+            int socketListenPort = 0
+        );
+
+        /**
+         * @brief has the Socket received a Ring URC.
+         * 
+         * @param socketId
+         */
+        static bool socketDidRing(
+            int socketId = -1,
+        );
+
+        /**
+         * @brief Accept an incomming socket connection.
+         */
 #endif
 #pragma endregion
 
 #pragma region GNSS
 #if CONFIG_WALTER_MODEM_ENABLE_GNSS
-        /**
-         * @brief Configure Walter's GNSS receiver.
-         *
-         * This function will configure the GNSS receiver. The settings are persistent over reboots
-         * but it could be that they need to be set again after a modem firmware upgrade. Inbetween
-         * fixes this function could be used to change the sensitivity mode. It is recommended to
-         * run this function at least once before GNSS is used.
-         *
-         * @param sensMode The sensitivity mode.
-         * @param acqMode The acquisition mode.
-         * @param locMode The GNSS location mode.
-         * @param rsp Optional modem response structure to save the result in.
-         * @param cb Optional callback function, if set this function will not block.
-         * @param args Optional argument to pass to the callback.
-         *
-         * @return True on success, false on error.
-         */
-        static bool configGNSS(
-            WalterModemGNSSSensMode sensMode = WALTER_MODEM_GNSS_SENS_MODE_HIGH,
-            WalterModemGNSSAcqMode acqMode = WALTER_MODEM_GNSS_ACQ_MODE_COLD_WARM_START,
-            WalterModemGNSSLocMode locMode = WALTER_MODEM_GNSS_LOC_MODE_ON_DEVICE_LOCATION,
-            WalterModemRsp *rsp = NULL,
-            walterModemCb cb = NULL,
-            void *args = NULL);
+            /**
+             * @brief Configure Walter's GNSS receiver.
+             *
+             * This function will configure the GNSS receiver. The settings are persistent over reboots
+             * but it could be that they need to be set again after a modem firmware upgrade. Inbetween
+             * fixes this function could be used to change the sensitivity mode. It is recommended to
+             * run this function at least once before GNSS is used.
+             *
+             * @param sensMode The sensitivity mode.
+             * @param acqMode The acquisition mode.
+             * @param locMode The GNSS location mode.
+             * @param rsp Optional modem response structure to save the result in.
+             * @param cb Optional callback function, if set this function will not block.
+             * @param args Optional argument to pass to the callback.
+             *
+             * @return True on success, false on error.
+             */
+            static bool configGNSS(
+                WalterModemGNSSSensMode sensMode = WALTER_MODEM_GNSS_SENS_MODE_HIGH,
+                WalterModemGNSSAcqMode acqMode = WALTER_MODEM_GNSS_ACQ_MODE_COLD_WARM_START,
+                WalterModemGNSSLocMode locMode = WALTER_MODEM_GNSS_LOC_MODE_ON_DEVICE_LOCATION,
+                WalterModemRsp *rsp = NULL,
+                walterModemCb cb = NULL,
+                void *args = NULL);
 
         /**
          * @brief Get the current GNSS assistance data status.

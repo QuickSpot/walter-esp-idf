@@ -60,5 +60,7 @@ This is the Changelog for WalterModem
 
 1) createPDPContext => definePDPContext
 2) authenticatePDPContext => setAuthParams
-
+3) socketCreate => socketConfig
+4) configSocket => socketConfigExtended
+5) connectSocket => socketDial
 `all examples have been reworked.`

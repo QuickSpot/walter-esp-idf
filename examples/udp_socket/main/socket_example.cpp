@@ -111,11 +111,41 @@ void waitForNetwork()
   ESP_LOGI(TAG, "Connected to the cellular network");
 }
 
+bool lteConnect()
+{
+  /* Define PDP context */
+  if(modem.definePDPContext(1, CELLULAR_APN)) {
+    ESP_LOGI(TAG, "Successfully defined PDP context");
+  } else {
+    ESP_LOGE(TAG, "Could not define PDP context");
+    return false;
+  }
+  
+  /* Set the operational state to full */
+  if(modem.setOpState(WALTER_MODEM_OPSTATE_FULL)) {
+    ESP_LOGI(TAG, "Successfully set operational state to FULL");
+  } else {
+    ESP_LOGE(TAG, "Could not set operational state to FULL");
+    return false;
+  }
+  /* Set the network operator selection to automatic */
+  if(modem.setNetworkSelectionMode(WALTER_MODEM_NETWORK_SEL_MODE_AUTOMATIC)) {
+    ESP_LOGI(TAG, "Network selection mode set to automatic");
+  } else {
+    ESP_LOGE(TAG, "Could not set the network selection mode to automatic");
+    return false;
+  }
+
+  /* Wait for the network connection to become available */
+  waitForNetwork();
+
+  return true;
+}
 extern "C" void app_main(void)
 {
   ESP_LOGI(TAG, "Walter UDP Socket example v1");
 
-  /* Get the MAC address for board validation */
+   /* Get the MAC address for board validation */
   esp_read_mac(dataBuf, ESP_MAC_WIFI_STA);
   ESP_LOGI(TAG, "Walter's MAC is: %02X:%02X:%02X:%02X:%02X:%02X",
     dataBuf[0],
@@ -130,37 +160,15 @@ extern "C" void app_main(void)
     ESP_LOGI(TAG, "Successfully initialized modem");
   } else {
     ESP_LOGE(TAG, "Could not initialize modem");
-    return;
+    return false;
   }
 
-  /* Define PDP context */
-  if(modem.definePDPContext(1, CELLULAR_APN)) {
-    ESP_LOGI(TAG, "Successfully defined PDP context");
-  } else {
-    ESP_LOGE(TAG, "Could not define PDP context");
-    return;
+  if(lteConnect()){
+    ESP_LOGI
   }
-  
-  /* Set the operational state to full */
-  if(modem.setOpState(WALTER_MODEM_OPSTATE_FULL)) {
-    ESP_LOGI(TAG, "Successfully set operational state to FULL");
-  } else {
-    ESP_LOGE(TAG, "Could not set operational state to FULL");
-    return;
-  }
-  /* Set the network operator selection to automatic */
-  if(modem.setNetworkSelectionMode(WALTER_MODEM_NETWORK_SEL_MODE_AUTOMATIC)) {
-    ESP_LOGI(TAG, "Network selection mode set to automatic");
-  } else {
-    ESP_LOGE(TAG, "Could not set the network selection mode to automatic");
-    return;
-  }
-
-  /* Wait for the network connection to become available */
-  waitForNetwork();
 
   /* Construct a socket */
-  if(modem.createSocket(&rsp)) {
+  if(modem.socketConfig(&rsp)) {
     ESP_LOGI(TAG, "Created a new socket");
   } else {
     ESP_LOGE(TAG, "Could not create a new socket");
@@ -168,7 +176,7 @@ extern "C" void app_main(void)
   }
 
   /* Connect to the demo server */
-  if(modem.dialSocket(SERV_ADDR, SERV_PORT)) {
+  if(modem.socketDial(SERV_ADDR, SERV_PORT)) {
     ESP_LOGI(TAG, "Connected to demo server %s:%d", SERV_ADDR, SERV_PORT);
   } else {
     ESP_LOGE(TAG, "Could not connect demo socket");

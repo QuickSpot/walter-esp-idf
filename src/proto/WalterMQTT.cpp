@@ -47,7 +47,7 @@
 
 #if CONFIG_WALTER_MODEM_ENABLE_MQTT
 #pragma region PRIVATE_METHODS
-static void mqtt_resubscribe_callback(const WalterModemRsp *rsp, void *args)
+static void mqttResubscribeCallback(const WalterModemRsp *rsp, void *args)
 {
     /*This is an empty callback so the _runCmd() runs async*/
 }
@@ -59,7 +59,7 @@ bool WalterModem::_mqttSubscribeRaw(
     walterModemCb cb,
     void *args)
 {
-    _runCmd(arr("AT+SQNSMQTTSUBSCRIBE=0,", _atStr(topicString), ",", _atNum(qos)), NULL, rsp, mqtt_resubscribe_callback, args);
+    _runCmd(arr("AT+SQNSMQTTSUBSCRIBE=0,", _atStr(topicString), ",", _atNum(qos)), NULL, rsp, mqttResubscribeCallback, args);
     _returnState(WALTER_MODEM_STATE_OK);
 }
 

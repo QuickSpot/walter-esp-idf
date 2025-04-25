@@ -52,13 +52,13 @@
 #include <esp_log.h>
 #include <esp_sleep.h>
 #include <esp_system.h>
-#if CONFIG_WALTER_MODEM_ENABLE_MOTA || CONFIG_WALTER_MODEM_ENABLE_OTA
+#if CONFIG_WALTER_MODEM_ENABLE_MOTA || CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
 #include <esp_ota_ops.h>
 #endif
 #include <driver/gpio.h>
 #include <driver/uart.h>
 #include <esp_task_wdt.h>
-#if CONFIG_WALTER_MODEM_ENABLE_MOTA || CONFIG_WALTER_MODEM_ENABLE_OTA
+#if CONFIG_WALTER_MODEM_ENABLE_MOTA || CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
 #include <esp_partition.h>
 #include <esp_image_format.h>
 #endif
@@ -827,24 +827,6 @@ size_t WalterModem::_uartWrite(uint8_t *buf, int writeSize)
 
     return writeSize;
 }
-
-uint16_t WalterModem::_calculateStpCrc16(const void *input, size_t length)
-{
-    uint16_t crc = 0;
-    const uint8_t *data = (const uint8_t*) input;
-
-    while(length-- > 0) {
-        crc = (uint16_t) ((0xff & (crc >> 8)) | (crc << 8));
-        crc ^= (uint16_t) *data++;
-        crc ^= (uint16_t) ((crc & 0xff) >> 4);
-        crc ^= (uint16_t) (crc << 12);
-        crc ^= (uint16_t) ((uint8_t) (crc & 0xff) << 5);
-    }
-
-    /* ESP32 is little-endian but Monarch chip is big-endian */
-    return _switchEndian16(crc);
-}
-
 #pragma endregion
 
 #pragma region CMD_POOL_QUEUE
@@ -2628,6 +2610,32 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
                 _socketRelease(sock);
             }
         }
+
+        if (_buffStartsWith(buff, "+SQNSRING: "))
+        {
+            const char *rspStr = _buffStr(buff);
+            char *start = (char *) rspStr + _strLitLen("+SQNSH: ");
+            int sockId = atoi(start);
+
+            WalterModemSocket *sock = _socketGet(sockId);
+            if (sock) {
+                sock->didRing = true;
+            }
+
+            const char *commapPos = strchr(start, ',');
+            if(commaPos) {
+                *commaPos = '\0';
+                sock->dataReceived = sock->atoi(commaPos);
+                start = ++commaPos;
+                commaPos = strchr(commaPos, ',');
+            }
+
+            if(commaPos) {
+                memcpy(sock->data, commaPos, sock->dataReceived)
+            }
+
+            //TODO dispatch event handler.
+        }
 #endif
     #pragma endregion
 
@@ -2855,7 +2863,7 @@ after_processing_logic:
 #pragma endregion
 
 #pragma region OTA
-#if CONFIG_WALTER_MODEM_ENABLE_OTA && CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
+#if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY && CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
 bool WalterModem::_processOtaInitializeEvent(uint8_t *data, uint16_t len)
 {
     if(!blueCherry.otaBuffer || len != sizeof(uint32_t)) {
@@ -3021,6 +3029,24 @@ bool WalterModem::_processOtaFinishEvent(void)
 
 #pragma region MOTA_BLUE_CHERRY
 #if CONFIG_WALTER_MODEM_ENABLE_MOTA
+uint16_t WalterModem::_calculateStpCrc16(const void *input, size_t length)
+{
+    uint16_t crc = 0;
+    const uint8_t *data = (const uint8_t *)input;
+
+    while (length-- > 0)
+    {
+        crc = (uint16_t)((0xff & (crc >> 8)) | (crc << 8));
+        crc ^= (uint16_t)*data++;
+        crc ^= (uint16_t)((crc & 0xff) >> 4);
+        crc ^= (uint16_t)(crc << 12);
+        crc ^= (uint16_t)((uint8_t)(crc & 0xff) << 5);
+    }
+
+    /* ESP32 is little-endian but Monarch chip is big-endian */
+    return _switchEndian16(crc);
+}
+
 bool WalterModem::_motaFormatAndMount(void)
 {
     esp_err_t result;
