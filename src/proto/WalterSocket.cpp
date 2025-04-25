@@ -43,8 +43,6 @@
  * This file contains the Socket implementation of the Walter Modem library.
  */
 
-#include "WalterModem.h"
-
 #include <WalterDefines.h>
 
 #if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
@@ -102,7 +100,7 @@ void WalterModem::_dispatchEvent(
     }
 
     auto start = std::chrono::steady_clock::now();
-    handler->socketHandler(event, socketId,dataReceived, dataBuffer, handler->args);
+    handler->socketHandler(event, socketId, dataReceived, dataBuffer, handler->args);
     _checkEventDuration(start);
 }
     #pragma endregion
@@ -373,8 +371,7 @@ bool WalterModem::socketDidRing(int socketId, uint8_t targetBufSize, uint8_t *ta
 
     if (sock->didRing) {
         if (targetBuf != nullptr && targetBufSize != 0) {
-            memcpy(targetBuf, sock->data, targetBufSize)
-            return true;
+            memcpy(targetBuf, sock->data, targetBufSize) return true;
         }
     }
 
