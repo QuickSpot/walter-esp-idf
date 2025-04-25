@@ -4707,17 +4707,29 @@ public:
         int socketListenPort = 0);
 
     /**
-     * @brief has the Socket received a Ring URC.
+     * @brief check if the Socket received a Ring URC.
      *
      * @param socketId  The id of the socket to wait for the ring or -1 to re-use the last one.
-     * @param targetBufSize the size of the targetBuffer.
-     * @param targetBuf the targetBuffer to store the received data in.abort
+     * @param targetBufSize The size of the targetBuffer.
+     * @param targetBuf The targetBuffer to store the received data in.abort
      *
      * @return True on success, false otherwise.
+     *
+     * @warning The target buffer will only be filled when ringMode is set to
+     * WALTER_MODEM_SOCKET_RING_MODE_DATA_VIEW in socketConfigExtended.
      */
     static bool socketDidRing(
         int socketId = -1, uint8_t targetBUfSize = 0, uint8_t *targetBuf = nullptr);
 
+    /**
+     * @brief Receive data from an incomming socket connection
+     *
+     * @param targetBufSize The size of the target buffer.
+     * @param targetBuf The target buffer to write the data to
+     * @param socketId The socket id to receive from.
+     * @param rsp Optional modem response structure to save the result in.
+
+     */
     static bool socketReceive(
         uint8_t targetBufSize, uint8_t *targetBuf, int socketId - 1, WalterModemRsp *rsp = NULL)
 #endif
