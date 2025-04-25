@@ -4737,7 +4737,7 @@ public:
      * @return True on success, false otherwise.
      */
     static bool socketReceive(
-        uint8_t targetBufSize, uint8_t *targetBuf, int socketId - 1, WalterModemRsp *rsp = NULL)
+        uint8_t targetBufSize, uint8_t *targetBuf, int socketId = -1, WalterModemRsp *rsp = NULL)
 #endif
 #pragma endregion
 
