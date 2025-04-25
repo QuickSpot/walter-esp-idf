@@ -45,7 +45,7 @@
 
 #include <WalterDefines.h>
 #if CONFIG_WALTER_MODEM_ENABLE_HTTP
-#pragma region PRIVATE_METHODS
+    #pragma region PRIVATE_METHODS
 void WalterModem::_dispatchEvent(WalterModemHttpEvent event, int profileId)
 {
     WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_HTTP;
@@ -57,13 +57,20 @@ void WalterModem::_dispatchEvent(WalterModemHttpEvent event, int profileId)
     handler->httpHandler(event, profileId, handler->args);
     _checkEventDuration(start);
 }
-#pragma endregion
+    #pragma endregion
 
-#pragma region PUBLIC_METHODS
-bool WalterModem::httpConfigProfile(uint8_t profileId, const char *serverName, uint16_t port,
-                                    uint8_t tlsProfileId, bool useBasicAuth, const char *authUser,
-                                    const char *authPass, WalterModemRsp *rsp, walterModemCb cb,
-                                    void *args)
+    #pragma region PUBLIC_METHODS
+bool WalterModem::httpConfigProfile(
+    uint8_t profileId,
+    const char *serverName,
+    uint16_t port,
+    uint8_t tlsProfileId,
+    bool useBasicAuth,
+    const char *authUser,
+    const char *authPass,
+    WalterModemRsp *rsp,
+    walterModemCb cb,
+    void *args)
 {
     if (profileId >= WALTER_MODEM_MAX_HTTP_PROFILES) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_PROFILE);
@@ -74,17 +81,33 @@ bool WalterModem::httpConfigProfile(uint8_t profileId, const char *serverName, u
     }
 
     WalterModemBuffer *stringsBuffer = _getFreeBuffer();
-    stringsBuffer->size +=
-        sprintf((char *)stringsBuffer->data, "AT+SQNHTTPCFG=%d,\"%s\",%d,%d,\"%s\",\"%s\"",
-                profileId, serverName, port, useBasicAuth, authUser, authPass);
+    stringsBuffer->size += sprintf(
+        (char *)stringsBuffer->data,
+        "AT+SQNHTTPCFG=%d,\"%s\",%d,%d,\"%s\",\"%s\"",
+        profileId,
+        serverName,
+        port,
+        useBasicAuth,
+        authUser,
+        authPass);
 
     if (tlsProfileId) {
         stringsBuffer->size +=
             sprintf((char *)stringsBuffer->data + stringsBuffer->size, ",1,,,%u", tlsProfileId);
     }
 
-    _runCmd(arr((const char *)stringsBuffer->data), "OK", rsp, cb, args, NULL, NULL,
-            WALTER_MODEM_CMD_TYPE_TX_WAIT, NULL, 0, stringsBuffer);
+    _runCmd(
+        arr((const char *)stringsBuffer->data),
+        "OK",
+        rsp,
+        cb,
+        args,
+        NULL,
+        NULL,
+        WALTER_MODEM_CMD_TYPE_TX_WAIT,
+        NULL,
+        0,
+        stringsBuffer);
 
     _returnAfterReply();
 }
@@ -132,10 +155,15 @@ bool WalterModem::httpGetContextStatus(uint8_t profileId)
     return _httpContextSet[profileId].connected;
 }
 
-bool WalterModem::httpQuery(uint8_t profileId, const char *uri,
-                            WalterModemHttpQueryCmd httpQueryCmd, char *contentTypeBuf,
-                            uint16_t contentTypeBufSize, WalterModemRsp *rsp, walterModemCb cb,
-                            void *args)
+bool WalterModem::httpQuery(
+    uint8_t profileId,
+    const char *uri,
+    WalterModemHttpQueryCmd httpQueryCmd,
+    char *contentTypeBuf,
+    uint16_t contentTypeBufSize,
+    WalterModemRsp *rsp,
+    walterModemCb cb,
+    void *args)
 {
     if (profileId >= WALTER_MODEM_MAX_HTTP_PROFILES) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_PROFILE);
@@ -157,21 +185,37 @@ bool WalterModem::httpQuery(uint8_t profileId, const char *uri,
     };
 
     WalterModemBuffer *stringsBuffer = _getFreeBuffer();
-    stringsBuffer->size += sprintf((char *)stringsBuffer->data, "AT+SQNHTTPQRY=%d,%d,\"%s\"",
-                                   profileId, httpQueryCmd, uri);
+    stringsBuffer->size += sprintf(
+        (char *)stringsBuffer->data, "AT+SQNHTTPQRY=%d,%d,\"%s\"", profileId, httpQueryCmd, uri);
 
-    _runCmd(arr((const char *)stringsBuffer->data), "OK", rsp, cb, args, completeHandler,
-            (void *)(_httpContextSet + profileId), WALTER_MODEM_CMD_TYPE_TX_WAIT, NULL, 0,
-            stringsBuffer);
+    _runCmd(
+        arr((const char *)stringsBuffer->data),
+        "OK",
+        rsp,
+        cb,
+        args,
+        completeHandler,
+        (void *)(_httpContextSet + profileId),
+        WALTER_MODEM_CMD_TYPE_TX_WAIT,
+        NULL,
+        0,
+        stringsBuffer);
 
     _returnAfterReply();
 }
 
-bool WalterModem::httpSend(uint8_t profileId, const char *uri, uint8_t *data, uint16_t dataSize,
-                           WalterModemHttpSendCmd httpSendCmd,
-                           WalterModemHttpPostParam httpPostParam, char *contentTypeBuf,
-                           uint16_t contentTypeBufSize, WalterModemRsp *rsp, walterModemCb cb,
-                           void *args)
+bool WalterModem::httpSend(
+    uint8_t profileId,
+    const char *uri,
+    uint8_t *data,
+    uint16_t dataSize,
+    WalterModemHttpSendCmd httpSendCmd,
+    WalterModemHttpPostParam httpPostParam,
+    char *contentTypeBuf,
+    uint16_t contentTypeBufSize,
+    WalterModemRsp *rsp,
+    walterModemCb cb,
+    void *args)
 {
     if (profileId >= WALTER_MODEM_MAX_HTTP_PROFILES) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_PROFILE);
@@ -194,23 +238,42 @@ bool WalterModem::httpSend(uint8_t profileId, const char *uri, uint8_t *data, ui
 
     WalterModemBuffer *stringsBuffer = _getFreeBuffer();
     if (httpPostParam == WALTER_MODEM_HTTP_POST_PARAM_UNSPECIFIED) {
-        stringsBuffer->size += sprintf((char *)stringsBuffer->data, "AT+SQNHTTPSND=%d,%d,\"%s\",%d",
-                                       profileId, httpSendCmd, uri, dataSize);
+        stringsBuffer->size += sprintf(
+            (char *)stringsBuffer->data,
+            "AT+SQNHTTPSND=%d,%d,\"%s\",%d",
+            profileId,
+            httpSendCmd,
+            uri,
+            dataSize);
     } else {
-        stringsBuffer->size +=
-            sprintf((char *)stringsBuffer->data, "AT+SQNHTTPSND=%d,%d,\"%s\",%d,\"%d\"", profileId,
-                    httpSendCmd, uri, dataSize, httpPostParam);
+        stringsBuffer->size += sprintf(
+            (char *)stringsBuffer->data,
+            "AT+SQNHTTPSND=%d,%d,\"%s\",%d,\"%d\"",
+            profileId,
+            httpSendCmd,
+            uri,
+            dataSize,
+            httpPostParam);
     }
 
-    _runCmd(arr((const char *)stringsBuffer->data), "OK", rsp, cb, args, completeHandler,
-            (void *)(_httpContextSet + profileId), WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT, data,
-            dataSize, stringsBuffer);
+    _runCmd(
+        arr((const char *)stringsBuffer->data),
+        "OK",
+        rsp,
+        cb,
+        args,
+        completeHandler,
+        (void *)(_httpContextSet + profileId),
+        WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT,
+        data,
+        dataSize,
+        stringsBuffer);
 
     _returnAfterReply();
 }
 
-bool WalterModem::httpDidRing(uint8_t profileId, uint8_t *targetBuf, uint16_t targetBufSize,
-                              WalterModemRsp *rsp)
+bool WalterModem::httpDidRing(
+    uint8_t profileId, uint8_t *targetBuf, uint16_t targetBufSize, WalterModemRsp *rsp)
 {
     /* this is by definition a blocking call without callback.
      * it is only used when the arduino user is not taking advantage of
@@ -261,8 +324,17 @@ bool WalterModem::httpDidRing(uint8_t profileId, uint8_t *targetBuf, uint16_t ta
         _httpCurrentProfile = 0xff;
     };
 
-    _runCmd(arr("AT+SQNHTTPRCV=", _atNum(profileId)), "<<<", rsp, cb, args, completeHandler, NULL,
-            WALTER_MODEM_CMD_TYPE_TX_WAIT, targetBuf, targetBufSize);
+    _runCmd(
+        arr("AT+SQNHTTPRCV=", _atNum(profileId)),
+        "<<<",
+        rsp,
+        cb,
+        args,
+        completeHandler,
+        NULL,
+        WALTER_MODEM_CMD_TYPE_TX_WAIT,
+        targetBuf,
+        targetBufSize);
     _returnAfterReply();
 }
 
@@ -271,5 +343,5 @@ void WalterModem::setHTTPEventHandler(walterModemHttpEventHandler handler, void 
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_HTTP].httpHandler = handler;
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_HTTP].args = args;
 }
-#pragma endregion
+    #pragma endregion
 #endif

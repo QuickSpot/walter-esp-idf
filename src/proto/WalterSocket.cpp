@@ -44,10 +44,11 @@
  */
 
 #include "WalterModem.h"
+
 #include <WalterDefines.h>
 
 #if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
-#pragma region PRIVATE_METHODS
+    #pragma region PRIVATE_METHODS
 WalterModemSocket *WalterModem::_socketReserve()
 {
     WalterModemSocket *sock = NULL;
@@ -92,16 +93,30 @@ void WalterModem::_socketRelease(WalterModemSocket *sock)
     sock->state = WALTER_MODEM_SOCKET_STATE_FREE;
 }
 
-static void WalterModem::_dispatchEvent(WalterModemSocketEvent event, int socketId,
-                                        uint16_t dataReceived, uint8_t *dataBuffer)
+static void WalterModem::_dispatchEvent(
+    WalterModemSocketEvent event, int socketId, uint16_t dataReceived, uint8_t *dataBuffer)
 {
-}
-#pragma endregion
+    WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_SOCKET;
+    if (handler->httpHandler == nullptr) {
+        return;
+    }
 
-#pragma region PUBLIC_METHODS
-bool WalterModem::socketConfig(WalterModemRsp *rsp, walterModemCb cb, void *args, int pdpCtxId,
-                               uint16_t mtu, uint16_t exchangeTimeout, uint16_t connTimeout,
-                               uint16_t sendDelayMs)
+    auto start = std::chrono::steady_clock::now();
+    handler->httpHandler(event, profileId, handler->args);
+    _checkEventDuration(start);
+}
+    #pragma endregion
+
+    #pragma region PUBLIC_METHODS
+bool WalterModem::socketConfig(
+    WalterModemRsp *rsp,
+    walterModemCb cb,
+    void *args,
+    int pdpCtxId,
+    uint16_t mtu,
+    uint16_t exchangeTimeout,
+    uint16_t connTimeout,
+    uint16_t sendDelayMs)
 {
     WalterModemPDPContext *ctx = _pdpContextGet(pdpCtxId);
     if (ctx == NULL || pdpCtxId < 0) {
@@ -134,35 +149,76 @@ bool WalterModem::socketConfig(WalterModemRsp *rsp, walterModemCb cb, void *args
         }
     };
 
-    _runCmd(arr("AT+SQNSCFG=", _digitStr(sock->id), ",", _digitStr(sock->pdpContextId), ",",
-                _atNum(sock->mtu), ",", _atNum(sock->exchangeTimeout), ",",
-                _atNum(sock->connTimeout * 10), ",", _atNum(sock->sendDelayMs / 100)),
-            "OK", rsp, cb, args, completeHandler, sock);
+    _runCmd(
+        arr("AT+SQNSCFG=",
+            _digitStr(sock->id),
+            ",",
+            _digitStr(sock->pdpContextId),
+            ",",
+            _atNum(sock->mtu),
+            ",",
+            _atNum(sock->exchangeTimeout),
+            ",",
+            _atNum(sock->connTimeout * 10),
+            ",",
+            _atNum(sock->sendDelayMs / 100)),
+        "OK",
+        rsp,
+        cb,
+        args,
+        completeHandler,
+        sock);
     _returnAfterReply();
 }
 
-bool WalterModem::socketConfigExtended(WalterModemRsp *rsp, walterModemCb cb, void *args,
-                                       int socketId, WalterModemSocketRingMode ringMode,
-                                       WalterModemSocketRecvMode recvMode, int keepAlive,
-                                       WalterModemSocketListenMode listenMode,
-                                       WalterModemSocketSendMode sendMode)
+bool WalterModem::socketConfigExtended(
+    WalterModemRsp *rsp,
+    walterModemCb cb,
+    void *args,
+    int socketId,
+    WalterModemSocketRingMode ringMode,
+    WalterModemSocketRecvMode recvMode,
+    int keepAlive,
+    WalterModemSocketListenMode listenMode,
+    WalterModemsocketSendExtendedMode sendMode)
 {
     WalterModemSocket *sock = _socketGet(socketId);
     if (sock == NULL) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_SOCKET);
     }
 
-    _runCmd(arr("AT+SQNSCFGEXT=", _digitStr(sock->id), ",", _digitStr(ringMode), ",",
-                _digitStr(recvMode), ",", _digitStr(keepAlive), ",", _digitStr(listenMode), ",",
-                _digitStr(sendMode)),
-            "OK", rsp, cb, args, NULL, sock);
+    _runCmd(
+        arr("AT+SQNSCFGEXT=",
+            _digitStr(sock->id),
+            ",",
+            _digitStr(ringMode),
+            ",",
+            _digitStr(recvMode),
+            ",",
+            _digitStr(keepAlive),
+            ",",
+            _digitStr(listenMode),
+            ",",
+            _digitStr(sendMode)),
+        "OK",
+        rsp,
+        cb,
+        args,
+        NULL,
+        sock);
     _returnAfterReply();
 }
 
-bool WalterModem::socketDial(const char *remoteHost, uint16_t remotePort, uint16_t localPort,
-                             WalterModemRsp *rsp, walterModemCb cb, void *args,
-                             WalterModemSocketProto protocol,
-                             WalterModemSocketAcceptAnyRemote acceptAnyRemote, int socketId)
+bool WalterModem::socketDial(
+    const char *remoteHost,
+    uint16_t remotePort,
+    uint16_t localPort,
+    WalterModemRsp *rsp,
+    walterModemCb cb,
+    void *args,
+    WalterModemSocketProto protocol,
+    WalterModemSocketAcceptAnyRemote acceptAnyRemote,
+    int socketId)
 {
     WalterModemSocket *sock = _socketGet(socketId);
     if (sock == NULL) {
@@ -183,10 +239,26 @@ bool WalterModem::socketDial(const char *remoteHost, uint16_t remotePort, uint16
         }
     };
 
-    _runCmd(arr("AT+SQNSD=", _digitStr(sock->id), ",", _digitStr(sock->protocol), ",",
-                _atNum(sock->remotePort), ",", _atStr(sock->remoteHost), ",0,",
-                _atNum(sock->localPort), ",1,", _digitStr(sock->acceptAnyRemote), ",0"),
-            "OK", rsp, cb, args, completeHandler, sock);
+    _runCmd(
+        arr("AT+SQNSD=",
+            _digitStr(sock->id),
+            ",",
+            _digitStr(sock->protocol),
+            ",",
+            _atNum(sock->remotePort),
+            ",",
+            _atStr(sock->remoteHost),
+            ",0,",
+            _atNum(sock->localPort),
+            ",1,",
+            _digitStr(sock->acceptAnyRemote),
+            ",0"),
+        "OK",
+        rsp,
+        cb,
+        args,
+        completeHandler,
+        sock);
     _returnAfterReply();
 }
 
@@ -209,42 +281,87 @@ bool WalterModem::socketClose(WalterModemRsp *rsp, walterModemCb cb, void *args,
     _returnAfterReply();
 }
 
-bool WalterModem::socketSend(uint8_t *data, uint16_t dataSize, WalterModemRsp *rsp,
-                             walterModemCb cb, void *args, WalterModemRAI rai, int socketId)
+bool WalterModem::socketSendExtended(
+    uint8_t *data,
+    uint16_t dataSize,
+    WalterModemRsp *rsp,
+    walterModemCb cb,
+    void *args,
+    WalterModemRAI rai,
+    int socketId)
 {
     WalterModemSocket *sock = _socketGet(socketId);
     if (sock == NULL) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_SOCKET);
     }
 
-    _runCmd(arr("AT+SQNSSENDEXT=", _digitStr(sock->id), ",", _atNum(dataSize), ",", _digitStr(rai)),
-            "OK", rsp, cb, args, NULL, NULL, WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT, data, dataSize);
+    _runCmd(
+        arr("AT+SQNSSENDEXT=", _digitStr(sock->id), ",", _atNum(dataSize), ",", _digitStr(rai)),
+        "OK",
+        rsp,
+        cb,
+        args,
+        NULL,
+        NULL,
+        WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT,
+        data,
+        dataSize);
     _returnAfterReply();
 }
 
-bool WalterModem::socketSend(char *str, WalterModemRsp *rsp, walterModemCb cb, void *args,
-                             WalterModemRAI rai, int socketId)
+bool WalterModem::socketSendExtended(
+    char *str, WalterModemRsp *rsp, walterModemCb cb, void *args, WalterModemRAI rai, int socketId)
 {
-    return socketSend((uint8_t *)str, strlen(str), rsp, cb, args, rai, socketId);
+    return socketSendExtended((uint8_t *)str, strlen(str), rsp, cb, args, rai, socketId);
 }
 
-bool WalterModem::socketListen(WalterModemRsp *rsp, walterModemCb cb, void *args, int socketId,
-                               WalterModemSocketListenState listenState, int socketListenPort)
+bool WalterModem::socketListen(
+    WalterModemRsp *rsp,
+    walterModemCb cb,
+    void *args,
+    int socketId,
+    WalterModemSocketListenState listenState,
+    int socketListenPort)
 {
     WalterModemSocket *sock = _socketGet(socketId);
     if (sock == NULL) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_SOCKET);
     }
+
     if (sock->protocol == WALTER_MODEM_SOCKET_PROTO_TCP) {
-        _runCmd(arr("AT+SQNSL=", _digitStr(sock->id), ",", _digitStr(listenState), ",",
-                    _digitStr(socketListenPort)),
-                "OK", rsp, cb, args, NULL, NULL, WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT, data,
-                dataSize);
+        _runCmd(
+            arr("AT+SQNSL=",
+                _digitStr(sock->id),
+                ",",
+                _digitStr(listenState),
+                ",",
+                _digitStr(socketListenPort)),
+            "OK",
+            rsp,
+            cb,
+            args,
+            NULL,
+            NULL,
+            WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT,
+            data,
+            dataSize);
     } else {
-        _runCmd(arr("AT+SQNSLUDP=", _digitStr(sock->id), ",", _digitStr(listenState), ",",
-                    _digitStr(socketListenPort)),
-                "OK", rsp, cb, args, NULL, NULL, WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT, data,
-                dataSize);
+        _runCmd(
+            arr("AT+SQNSLUDP=",
+                _digitStr(sock->id),
+                ",",
+                _digitStr(listenState),
+                ",",
+                _digitStr(socketListenPort)),
+            "OK",
+            rsp,
+            cb,
+            args,
+            NULL,
+            NULL,
+            WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT,
+            data,
+            dataSize);
     }
 
     _returnAfterReply();
@@ -258,5 +375,11 @@ bool WalterModem::socketDidRing(int socketId)
     }
     return sock->didRing;
 }
-pragma endregion
+
+void WalterModem::setSocketEventHandler(walterModemSocketEventHandler handler, void *args = NULL)
+{
+    _eventHandlers[WALTER_MODEM_EVENT_TYPE_SOCKET].socketHandler = handler;
+    _eventHandlers[WALTER_MODEM_EVENT_TYPE_SOCKET].args = args;
+}
+    #pragma endregion
 #endif

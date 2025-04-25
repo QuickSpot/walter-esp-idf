@@ -1,14 +1,15 @@
 ---
 Language:        Cpp
-# BasedOnStyle:  LLVM
+BasedOnStyle:  Google
 AccessModifierOffset: -4
-AlignAfterOpenBracket: Align
+AlignAfterOpenBracket: AlwaysBreak
 AlignConsecutiveAssignments: false
 AlignConsecutiveDeclarations: false
 AlignEscapedNewlines: Left
-AlignOperands:   false
+AlignOperands: false
 AlignTrailingComments: false
 AllowAllParametersOfDeclarationOnNextLine: true
+AllowAllArgumentsOnNextLine: true
 AllowShortBlocksOnASingleLine: false
 AllowShortCaseLabelsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: InlineOnly
@@ -18,8 +19,9 @@ AlwaysBreakAfterDefinitionReturnType: None
 AlwaysBreakAfterReturnType: None
 AlwaysBreakBeforeMultilineStrings: false
 AlwaysBreakTemplateDeclarations: true
-BinPackArguments: true
-BinPackParameters: true
+BinPackArguments: false
+BinPackParameters: false
+IncludeBlocks: Regroup
 BraceWrapping:
   AfterCaseLabel:  false
   AfterClass:      false
@@ -36,6 +38,7 @@ BraceWrapping:
   SplitEmptyFunction: true
   SplitEmptyRecord: true
   SplitEmptyNamespace: true
+  BeforeWhile: false
 BreakBeforeBinaryOperators: None
 BreakBeforeBraces: Custom
 BreakBeforeInheritanceComma: false
@@ -43,7 +46,7 @@ BreakBeforeTernaryOperators: true
 BreakConstructorInitializersBeforeComma: false
 BreakConstructorInitializers: BeforeComma
 BreakAfterJavaFieldAnnotations: false
-BreakStringLiterals: true
+BreakStringLiterals: false
 ColumnLimit:     100
 CommentPragmas:  '^ IWYU pragma:'
 CompactNamespaces: false
@@ -55,6 +58,7 @@ DerivePointerAlignment: false
 DisableFormat:   false
 ExperimentalAutoDetectBinPacking: false
 FixNamespaceComments: true
+IndentPPDirectives: BeforeHash
 ForEachMacros:
   - foreach
   - Q_FOREACH
@@ -105,4 +109,7 @@ SpacesInSquareBrackets: false
 Standard:        Cpp11
 TabWidth:        4
 UseTab:          Never
+StatementMacros:
+  - _runCmd
+  - arr
 ...

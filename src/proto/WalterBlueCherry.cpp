@@ -45,16 +45,16 @@
 
 #include <WalterDefines.h>
 #if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
-#if !CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY || !CONFIG_WALTER_MODEM_ENABLE_MOTA
-#error Bluecherry cannot be enabled with OTA or MOTA disabled.
-#endif
+    #if !CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY || !CONFIG_WALTER_MODEM_ENABLE_MOTA
+        #error Bluecherry cannot be enabled with OTA or MOTA disabled.
+    #endif
 #endif
 
 #if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY && !CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
-#error OTA cann only be done when bluecherry is enabled.
+    #error OTA cann only be done when bluecherry is enabled.
 #endif
 #if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
-#pragma region PRIVATE_METHODS
+    #pragma region PRIVATE_METHODS
 bool WalterModem::_processBlueCherryEvent(uint8_t *data, uint8_t len)
 {
     switch (data[0]) {
@@ -77,19 +77,23 @@ bool WalterModem::_processBlueCherryEvent(uint8_t *data, uint8_t len)
         return _processMotaFinishEvent();
 
     default:
-        ESP_LOGD("WalterModem", "Error: invalid BlueCherry event type 0x%x from cloud server",
-                 data[0]);
+        ESP_LOGD(
+            "WalterModem", "Error: invalid BlueCherry event type 0x%x from cloud server", data[0]);
         return true;
     }
 
     return true;
 }
-#pragma endregion
+    #pragma endregion
 
-#pragma region PUBLIC_METHODS
-bool WalterModem::blueCherryProvision(const char *walterCertificate, const char *walterPrivateKey,
-                                      const char *caCertificate, WalterModemRsp *rsp,
-                                      walterModemCb cb, void *args)
+    #pragma region PUBLIC_METHODS
+bool WalterModem::blueCherryProvision(
+    const char *walterCertificate,
+    const char *walterPrivateKey,
+    const char *caCertificate,
+    WalterModemRsp *rsp,
+    walterModemCb cb,
+    void *args)
 {
     WalterModemState result = WALTER_MODEM_STATE_OK;
 
@@ -131,12 +135,17 @@ bool WalterModem::blueCherryIsProvisioned()
     return true;
 }
 
-bool WalterModem::blueCherryInit(uint8_t tlsProfileId, uint8_t *otaBuffer, WalterModemRsp *rsp,
-                                 uint16_t ackTimeout)
+bool WalterModem::blueCherryInit(
+    uint8_t tlsProfileId, uint8_t *otaBuffer, WalterModemRsp *rsp, uint16_t ackTimeout)
 {
     if (!blueCherryIsProvisioned() ||
-        !tlsConfigProfile(tlsProfileId, WALTER_MODEM_TLS_VALIDATION_URL_AND_CA,
-                          WALTER_MODEM_TLS_VERSION_12, 6, 5, 0)) {
+        !tlsConfigProfile(
+            tlsProfileId,
+            WALTER_MODEM_TLS_VALIDATION_URL_AND_CA,
+            WALTER_MODEM_TLS_VERSION_12,
+            6,
+            5,
+            0)) {
         blueCherry.status = WALTER_MODEM_BLUECHERRY_STATUS_NOT_PROVISIONED;
 
         if (rsp) {
@@ -201,8 +210,8 @@ bool WalterModem::blueCherrySync(WalterModemRsp *rsp)
         rsp->data.blueCherry.messageCount = 0;
     }
 
-    if (!coapCreateContext(0, WALTER_MODEM_BLUE_CHERRY_HOSTNAME, blueCherry.port,
-                           blueCherry.tlsProfileId)) {
+    if (!coapCreateContext(
+            0, WALTER_MODEM_BLUE_CHERRY_HOSTNAME, blueCherry.port, blueCherry.tlsProfileId)) {
         return false;
     }
 
@@ -218,8 +227,12 @@ bool WalterModem::blueCherrySync(WalterModemRsp *rsp)
 
     uint8_t nrMissed = blueCherry.curMessageId - lastAckedMessageId - 1;
 
-    if (!coapSendData(0, WALTER_MODEM_COAP_SEND_TYPE_CON, (WalterModemCoapSendMethodRsp)nrMissed,
-                      blueCherry.messageOutLen, blueCherry.messageOut)) {
+    if (!coapSendData(
+            0,
+            WALTER_MODEM_COAP_SEND_TYPE_CON,
+            (WalterModemCoapSendMethodRsp)nrMissed,
+            blueCherry.messageOutLen,
+            blueCherry.messageOut)) {
         return false;
     }
 
@@ -306,6 +319,6 @@ bool WalterModem::blueCherryClose(WalterModemRsp *rsp, walterModemCb cb, void *a
     _returnAfterReply();
 }
 
-#pragma endregion
+    #pragma endregion
 
 #endif

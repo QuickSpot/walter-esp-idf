@@ -50,7 +50,7 @@
 #include <stdint.h>
 #include <time.h>
 
-
+// NOLINT(readability-identifier-naming.PrivateFunctionPrefix)
 /**
  * @brief Convert a digit to a string literal.
  *
@@ -274,161 +274,165 @@ bool strToFloat(const char *str, int len, float *result);
  */
 static bool endOfLine;
 #ifdef ARDUINO
-#define _transmitCmd(type, atCmd)                                                       \
-    {                                                                                   \
-        ESP_LOGD((endOfLine = false, "WalterModem"),                                    \
-                 "TX: %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s" \
-                 "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",      \
-                 (!endOfLine && atCmd[0]) ? atCmd[0] : (endOfLine = true, ""),          \
-                 (!endOfLine && atCmd[1]) ? atCmd[1] : (endOfLine = true, ""),          \
-                 (!endOfLine && atCmd[2]) ? atCmd[2] : (endOfLine = true, ""),          \
-                 (!endOfLine && atCmd[3]) ? atCmd[3] : (endOfLine = true, ""),          \
-                 (!endOfLine && atCmd[4]) ? atCmd[4] : (endOfLine = true, ""),          \
-                 (!endOfLine && atCmd[5]) ? atCmd[5] : (endOfLine = true, ""),          \
-                 (!endOfLine && atCmd[6]) ? atCmd[6] : (endOfLine = true, ""),          \
-                 (!endOfLine && atCmd[7]) ? atCmd[7] : (endOfLine = true, ""),          \
-                 (!endOfLine && atCmd[8]) ? atCmd[8] : (endOfLine = true, ""),          \
-                 (!endOfLine && atCmd[9]) ? atCmd[9] : (endOfLine = true, ""),          \
-                 (!endOfLine && atCmd[10]) ? atCmd[10] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[11]) ? atCmd[11] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[12]) ? atCmd[12] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[13]) ? atCmd[13] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[14]) ? atCmd[14] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[15]) ? atCmd[15] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[16]) ? atCmd[16] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[17]) ? atCmd[17] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[18]) ? atCmd[18] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[19]) ? atCmd[19] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[20]) ? atCmd[20] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[21]) ? atCmd[21] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[22]) ? atCmd[22] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[23]) ? atCmd[23] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[24]) ? atCmd[24] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[25]) ? atCmd[25] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[26]) ? atCmd[26] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[27]) ? atCmd[27] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[28]) ? atCmd[28] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[29]) ? atCmd[29] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[30]) ? atCmd[30] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[31]) ? atCmd[31] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[32]) ? atCmd[32] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[33]) ? atCmd[33] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[34]) ? atCmd[34] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[35]) ? atCmd[35] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[36]) ? atCmd[36] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[37]) ? atCmd[37] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[38]) ? atCmd[38] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[39]) ? atCmd[39] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[40]) ? atCmd[40] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[41]) ? atCmd[41] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[42]) ? atCmd[42] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[43]) ? atCmd[43] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[44]) ? atCmd[44] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[45]) ? atCmd[45] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[46]) ? atCmd[46] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[47]) ? atCmd[47] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[48]) ? atCmd[48] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[49]) ? atCmd[49] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[50]) ? atCmd[50] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[51]) ? atCmd[51] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[52]) ? atCmd[52] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[53]) ? atCmd[53] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[54]) ? atCmd[54] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[55]) ? atCmd[55] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[56]) ? atCmd[56] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[57]) ? atCmd[57] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[58]) ? atCmd[58] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[59]) ? atCmd[59] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[60]) ? atCmd[60] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[61]) ? atCmd[61] : (endOfLine = true, ""),        \
-                 (!endOfLine && atCmd[62]) ? atCmd[62] : (endOfLine = true, ""));       \
-        for (int i = 0; i < WALTER_MODEM_COMMAND_MAX_ELEMS; ++i) {                      \
-            if (atCmd[i] == NULL) {                                                     \
-                break;                                                                  \
-            }                                                                           \
-            _uart->write(atCmd[i]);                                                     \
-        }                                                                               \
-        _uart->write(type == WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT ? "\n" : "\r\n");       \
-    }
+    #define _transmitCmd(type, atCmd)                                                  \
+        {                                                                              \
+            ESP_LOGD(                                                                  \
+                (endOfLine = false, "WalterModem"),                                    \
+                "TX: %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s" \
+                "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",      \
+                (!endOfLine && atCmd[0]) ? atCmd[0] : (endOfLine = true, ""),          \
+                (!endOfLine && atCmd[1]) ? atCmd[1] : (endOfLine = true, ""),          \
+                (!endOfLine && atCmd[2]) ? atCmd[2] : (endOfLine = true, ""),          \
+                (!endOfLine && atCmd[3]) ? atCmd[3] : (endOfLine = true, ""),          \
+                (!endOfLine && atCmd[4]) ? atCmd[4] : (endOfLine = true, ""),          \
+                (!endOfLine && atCmd[5]) ? atCmd[5] : (endOfLine = true, ""),          \
+                (!endOfLine && atCmd[6]) ? atCmd[6] : (endOfLine = true, ""),          \
+                (!endOfLine && atCmd[7]) ? atCmd[7] : (endOfLine = true, ""),          \
+                (!endOfLine && atCmd[8]) ? atCmd[8] : (endOfLine = true, ""),          \
+                (!endOfLine && atCmd[9]) ? atCmd[9] : (endOfLine = true, ""),          \
+                (!endOfLine && atCmd[10]) ? atCmd[10] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[11]) ? atCmd[11] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[12]) ? atCmd[12] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[13]) ? atCmd[13] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[14]) ? atCmd[14] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[15]) ? atCmd[15] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[16]) ? atCmd[16] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[17]) ? atCmd[17] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[18]) ? atCmd[18] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[19]) ? atCmd[19] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[20]) ? atCmd[20] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[21]) ? atCmd[21] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[22]) ? atCmd[22] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[23]) ? atCmd[23] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[24]) ? atCmd[24] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[25]) ? atCmd[25] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[26]) ? atCmd[26] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[27]) ? atCmd[27] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[28]) ? atCmd[28] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[29]) ? atCmd[29] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[30]) ? atCmd[30] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[31]) ? atCmd[31] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[32]) ? atCmd[32] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[33]) ? atCmd[33] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[34]) ? atCmd[34] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[35]) ? atCmd[35] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[36]) ? atCmd[36] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[37]) ? atCmd[37] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[38]) ? atCmd[38] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[39]) ? atCmd[39] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[40]) ? atCmd[40] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[41]) ? atCmd[41] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[42]) ? atCmd[42] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[43]) ? atCmd[43] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[44]) ? atCmd[44] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[45]) ? atCmd[45] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[46]) ? atCmd[46] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[47]) ? atCmd[47] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[48]) ? atCmd[48] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[49]) ? atCmd[49] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[50]) ? atCmd[50] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[51]) ? atCmd[51] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[52]) ? atCmd[52] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[53]) ? atCmd[53] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[54]) ? atCmd[54] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[55]) ? atCmd[55] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[56]) ? atCmd[56] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[57]) ? atCmd[57] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[58]) ? atCmd[58] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[59]) ? atCmd[59] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[60]) ? atCmd[60] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[61]) ? atCmd[61] : (endOfLine = true, ""),        \
+                (!endOfLine && atCmd[62]) ? atCmd[62] : (endOfLine = true, ""));       \
+            for (int i = 0; i < WALTER_MODEM_COMMAND_MAX_ELEMS; ++i) {                 \
+                if (atCmd[i] == NULL) {                                                \
+                    break;                                                             \
+                }                                                                      \
+                _uart->write(atCmd[i]);                                                \
+            }                                                                          \
+            _uart->write(type == WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT ? "\n" : "\r\n");  \
+        }
 #else
-#define _transmitCmd(type, atCmd)                                                 \
-    {                                                                             \
-        ESP_LOGD((endOfLine = false, "WalterModem"),                              \
-                 "TX: %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s" \ 
-            "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",     \
-                 (!endOfLine && atCmd[0]) ? atCmd[0] : (endOfLine = true, ""),    \
-                 (!endOfLine && atCmd[1]) ? atCmd[1] : (endOfLine = true, ""),    \
-                 (!endOfLine && atCmd[2]) ? atCmd[2] : (endOfLine = true, ""),    \
-                 (!endOfLine && atCmd[3]) ? atCmd[3] : (endOfLine = true, ""),    \
-                 (!endOfLine && atCmd[4]) ? atCmd[4] : (endOfLine = true, ""),    \
-                 (!endOfLine && atCmd[5]) ? atCmd[5] : (endOfLine = true, ""),    \
-                 (!endOfLine && atCmd[6]) ? atCmd[6] : (endOfLine = true, ""),    \
-                 (!endOfLine && atCmd[7]) ? atCmd[7] : (endOfLine = true, ""),    \
-                 (!endOfLine && atCmd[8]) ? atCmd[8] : (endOfLine = true, ""),    \
-                 (!endOfLine && atCmd[9]) ? atCmd[9] : (endOfLine = true, ""),    \
-                 (!endOfLine && atCmd[10]) ? atCmd[10] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[11]) ? atCmd[11] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[12]) ? atCmd[12] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[13]) ? atCmd[13] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[14]) ? atCmd[14] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[15]) ? atCmd[15] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[16]) ? atCmd[16] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[17]) ? atCmd[17] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[18]) ? atCmd[18] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[19]) ? atCmd[19] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[20]) ? atCmd[20] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[21]) ? atCmd[21] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[22]) ? atCmd[22] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[23]) ? atCmd[23] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[24]) ? atCmd[24] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[25]) ? atCmd[25] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[26]) ? atCmd[26] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[27]) ? atCmd[27] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[28]) ? atCmd[28] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[29]) ? atCmd[29] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[30]) ? atCmd[30] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[31]) ? atCmd[31] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[32]) ? atCmd[32] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[33]) ? atCmd[33] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[34]) ? atCmd[34] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[35]) ? atCmd[35] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[36]) ? atCmd[36] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[37]) ? atCmd[37] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[38]) ? atCmd[38] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[39]) ? atCmd[39] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[40]) ? atCmd[40] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[41]) ? atCmd[41] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[42]) ? atCmd[42] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[43]) ? atCmd[43] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[44]) ? atCmd[44] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[45]) ? atCmd[45] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[46]) ? atCmd[46] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[47]) ? atCmd[47] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[48]) ? atCmd[48] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[49]) ? atCmd[49] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[50]) ? atCmd[50] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[51]) ? atCmd[51] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[52]) ? atCmd[52] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[53]) ? atCmd[53] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[54]) ? atCmd[54] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[55]) ? atCmd[55] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[56]) ? atCmd[56] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[57]) ? atCmd[57] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[58]) ? atCmd[58] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[59]) ? atCmd[59] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[60]) ? atCmd[60] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[61]) ? atCmd[61] : (endOfLine = true, ""),  \
-                 (!endOfLine && atCmd[62]) ? atCmd[62] : (endOfLine = true, "")); \
-        for (int i = 0; i < WALTER_MODEM_COMMAND_MAX_ELEMS; ++i) {                \
-            if (atCmd[i] == NULL) {                                               \
-                break;                                                            \
-            }                                                                     \
-            uart_write_bytes(_uartNo, atCmd[i], strlen(atCmd[i]));                \
-        }                                                                         \
-        if (type == WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT)                           \
-            uart_write_bytes(_uartNo, "\n", 1);                                   \
-        else                                                                      \
-            uart_write_bytes(_uartNo, "\r\n", 2);                                 \
-    }
+    #define _transmitCmd(type, atCmd)                                            \
+        {                                                                        \
+            ESP_LOGD(                                                            \
+                (endOfLine = false, "WalterModem"),                              \
+                "TX: %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s" \ 
+            "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",    \
+                (!endOfLine && atCmd[0]) ? atCmd[0] : (endOfLine = true, ""),    \
+                (!endOfLine && atCmd[1]) ? atCmd[1] : (endOfLine = true, ""),    \
+                (!endOfLine && atCmd[2]) ? atCmd[2] : (endOfLine = true, ""),    \
+                (!endOfLine && atCmd[3]) ? atCmd[3] : (endOfLine = true, ""),    \
+                (!endOfLine && atCmd[4]) ? atCmd[4] : (endOfLine = true, ""),    \
+                (!endOfLine && atCmd[5]) ? atCmd[5] : (endOfLine = true, ""),    \
+                (!endOfLine && atCmd[6]) ? atCmd[6] : (endOfLine = true, ""),    \
+                (!endOfLine && atCmd[7]) ? atCmd[7] : (endOfLine = true, ""),    \
+                (!endOfLine && atCmd[8]) ? atCmd[8] : (endOfLine = true, ""),    \
+                (!endOfLine && atCmd[9]) ? atCmd[9] : (endOfLine = true, ""),    \
+                (!endOfLine && atCmd[10]) ? atCmd[10] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[11]) ? atCmd[11] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[12]) ? atCmd[12] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[13]) ? atCmd[13] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[14]) ? atCmd[14] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[15]) ? atCmd[15] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[16]) ? atCmd[16] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[17]) ? atCmd[17] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[18]) ? atCmd[18] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[19]) ? atCmd[19] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[20]) ? atCmd[20] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[21]) ? atCmd[21] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[22]) ? atCmd[22] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[23]) ? atCmd[23] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[24]) ? atCmd[24] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[25]) ? atCmd[25] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[26]) ? atCmd[26] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[27]) ? atCmd[27] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[28]) ? atCmd[28] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[29]) ? atCmd[29] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[30]) ? atCmd[30] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[31]) ? atCmd[31] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[32]) ? atCmd[32] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[33]) ? atCmd[33] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[34]) ? atCmd[34] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[35]) ? atCmd[35] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[36]) ? atCmd[36] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[37]) ? atCmd[37] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[38]) ? atCmd[38] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[39]) ? atCmd[39] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[40]) ? atCmd[40] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[41]) ? atCmd[41] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[42]) ? atCmd[42] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[43]) ? atCmd[43] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[44]) ? atCmd[44] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[45]) ? atCmd[45] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[46]) ? atCmd[46] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[47]) ? atCmd[47] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[48]) ? atCmd[48] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[49]) ? atCmd[49] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[50]) ? atCmd[50] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[51]) ? atCmd[51] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[52]) ? atCmd[52] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[53]) ? atCmd[53] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[54]) ? atCmd[54] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[55]) ? atCmd[55] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[56]) ? atCmd[56] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[57]) ? atCmd[57] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[58]) ? atCmd[58] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[59]) ? atCmd[59] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[60]) ? atCmd[60] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[61]) ? atCmd[61] : (endOfLine = true, ""),  \
+                (!endOfLine && atCmd[62]) ? atCmd[62] : (endOfLine = true, "")); \
+            for (int i = 0; i < WALTER_MODEM_COMMAND_MAX_ELEMS; ++i) {           \
+                if (atCmd[i] == NULL) {                                          \
+                    break;                                                       \
+                }                                                                \
+                uart_write_bytes(_uartNo, atCmd[i], strlen(atCmd[i]));           \
+            }                                                                    \
+            if (type == WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT)                      \
+                uart_write_bytes(_uartNo, "\n", 1);                              \
+            else                                                                 \
+                uart_write_bytes(_uartNo, "\r\n", 2);                            \
+        }
 #endif
+
+#define CONSTANT(name, type, value) inline static constexpr type name = value;
 #endif

@@ -46,7 +46,7 @@
 #include <WalterDefines.h>
 
 #if CONFIG_WALTER_MODEM_ENABLE_GNSS
-#pragma region PRIVATE_METHODS
+    #pragma region PRIVATE_METHODS
 void WalterModem::_dispatchEvent(const WalterModemGNSSFix *fix)
 {
     WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_GNSS;
@@ -58,16 +58,28 @@ void WalterModem::_dispatchEvent(const WalterModemGNSSFix *fix)
     handler->gnssHandler(fix, handler->args);
     _checkEventDuration(start);
 }
-#pragma endregion
+    #pragma endregion
 
-#pragma region PUBLIC_METHODS
-bool WalterModem::configGNSS(WalterModemGNSSSensMode sensMode, WalterModemGNSSAcqMode acqMode,
-                             WalterModemGNSSLocMode locMode, WalterModemRsp *rsp, walterModemCb cb,
-                             void *args)
+    #pragma region PUBLIC_METHODS
+bool WalterModem::configGNSS(
+    WalterModemGNSSSensMode sensMode,
+    WalterModemGNSSAcqMode acqMode,
+    WalterModemGNSSLocMode locMode,
+    WalterModemRsp *rsp,
+    walterModemCb cb,
+    void *args)
 {
-    _runCmd(arr("AT+LPGNSSCFG=", _digitStr(locMode), ",", _digitStr(sensMode), ",2,,1,",
-                _digitStr(acqMode)),
-            "OK", rsp, cb, args);
+    _runCmd(
+        arr("AT+LPGNSSCFG=",
+            _digitStr(locMode),
+            ",",
+            _digitStr(sensMode),
+            ",2,,1,",
+            _digitStr(acqMode)),
+        "OK",
+        rsp,
+        cb,
+        args);
     _returnAfterReply();
 }
 
@@ -77,15 +89,15 @@ bool WalterModem::getGNSSAssistanceStatus(WalterModemRsp *rsp, walterModemCb cb,
     _returnAfterReply();
 }
 
-bool WalterModem::updateGNSSAssistance(WalterModemGNSSAssistanceType type, WalterModemRsp *rsp,
-                                       walterModemCb cb, void *args)
+bool WalterModem::updateGNSSAssistance(
+    WalterModemGNSSAssistanceType type, WalterModemRsp *rsp, walterModemCb cb, void *args)
 {
     _runCmd(arr("AT+LPGNSSASSISTANCE=", _digitStr(type)), "+LPGNSSASSISTANCE:", rsp, cb, args);
     _returnAfterReply();
 }
 
-bool WalterModem::performGNSSAction(WalterModemGNSSAction action, WalterModemRsp *rsp,
-                                    walterModemCb cb, void *args)
+bool WalterModem::performGNSSAction(
+    WalterModemGNSSAction action, WalterModemRsp *rsp, walterModemCb cb, void *args)
 {
     auto gnssActionStr = [](WalterModemGNSSAction action) {
         switch (action) {
@@ -107,5 +119,5 @@ void WalterModem::setGNSSEventHandler(walterModemGNSSEventHandler handler, void 
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_GNSS].gnssHandler = handler;
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_GNSS].args = args;
 }
-#pragma endregion
+    #pragma endregion
 #endif

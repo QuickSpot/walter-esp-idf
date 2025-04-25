@@ -52,64 +52,65 @@
 #include <mutex>
 
 #ifdef ARDUINO
-#include <Arduino.h>
+    #include <Arduino.h>
 #else
-#include "sdkconfig.h"
-#ifndef CONFIG_WALTER_MODEM_KCONFIG
-#warning "It is highly recommended to use KConfig and the idf.py menuconfig when using ESP-IDF \
+    #include "sdkconfig.h"
+    #ifndef CONFIG_WALTER_MODEM_KCONFIG
+        #warning \
+            "It is highly recommended to use KConfig and the idf.py menuconfig when using ESP-IDF \
 for efficient configuration management."
-#endif
+    #endif
 #endif
 #pragma region CONFIG_MACRO
 #ifdef CONFIG_WALTER_MODEM_KCONFIG
-#define CONFIG(name, type, default_value) static constexpr type name = CONFIG_##name;
+    #define CONFIG(name, type, default_value) static constexpr type name = CONFIG_##name;
 #else
-#define CONFIG(name, type, default_value) static constexpr type name = default_value;
+    #define CONFIG(name, type, default_value) inline static constexpr type name = default_value;
 
-/* configuration defaults for arduino or when KCONFIG is disabled */
-#ifndef CONFIG_WALTER_MODEM_ENABLE_SOCKETS
-#define CONFIG_WALTER_MODEM_ENABLE_SOCKETS 1
+    /* configuration defaults for arduino or when KCONFIG is disabled */
+    #ifndef CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+        #define CONFIG_WALTER_MODEM_ENABLE_SOCKETS 1
+    #endif
+
+    #ifndef CONFIG_WALTER_MODEM_ENABLE_MQTT
+        #define CONFIG_WALTER_MODEM_ENABLE_MQTT 1
+    #endif
+
+    #ifndef CONFIG_WALTER_MODEM_ENABLE_GNSS
+        #define CONFIG_WALTER_MODEM_ENABLE_GNSS 1
+    #endif
+
+    #ifndef CONFIG_WALTER_MODEM_ENABLE_HTTP
+        #define CONFIG_WALTER_MODEM_ENABLE_HTTP 1
+    #endif
+
+    #ifndef CONFIG_WALTER_MODEM_ENABLE_COAP
+        #define CONFIG_WALTER_MODEM_ENABLE_COAP 1
+    #endif
+
+    #ifndef CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
+        #define CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY 1
+    #endif
+
+    #ifndef CONFIG_WALTER_MODEM_ENABLE_MOTA
+        #define CONFIG_WALTER_MODEM_ENABLE_MOTA 1
+    #endif
+
+    #ifndef CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
+        #define CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY 1
+    #endif
 #endif
 
-#ifndef CONFIG_WALTER_MODEM_ENABLE_MQTT
-#define CONFIG_WALTER_MODEM_ENABLE_MQTT 1
-#endif
+#define CONFIG_INT(name, default_value) CONFIG(name, const int, default_value)
+#define CONFIG_UINT8(name, default_value) CONFIG(name, const uint8_t, default_value)
+#define CONFIG_UINT16(name, default_value) CONFIG(name, const uint16_t, default_value)
+#define CONFIG_UINT32(name, default_value) CONFIG(name, const uint32_t, default_value)
+#define CONFIG_UINT64(name, default_value) CONFIG(name, const uint64_t, default_value)
 
-#ifndef CONFIG_WALTER_MODEM_ENABLE_GNSS
-#define CONFIG_WALTER_MODEM_ENABLE_GNSS 1
-#endif
-
-#ifndef CONFIG_WALTER_MODEM_ENABLE_HTTP
-#define CONFIG_WALTER_MODEM_ENABLE_HTTP 1
-#endif
-
-#ifndef CONFIG_WALTER_MODEM_ENABLE_COAP
-#define CONFIG_WALTER_MODEM_ENABLE_COAP 1
-#endif
-
-#ifndef CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
-#define CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY 1
-#endif
-
-#ifndef CONFIG_WALTER_MODEM_ENABLE_MOTA
-#define CONFIG_WALTER_MODEM_ENABLE_MOTA 1
-#endif
-
-#ifndef CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
-#define CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY 1
-#endif
-#endif
-
-#define CONFIG_INT(name, default_value) CONFIG(name, int, default_value)
-#define CONFIG_UINT8(name, default_value) CONFIG(name, uint8_t, default_value)
-#define CONFIG_UINT16(name, default_value) CONFIG(name, uint16_t, default_value)
-#define CONFIG_UINT32(name, default_value) CONFIG(name, uint32_t, default_value)
-#define CONFIG_UINT64(name, default_value) CONFIG(name, uint64_t, default_value)
-
-#define CONFIG_INT8(name, default_value) CONFIG(name, int8_t, default_value)
-#define CONFIG_INT16(name, default_value) CONFIG(name, int16_t, default_value)
-#define CONFIG_INT32(name, default_value) CONFIG(name, int32_t, default_value)
-#define CONFIG_INT64(name, default_value) CONFIG(name, int64_t, default_value)
+#define CONFIG_INT8(name, default_value) CONFIG(name, const int8_t, default_value)
+#define CONFIG_INT16(name, default_value) CONFIG(name, const int16_t, default_value)
+#define CONFIG_INT32(name, default_value) CONFIG(name, const int32_t, default_value)
+#define CONFIG_INT64(name, default_value) CONFIG(name, const int64_t, default_value)
 #pragma endregion
 
 #pragma region CONFIGURATION_CONSTANTS
@@ -273,10 +274,10 @@ CONFIG_UINT8(WALTER_MODEM_GNSS_MAX_SATS, 32)
  */
 CONFIG_UINT8(WALTER_MODEM_MQTT_TOPIC_MAX_SIZE, 127)
 
-/**
- * @brief The size of an MQTT topic buffer
- */
-#define WALTER_MODEM_MQTT_TOPIC_BUF_SIZE (WALTER_MODEM_MQTT_TOPIC_MAX_SIZE + 1)
+    /**
+     * @brief The size of an MQTT topic buffer
+     */
+    #define WALTER_MODEM_MQTT_TOPIC_BUF_SIZE (WALTER_MODEM_MQTT_TOPIC_MAX_SIZE + 1)
 
 /**
  * @brief The maximum number of rings that can be pending for the MQTT protocol.
@@ -368,10 +369,10 @@ CONFIG_UINT8(SPI_SECTORS_PER_BLOCK, 16)
 #include <condition_variable>
 
 #if CONFIG_WALTER_MODEM_ENABLE_MOTA || CONFIG_WALTER_MODEM_ENABLE_MOTA
-#include <esp_partition.h>
-#include <esp_vfs.h>
-#include <esp_vfs_fat.h>
-#include <spi_flash_mmap.h>
+    #include <esp_partition.h>
+    #include <esp_vfs.h>
+    #include <esp_vfs_fat.h>
+    #include <spi_flash_mmap.h>
 
 #endif
 
@@ -379,7 +380,6 @@ CONFIG_UINT8(SPI_SECTORS_PER_BLOCK, 16)
 #include <freertos/FreeRTOS.h>
 #include <freertos/event_groups.h>
 #include <freertos/semphr.h>
-
 
 #pragma region ENUMS
 /**
@@ -863,7 +863,7 @@ typedef enum {
 typedef enum {
     WALTER_MODEM_SOCKET_SEND_MODE_TEXT,
     WALTER_MODEM_SOCKET_SEND_MODE_HEX,
-} WalterModemSocketSendMode;
+} WalterModemsocketSendExtendedMode;
 
 /**
  * @brief This enumeration represents the listen state of the socket
@@ -1394,7 +1394,8 @@ typedef enum {
  */
 typedef enum {
     WALTER_MODEM_SOCKET_EVENT_CONNECTED,
-    WALTER_MODEM_SCOKET_EVENT_DISCONNECTED WALTER_MODEM_SOCKET_EVENT_RING
+    WALTER_MODEM_SOCKET_EVENT_DISCONNECTED,
+    WALTER_MODEM_SOCKET_EVENT_RING
 } WalterModemSocketEvent;
 #endif
 #pragma endregion
@@ -1455,8 +1456,8 @@ typedef void (*walterModemGNSSEventHandler)(const WalterModemGNSSFix *fix, void 
  *
  * @return None.
  */
-typedef void (*walterModemMQTTEventHandler)(WalterModemMQTTEvent ev, WalterModemMqttStatus status,
-                                            void *args);
+typedef void (*walterModemMQTTEventHandler)(
+    WalterModemMQTTEvent ev, WalterModemMqttStatus status, void *args);
 #endif
 
 #if CONFIG_WALTER_MODEM_ENABLE_HTTP
@@ -1500,9 +1501,12 @@ typedef void (*walterModemCoAPEventHandler)(WalterModemCoapEvent ev, int profile
  *
  * @return None.
  */
-typedef void (*walterModemSocketEventHandler)(WalterModemSocketEvent ev, int socketId,
-                                              uint16_t dataReceived, uint8_t *dataBuffer,
-                                              void *args);
+typedef void (*walterModemSocketEventHandler)(
+    WalterModemSocketEvent ev,
+    int socketId,
+    uint16_t dataReceived,
+    uint8_t *dataBuffer,
+    void *args);
 #endif
 #pragma endregion
 
@@ -1552,6 +1556,13 @@ typedef struct {
          * @brief Pointer to the CoAP event handler.
          */
         walterModemCoAPEventHandler coapHandler;
+#endif
+
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+        /**
+         * @brief Pointer to the socket event handler.
+         */
+        walterModemSocketEventHandler socketHandler;
 #endif
     };
 
@@ -2268,7 +2279,7 @@ typedef struct {
     /**
      * @brief Data received (0-1500)
      */
-    uint8_t data[1500];
+    uint8_t data[MAX_SOCKET_PACKET_SIZE];
 } WalterModemSocket;
 #endif
 #pragma endregion
@@ -3298,11 +3309,17 @@ private:
      * available.
      */
     static WalterModemCmd *_addQueueCmd(
-        const char *atCmd[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] = {NULL}, const char *atRsp = NULL,
-        WalterModemRsp *rsp = NULL, walterModemCb userCb = NULL, void *userCbArgs = NULL,
+        const char *atCmd[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] = {NULL},
+        const char *atRsp = NULL,
+        WalterModemRsp *rsp = NULL,
+        walterModemCb userCb = NULL,
+        void *userCbArgs = NULL,
         void (*completeHandler)(struct sWalterModemCmd *cmd, WalterModemState result) = NULL,
-        void *completeHandlerArg = NULL, WalterModemCmdType type = WALTER_MODEM_CMD_TYPE_TX_WAIT,
-        uint8_t *data = NULL, uint16_t dataSize = 0, WalterModemBuffer *stringsBuffer = NULL,
+        void *completeHandlerArg = NULL,
+        WalterModemCmdType type = WALTER_MODEM_CMD_TYPE_TX_WAIT,
+        uint8_t *data = NULL,
+        uint16_t dataSize = 0,
+        WalterModemBuffer *stringsBuffer = NULL,
         uint8_t maxAttempts = WALTER_MODEM_DEFAULT_CMD_ATTEMTS);
 
     /**
@@ -3317,8 +3334,8 @@ private:
      *
      * @return None.
      */
-    static void _finishQueueCmd(WalterModemCmd *cmd,
-                                WalterModemState result = WALTER_MODEM_STATE_OK);
+    static void _finishQueueCmd(
+        WalterModemCmd *cmd, WalterModemState result = WALTER_MODEM_STATE_OK);
 
     /**
      * @brief Process an AT command from the queue.
@@ -3435,7 +3452,7 @@ private:
      */
     static bool _motaFormatAndMount(void);
 
-#if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
+    #if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
     /**
      * @brief Initialze a modem firmware update.
      *
@@ -3471,7 +3488,7 @@ private:
      * @return True on success, false on error.
      */
     static bool _processMotaFinishEvent(void);
-#endif
+    #endif
 #endif
 #pragma endregion
 
@@ -3626,8 +3643,8 @@ private:
      *
      *
      */
-    static void _dispatchEvent(WalterModemSocketEvent event, int socketId, uint16_t dataReceived,
-                               uint8_t *dataBuffer);
+    static void _dispatchEvent(
+        WalterModemSocketEvent event, int socketId, uint16_t dataReceived, uint8_t *dataBuffer);
 #endif
 #pragma endregion
 
@@ -3668,16 +3685,23 @@ private:
      *
      * @return The duration encoded into the 3GPP standard format.
      */
-    static uint8_t _convertDuration(const uint32_t *base_times, size_t base_times_len,
-                                    uint32_t duration_seconds, uint32_t *actual_duration_seconds);
+    static uint8_t _convertDuration(
+        const uint32_t *base_times,
+        size_t base_times_len,
+        uint32_t duration_seconds,
+        uint32_t *actual_duration_seconds);
 
 #if CONFIG_WALTER_MODEM_ENABLE_MQTT
     /**
      * @brief This function subscribes without saving the topic in _mqttTopics and runs async.
      * (same as mqttSubscribe)
      */
-    static bool _mqttSubscribeRaw(const char *topicString, uint8_t qos, WalterModemRsp *rsp = NULL,
-                                  walterModemCb cb = NULL, void *args = NULL);
+    static bool _mqttSubscribeRaw(
+        const char *topicString,
+        uint8_t qos,
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL);
 #endif
 #pragma endregion
 
@@ -3824,7 +3848,9 @@ public:
      */
     static bool configCMEErrorReports(
         WalterModemCMEErrorReportsType type = WALTER_MODEM_CME_ERROR_REPORTS_NUMERIC,
-        WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL);
 
     /**
      * @brief Configure the CEREG status reports.
@@ -3842,7 +3868,9 @@ public:
      */
     static bool configCEREGReports(
         WalterModemCEREGReportsType type = WALTER_MODEM_CEREG_REPORTS_ENABLED,
-        WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL);
 
     /**
      * @brief Get the current signal quality.
@@ -3869,8 +3897,8 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool getSignalQuality(WalterModemRsp *rsp = NULL, walterModemCb cb = NULL,
-                                 void *args = NULL);
+    static bool getSignalQuality(
+        WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
 
     /**
      * @brief Get information on the serving and neighbouring cells.
@@ -3888,7 +3916,9 @@ public:
      */
     static bool getCellInformation(
         WalterModemSQNMONIReportsType type = WALTER_MODEM_SQNMONI_REPORTS_SERVING_CELL,
-        WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL);
 
     /**
      * @brief Get the identity of the modem (IMEI, IMEISV, SVN).
@@ -3925,10 +3955,14 @@ public:
      * @return True on success, false otherwise.
      */
     static bool tlsConfigProfile(
-        uint8_t profileId, WalterModemTlsValidation tlsValid = WALTER_MODEM_TLS_VALIDATION_NONE,
+        uint8_t profileId,
+        WalterModemTlsValidation tlsValid = WALTER_MODEM_TLS_VALIDATION_NONE,
         WalterModemTlsVersion tlsVersion = WALTER_MODEM_TLS_VERSION_12,
-        uint8_t caCertificateId = 0xff, uint8_t clientCertificateId = 0xff,
-        uint8_t clientPrivKeyId = 0xff, WalterModemRsp *rsp = NULL, walterModemCb cb = NULL,
+        uint8_t caCertificateId = 0xff,
+        uint8_t clientCertificateId = 0xff,
+        uint8_t clientPrivKeyId = 0xff,
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
         void *args = NULL);
 #pragma endregion
 
@@ -3953,8 +3987,11 @@ public:
      *
      * @return True if succeeded, false if not.
      */
-    static bool mqttConfig(const char *clientId = "walter-mqtt-client", const char *userName = "",
-                           const char *password = "", uint8_t tlsProfileId = 0);
+    static bool mqttConfig(
+        const char *clientId = "walter-mqtt-client",
+        const char *userName = "",
+        const char *password = "",
+        uint8_t tlsProfileId = 0);
 
     /**
      * @brief Disconnect an MQTT connection.
@@ -3967,8 +4004,8 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool mqttDisconnect(WalterModemRsp *rsp = NULL, walterModemCb cb = NULL,
-                               void *args = NULL);
+    static bool mqttDisconnect(
+        WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
 
     /**
      * @brief Initialize MQTT and establish connection.
@@ -3985,8 +4022,13 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool mqttConnect(const char *serverName, uint16_t port, uint16_t keepAlive = 60,
-                            WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
+    static bool mqttConnect(
+        const char *serverName,
+        uint16_t port,
+        uint16_t keepAlive = 60,
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL);
 
     /**
      * @brief Publish something through MQTT.
@@ -4004,9 +4046,14 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool mqttPublish(const char *topicString, uint8_t *data, uint16_t dataSize,
-                            uint8_t qos = 1, WalterModemRsp *rsp = NULL, walterModemCb cb = NULL,
-                            void *args = NULL);
+    static bool mqttPublish(
+        const char *topicString,
+        uint8_t *data,
+        uint16_t dataSize,
+        uint8_t qos = 1,
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL);
 
     /**
      * @brief Subscribe to a MQTT topic.
@@ -4022,8 +4069,12 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool mqttSubscribe(const char *topicString, uint8_t qos = 1, WalterModemRsp *rsp = NULL,
-                              walterModemCb cb = NULL, void *args = NULL);
+    static bool mqttSubscribe(
+        const char *topicString,
+        uint8_t qos = 1,
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL);
 
     /**
      * @brief Poll if there were incoming MQTT messages.
@@ -4040,8 +4091,8 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool mqttDidRing(const char *topic, uint8_t *targetBuf, uint16_t targetBufSize,
-                            WalterModemRsp *rsp = NULL);
+    static bool mqttDidRing(
+        const char *topic, uint8_t *targetBuf, uint16_t targetBufSize, WalterModemRsp *rsp = NULL);
 #endif
 #pragma endregion
 
@@ -4069,11 +4120,17 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool httpConfigProfile(uint8_t profileId, const char *serverName, uint16_t port = 80,
-                                  uint8_t tlsProfileId = 0, bool useBasicAuth = false,
-                                  const char *authUser = "", const char *authPass = "",
-                                  WalterModemRsp *rsp = NULL, walterModemCb cb = NULL,
-                                  void *args = NULL);
+    static bool httpConfigProfile(
+        uint8_t profileId,
+        const char *serverName,
+        uint16_t port = 80,
+        uint8_t tlsProfileId = 0,
+        bool useBasicAuth = false,
+        const char *authUser = "",
+        const char *authPass = "",
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL);
 
     /**
      * @brief Establish a HTTP connection.
@@ -4091,8 +4148,8 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool httpConnect(uint8_t profileId, WalterModemRsp *rsp = NULL, walterModemCb cb = NULL,
-                            void *args = NULL);
+    static bool httpConnect(
+        uint8_t profileId, WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
 
     /**
      * @brief Close a HTTP connection
@@ -4107,8 +4164,8 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool httpClose(uint8_t profileId, WalterModemRsp *rsp = NULL, walterModemCb cb = NULL,
-                          void *args = NULL);
+    static bool httpClose(
+        uint8_t profileId, WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
 
     /**
      * @brief Get the status of a HTTP context.
@@ -4138,10 +4195,15 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool httpQuery(uint8_t profileId, const char *uri,
-                          WalterModemHttpQueryCmd httpQueryCmd = WALTER_MODEM_HTTP_QUERY_CMD_GET,
-                          char *contentTypeBuf = NULL, uint16_t contentTypeBufSize = 0,
-                          WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
+    static bool httpQuery(
+        uint8_t profileId,
+        const char *uri,
+        WalterModemHttpQueryCmd httpQueryCmd = WALTER_MODEM_HTTP_QUERY_CMD_GET,
+        char *contentTypeBuf = NULL,
+        uint16_t contentTypeBufSize = 0,
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL);
 
     /**
      * @brief Perform a HTTP POST or PUT request.
@@ -4164,11 +4226,17 @@ public:
      * @return True on success, false otherwise.
      */
     static bool httpSend(
-        uint8_t profileId, const char *uri, uint8_t *data, uint16_t dataSize,
+        uint8_t profileId,
+        const char *uri,
+        uint8_t *data,
+        uint16_t dataSize,
         WalterModemHttpSendCmd httpSendCmd = WALTER_MODEM_HTTP_SEND_CMD_POST,
         WalterModemHttpPostParam httpPostParam = WALTER_MODEM_HTTP_POST_PARAM_UNSPECIFIED,
-        char *contentTypeBuf = NULL, uint16_t contentTypeBufSize = 0, WalterModemRsp *rsp = NULL,
-        walterModemCb cb = NULL, void *args = NULL);
+        char *contentTypeBuf = NULL,
+        uint16_t contentTypeBufSize = 0,
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL);
 
     /**
      * @brief Retrieve the response on an earlier HTTP request.
@@ -4182,8 +4250,8 @@ public:
      *
      * @return True on success, false if no data arrived or error or no data expected.
      */
-    static bool httpDidRing(uint8_t profileId, uint8_t *targetBuf, uint16_t targetBufSize,
-                            WalterModemRsp *rsp = NULL);
+    static bool httpDidRing(
+        uint8_t profileId, uint8_t *targetBuf, uint16_t targetBufSize, WalterModemRsp *rsp = NULL);
 #endif
 #pragma endregion
 
@@ -4205,9 +4273,13 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool blueCherryProvision(const char *walterCertificate, const char *walterPrivateKey,
-                                    const char *caCertificate, WalterModemRsp *rsp = NULL,
-                                    walterModemCb cb = NULL, void *args = NULL);
+    static bool blueCherryProvision(
+        const char *walterCertificate,
+        const char *walterPrivateKey,
+        const char *caCertificate,
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL);
 
     /**
      * @brief Check if Walter is provisioned for BlueCherry IoT connectivity.
@@ -4234,8 +4306,11 @@ public:
      *
      * @return True if succeeded, false on error.
      */
-    static bool blueCherryInit(uint8_t tlsProfileId, uint8_t *otaBuffer = NULL,
-                               WalterModemRsp *rsp = NULL, uint16_t ackTimeout = 60);
+    static bool blueCherryInit(
+        uint8_t tlsProfileId,
+        uint8_t *otaBuffer = NULL,
+        WalterModemRsp *rsp = NULL,
+        uint16_t ackTimeout = 60);
 
     /**
      * @brief Enqueue a MQTT publish message.
@@ -4308,8 +4383,8 @@ public:
      *
      * @return True if succeeded, false on error.
      */
-    static bool blueCherryClose(WalterModemRsp *rsp = NULL, walterModemCb cb = NULL,
-                                void *args = NULL);
+    static bool blueCherryClose(
+        WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
 #endif
 #pragma endregion
 
@@ -4332,10 +4407,15 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool coapCreateContext(uint8_t profileId, const char *serverName, int port,
-                                  uint8_t tlsProfileId = 0, int localPort = -1,
-                                  WalterModemRsp *rsp = NULL, walterModemCb cb = NULL,
-                                  void *args = NULL);
+    static bool coapCreateContext(
+        uint8_t profileId,
+        const char *serverName,
+        int port,
+        uint8_t tlsProfileId = 0,
+        int localPort = -1,
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL);
 
     /**
      * @brief Close a CoAP context.
@@ -4351,8 +4431,8 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool coapClose(uint8_t profileId, WalterModemRsp *rsp = NULL, walterModemCb cb = NULL,
-                          void *args = NULL);
+    static bool coapClose(
+        uint8_t profileId, WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
 
     /**
      * @brief Get the connection status of a CoAP context.
@@ -4380,9 +4460,13 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool coapSetHeader(uint8_t profileId, int messageId = 1, const char *token = "NO_TOKEN",
-                              WalterModemRsp *rsp = NULL, walterModemCb cb = NULL,
-                              void *args = NULL);
+    static bool coapSetHeader(
+        uint8_t profileId,
+        int messageId = 1,
+        const char *token = "NO_TOKEN",
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL);
 
     /**
      * @brief Set the options for the next CoAP message.
@@ -4398,10 +4482,14 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool coapSetOptions(uint8_t profileId, WalterModemCoapOptAction action,
-                               WalterModemCoapOptCode code, const char *const values = NULL,
-                               WalterModemRsp *rsp = NULL, walterModemCb cb = NULL,
-                               void *args = NULL);
+    static bool coapSetOptions(
+        uint8_t profileId,
+        WalterModemCoapOptAction action,
+        WalterModemCoapOptCode code,
+        const char *const values = NULL,
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL);
 
     /**
      * @brief Send a datagram (with header set and options set before)
@@ -4419,10 +4507,15 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool coapSendData(uint8_t profileId, WalterModemCoapSendType type,
-                             WalterModemCoapSendMethodRsp methodRsp, int length, uint8_t *payload,
-                             WalterModemRsp *rsp = NULL, walterModemCb cb = NULL,
-                             void *args = NULL);
+    static bool coapSendData(
+        uint8_t profileId,
+        WalterModemCoapSendType type,
+        WalterModemCoapSendMethodRsp methodRsp,
+        int length,
+        uint8_t *payload,
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL);
 
     /**
      * @brief Fetch incoming CoAP messages, if any.
@@ -4435,8 +4528,8 @@ public:
      * @return True on success, false if no data arrived, if there was an error or if no data
      * is expected (eg no ring received).
      */
-    static bool coapDidRing(uint8_t profileId, uint8_t *targetBuf, uint16_t targetBufSize,
-                            WalterModemRsp *rsp = NULL);
+    static bool coapDidRing(
+        uint8_t profileId, uint8_t *targetBuf, uint16_t targetBufSize, WalterModemRsp *rsp = NULL);
 #endif
 #pragma endregion
 
@@ -4459,9 +4552,15 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool socketConfig(WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL,
-                             int pdpCtxId = 1, uint16_t mtu = 300, uint16_t exchangeTimeout = 90,
-                             uint16_t connTimeout = 60, uint16_t sendDelayMs = 5000);
+    static bool socketConfig(
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL,
+        int pdpCtxId = 1,
+        uint16_t mtu = 300,
+        uint16_t exchangeTimeout = 90,
+        uint16_t connTimeout = 60,
+        uint16_t sendDelayMs = 5000);
 
     /**
      * @brief Configure the socket extended parameters
@@ -4481,11 +4580,15 @@ public:
      * @return True on success, false otherwise.
      */
     static bool socketConfigExtended(
-        WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL, int socketId = -1,
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL,
+        int socketId = -1,
         WalterModemSocketRingMode ringMode = WALTER_MODEM_SOCKET_RING_MODE_DATA_VIEW,
-        WalterModemSocketRecvMode recvMode = WALTER_MODEM_SOCKET_RECV_MODE_TEXT, int keepAlive = 0,
+        WalterModemSocketRecvMode recvMode = WALTER_MODEM_SOCKET_RECV_MODE_TEXT,
+        int keepAlive = 0,
         WalterModemSocketListenMode listenMode = WALTER_MODEM_SOCKET_LISTEN_MODE_DISABLED,
-        WalterModemSocketSendMode sendMode = WALTER_MODEM_SOCKET_SEND_MODE_TEXT);
+        WalterModemsocketSendExtendedMode sendMode = WALTER_MODEM_SOCKET_SEND_MODE_TEXT);
 
     /**
      * @brief Dial a socket after which data can be exchanged.
@@ -4507,8 +4610,12 @@ public:
      * @return True on success, false otherwise.
      */
     static bool socketDial(
-        const char *remoteHost, uint16_t remotePort, uint16_t localPort = 0,
-        WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL,
+        const char *remoteHost,
+        uint16_t remotePort,
+        uint16_t localPort = 0,
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL,
         WalterModemSocketProto protocol = WALTER_MODEM_SOCKET_PROTO_UDP,
         WalterModemSocketAcceptAnyRemote acceptAnyRemote = WALTER_MODEM_ACCEPT_ANY_REMOTE_DISABLED,
         int socketId = -1);
@@ -4526,15 +4633,15 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool socketClose(WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL,
-                            int socketId = -1);
+    static bool socketClose(
+        WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL, int socketId = -1);
 
     /**
      * @brief Send data over a socket.
      *
      * This function will send data over a socket. The data buffer cannot be freed until the
      * send response is received (sync or async). The maximum size of the data buffer is
-     * 1500 bytes.
+     * 16777216 bytes. (16MB)
      *
      * @param data The data to send.
      * @param dataSize The number of bytes to transmit.
@@ -4546,9 +4653,14 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool socketSend(uint8_t *data, uint16_t dataSize, WalterModemRsp *rsp = NULL,
-                           walterModemCb cb = NULL, void *args = NULL,
-                           WalterModemRAI rai = WALTER_MODEM_RAI_NO_INFO, int socketId = -1);
+    static bool socketSendExtended(
+        uint8_t *data,
+        uint16_t dataSize,
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL,
+        WalterModemRAI rai = WALTER_MODEM_RAI_NO_INFO,
+        int socketId = -1);
 
     /**
      * @brief Send a string over a socket.
@@ -4566,9 +4678,13 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool socketSend(char *str, WalterModemRsp *rsp = NULL, walterModemCb cb = NULL,
-                           void *args = NULL, WalterModemRAI rai = WALTER_MODEM_RAI_NO_INFO,
-                           int socketId = -1);
+    static bool socketSendExtended(
+        char *str,
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL,
+        WalterModemRAI rai = WALTER_MODEM_RAI_NO_INFO,
+        int socketId = -1);
 
     /**
      * @brief This function listens for incomming socket connections.
@@ -4581,7 +4697,10 @@ public:
      * @param socketListenPort The port to listen on.
      */
     static bool socketListen(
-        WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL, int socketId = -1,
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL,
+        int socketId = -1,
         WalterModemSocketListenState listenState = WALTER_MODEM_SOCKET_LISTEN_STATE_IPV4,
         int socketListenPort = 0);
 
@@ -4590,11 +4709,12 @@ public:
      *
      * @param socketId
      */
-    static bool socketDidRing(int socketId = -1, );
+    static bool socketDidRing(
+        int socketId = -1, uint8_t targetBUfSize = 0, uint8_t *targetBuf = nullptr);
 
-    /**
-     * @brief Accept an incomming socket connection.
-     */
+        /**
+         * @brief Accept an incomming socket connection.
+         */
 #endif
 #pragma endregion
 
@@ -4621,7 +4741,9 @@ public:
         WalterModemGNSSSensMode sensMode = WALTER_MODEM_GNSS_SENS_MODE_HIGH,
         WalterModemGNSSAcqMode acqMode = WALTER_MODEM_GNSS_ACQ_MODE_COLD_WARM_START,
         WalterModemGNSSLocMode locMode = WALTER_MODEM_GNSS_LOC_MODE_ON_DEVICE_LOCATION,
-        WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL);
 
     /**
      * @brief Get the current GNSS assistance data status.
@@ -4635,8 +4757,8 @@ public:
      *
      * @return True on success, false on error.
      */
-    static bool getGNSSAssistanceStatus(WalterModemRsp *rsp = NULL, walterModemCb cb = NULL,
-                                        void *args = NULL);
+    static bool getGNSSAssistanceStatus(
+        WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
 
     /**
      * @brief Update the GNSS assistance data.
@@ -4654,7 +4776,9 @@ public:
      */
     static bool updateGNSSAssistance(
         WalterModemGNSSAssistanceType type = WALTER_MODEM_GNSS_ASSISTANCE_TYPE_REALTIME_EPHEMERIS,
-        WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL);
 
     /**
      * @brief Perform a GNSS action.
@@ -4670,7 +4794,9 @@ public:
      */
     static bool performGNSSAction(
         WalterModemGNSSAction action = WALTER_MODEM_GNSS_ACTION_GET_SINGLE_FIX,
-        WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL);
 #endif
 #pragma endregion
 #pragma endregion
@@ -4711,8 +4837,11 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool setOpState(WalterModemOpState opState, WalterModemRsp *rsp = NULL,
-                           walterModemCb cb = NULL, void *args = NULL);
+    static bool setOpState(
+        WalterModemOpState opState,
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL);
 #pragma endregion
 
 #pragma region RADIO
@@ -4741,8 +4870,8 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool setRAT(WalterModemRAT rat, WalterModemRsp *rsp = NULL, walterModemCb cb = NULL,
-                       void *args = NULL);
+    static bool setRAT(
+        WalterModemRAT rat, WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
 
     /**
      * @brief Get the radio bands that the modem is configured to use.
@@ -4755,8 +4884,8 @@ public:
      *
      * @return True on success, false on error.
      */
-    static bool getRadioBands(WalterModemRsp *rsp = NULL, walterModemCb cb = NULL,
-                              void *args = NULL);
+    static bool getRadioBands(
+        WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
 
     /**
      * @brief Set the radio bands the modem will use.
@@ -4771,8 +4900,12 @@ public:
      *
      * @return True on success, false on error.
      */
-    static bool setRadioBands(WalterModemRAT rat, uint32_t bands, WalterModemRsp *rsp = NULL,
-                              walterModemCb cb = NULL, void *args = NULL);
+    static bool setRadioBands(
+        WalterModemRAT rat,
+        uint32_t bands,
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL);
 #pragma endregion
 
 #pragma region SIM_MANAGEMENT
@@ -4803,8 +4936,8 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool getSIMCardID(WalterModemRsp *rsp = NULL, walterModemCb cb = NULL,
-                             void *args = NULL);
+    static bool getSIMCardID(
+        WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
 
     /**
      * @brief Get the IMSI on the SIM card.
@@ -4820,8 +4953,8 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool getSIMCardIMSI(WalterModemRsp *rsp = NULL, walterModemCb cb = NULL,
-                               void *args = NULL);
+    static bool getSIMCardIMSI(
+        WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
 
     /**
      * @brief Set the SIM card's PIN code.
@@ -4836,8 +4969,11 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool unlockSIM(WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL,
-                          const char *pin = NULL);
+    static bool unlockSIM(
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL,
+        const char *pin = NULL);
 #pragma endregion
 
     /**
@@ -4859,7 +4995,9 @@ public:
         WalterModemNetworkSelMode mode = WALTER_MODEM_NETWORK_SEL_MODE_AUTOMATIC,
         const char *operatorName = NULL,
         WalterModemOperatorFormat format = WALTER_MODEM_OPERATOR_FORMAT_LONG_ALPHANUMERIC,
-        WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL);
 
 #pragma region POWER_SAVING
     /**
@@ -4879,9 +5017,13 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool configPSM(WalterModemPSMMode mode = WALTER_MODEM_PSM_DISABLE,
-                          const char *reqTAU = NULL, const char *reqActive = NULL,
-                          WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
+    static bool configPSM(
+        WalterModemPSMMode mode = WALTER_MODEM_PSM_DISABLE,
+        const char *reqTAU = NULL,
+        const char *reqActive = NULL,
+        F WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL);
 
     /**
      * @brief Configure extended DRX Setting.
@@ -4898,9 +5040,13 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool configEDRX(WalterModemEDRXMode mode = WALTER_MODEM_EDRX_DISABLE,
-                           const char *reqEDRXVal = NULL, const char *reqPtw = NULL,
-                           WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
+    static bool configEDRX(
+        WalterModemEDRXMode mode = WALTER_MODEM_EDRX_DISABLE,
+        const char *reqEDRXVal = NULL,
+        const char *reqPtw = NULL,
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL);
 
     /**
      * @brief Encode a TAU duration for use in PSM configuration.
@@ -4918,8 +5064,11 @@ public:
      *
      * @return The interval encoded into the 3GPP standard format.
      */
-    static uint8_t durationToTAU(uint32_t seconds = 0, uint32_t minutes = 0, uint32_t hours = 0,
-                                 uint32_t *actual_duration_seconds = nullptr);
+    static uint8_t durationToTAU(
+        uint32_t seconds = 0,
+        uint32_t minutes = 0,
+        uint32_t hours = 0,
+        uint32_t *actual_duration_seconds = nullptr);
 
     /**
      * @brief Converts a given duration of seconds, minutes to a reqActive approximation
@@ -4936,8 +5085,8 @@ public:
      *
      * @return The duration encoded into the 3GPP standard format.
      */
-    static uint8_t durationToActiveTime(uint32_t seconds = 0, uint32_t minutes = 0,
-                                        uint32_t *actual_duration_seconds = nullptr);
+    static uint8_t durationToActiveTime(
+        uint32_t seconds = 0, uint32_t minutes = 0, uint32_t *actual_duration_seconds = nullptr);
 #pragma endregion
 
 #pragma region PDP_CONTEXT
@@ -4970,16 +5119,23 @@ public:
      * @return True on success, false otherwise.
      */
     static bool definePDPContext(
-        const uint8_t ctxId = 1, const char *apn = NULL, WalterModemRsp *rsp = NULL,
-        walterModemCb cb = NULL, void *args = NULL,
-        WalterModemPDPType type = WALTER_MODEM_PDP_TYPE_IP, const char *pdpAddress = NULL,
+        const uint8_t ctxId = 1,
+        const char *apn = NULL,
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL,
+        WalterModemPDPType type = WALTER_MODEM_PDP_TYPE_IP,
+        const char *pdpAddress = NULL,
         WalterModemPDPHeaderCompression headerComp = WALTER_MODEM_PDP_HCOMP_OFF,
         WalterModemPDPDataCompression dataComp = WALTER_MODEM_PDP_DCOMP_OFF,
         WalterModemPDPIPv4AddrAllocMethod ipv4AllocMethod = WALTER_MODEM_PDP_IPV4_ALLOC_NAS,
         WalterModemPDPRequestType requestType = WALTER_MODEM_PDP_REQUEST_NEW_OR_HANDOVER,
         WalterModemPDPPCSCFDiscoveryMethod pcscfMethod = WALTER_MODEM_PDP_PCSCF_AUTO,
-        bool forIMCN = false, bool useNSLPI = false, bool useSecurePCO = false,
-        bool useNASIPv4MTUDiscovery = false, bool useLocalAddrInd = false,
+        bool forIMCN = false,
+        bool useNSLPI = false,
+        bool useSecurePCO = false,
+        bool useNASIPv4MTUDiscovery = false,
+        bool useLocalAddrInd = false,
         bool useNASNonIPMTUDiscovery = false);
 
     /**
@@ -4998,8 +5154,12 @@ public:
      */
     static bool setPDPAuthParams(
         WalterModemPDPAuthProtocol authProto = WALTER_MODEM_PDP_AUTH_PROTO_NONE,
-        const char *authUser = NULL, const char *authPass = NULL, int pdpCtxId = -1,
-        WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
+        const char *authUser = NULL,
+        const char *authPass = NULL,
+        int pdpCtxId = -1,
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL);
 
     /**
      * @brief Activate or deactivate a PDP context.
@@ -5015,9 +5175,12 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool setPDPContextActive(bool active = true, int pdpCtxId = -1,
-                                    WalterModemRsp *rsp = NULL, walterModemCb cb = NULL,
-                                    void *args = NULL);
+    static bool setPDPContextActive(
+        bool active = true,
+        int pdpCtxId = -1,
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL);
 
     /**
      * @brief Attach the defined PDP contexts.
@@ -5031,8 +5194,8 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool setNetworkAttachmentState(bool attach = true, WalterModemRsp *rsp = NULL,
-                                          walterModemCb cb = NULL, void *args = NULL);
+    static bool setNetworkAttachmentState(
+        bool attach = true, WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
 
     /**
      * @brief Get a list of PDP addresses of a PDP context.
@@ -5046,8 +5209,8 @@ public:
      *
      * @return True on success, false otherwise.
      */
-    static bool getPDPAddress(WalterModemRsp *rsp = NULL, walterModemCb cb = NULL,
-                              void *args = NULL, int pdpCtxId = -1);
+    static bool getPDPAddress(
+        WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL, int pdpCtxId = -1);
 #pragma endregion
 
     /**
@@ -5095,8 +5258,8 @@ public:
      *
      * @return None.
      */
-    static void setRegistrationEventHandler(walterModemRegistrationEventHandler handler = nullptr,
-                                            void *args = nullptr);
+    static void setRegistrationEventHandler(
+        walterModemRegistrationEventHandler handler = nullptr, void *args = nullptr);
 
     /**
      * @brief Set the system event handler.
@@ -5110,8 +5273,8 @@ public:
      *
      * @return None.
      */
-    static void setSystemEventHandler(walterModemSystemEventHandler handler = nullptr,
-                                      void *args = nullptr);
+    static void setSystemEventHandler(
+        walterModemSystemEventHandler handler = nullptr, void *args = nullptr);
 
     /**
      * @brief Set the AT event handler.
@@ -5125,8 +5288,8 @@ public:
      *
      * @return None.
      */
-    static void setATEventHandler(walterModemATEventHandler handler = nullptr,
-                                  void *args = nullptr);
+    static void setATEventHandler(
+        walterModemATEventHandler handler = nullptr, void *args = nullptr);
 
 #if CONFIG_WALTER_MODEM_ENABLE_GNSS
     /**
@@ -5176,6 +5339,17 @@ public:
      * the CoAP event handler, this function must be called with a nullptr as the handler.
      */
     static void setCoAPEventHandler(walterModemCoAPEventHandler handler, void *args = NULL);
+#endif
+
+#if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+    /**
+     * @brief Set the Socket event handler.
+     *
+     * This function sets the handler that is called when an Socket event is launched by the modem
+     * When this function is called multiple times, only the last handler will be set. To remove
+     * the Socket event handler, this function must be called with a nullptr as the handler.
+     */
+    static void setSocketEventHandler(walterModemSocketEventHandler handler, void *args = NULL);
 #endif
 #pragma endregion
 
