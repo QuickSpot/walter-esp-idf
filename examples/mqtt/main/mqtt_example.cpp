@@ -47,16 +47,17 @@
  * messages.
  */
 
-#include <esp_mac.h>
-#include <esp_log.h>
-#include <driver/uart.h>
-#include <cstring>
 #include "WalterModem.h"
+
+#include <cstring>
+#include <driver/uart.h>
+#include <esp_log.h>
+#include <esp_mac.h>
 
 /**
  * @brief Cellular APN for SIM card. Leave empty to autodetect APN.
  */
-CONFIG(CELLULAR_APN, const char*, "")
+CONFIG(CELLULAR_APN, const char *, "")
 
 /**
  * @brief Time delay in ms of data sent to the Walter demo server.
@@ -81,123 +82,132 @@ WalterModem modem;
 /**
  * @brief Incoming data buffer.
  */
-uint8_t incomingBuf[256] = { 0 };
+uint8_t incomingBuf[256] = {0};
 
 /**
  * @brief String which holds the MAC address of the Walter.
  */
 char macString[32];
 
-void waitForNetwork()
+bool lteConnect()
 {
-  /* Wait for the network to become available */
-  WalterModemNetworkRegState regState = modem.getNetworkRegState();
-  while(!(regState == WALTER_MODEM_NETWORK_REG_REGISTERED_HOME ||
-          regState == WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING))
-  {
-    vTaskDelay(pdMS_TO_TICKS(100));
-    regState = modem.getNetworkRegState();
-  }
-  ESP_LOGI(TAG, "Connected to the network");
+    WalterModemRsp rsp = {};
+
+    if (modem.setOpState(WALTER_MODEM_OPSTATE_NO_RF)) {
+        ESP_LOGI(TAG, "Successfully set operational state to NO RF");
+    } else {
+        ESP_LOGI(TAG, "Could not set operational state to NO RF");
+        return false;
+    }
+
+    /* Create PDP context */
+    if (modem.definePDPContext(1, CELLULAR_APN)) {
+        ESP_LOGI(TAG, "Created PDP context");
+    } else {
+        ESP_LOGI(TAG, "Could not create PDP context");
+        return false;
+    }
+
+    /* Set the operational state to full */
+    if (modem.setOpState(WALTER_MODEM_OPSTATE_FULL)) {
+        ESP_LOGI(TAG, "Successfully set operational state to FULL");
+    } else {
+        ESP_LOGI(TAG, "Could not set operational state to FULL");
+        return false;
+    }
+
+    /* Set the network operator selection to automatic */
+    if (modem.setNetworkSelectionMode(WALTER_MODEM_NETWORK_SEL_MODE_AUTOMATIC)) {
+        ESP_LOGI(TAG, "Network selection mode to was set to automatic");
+    } else {
+        ESP_LOGI(TAG, "Could not set the network selection mode to automatic");
+        return false;
+    }
+
+    return waitForNetwork();
 }
 
 extern "C" void app_main(void)
 {
-  ESP_LOGI(TAG, "Walter modem mqtt example v1.0.0");
+    ESP_LOGI(TAG, "Walter modem mqtt example v1.0.0");
 
-  /* Get the MAC address for board validation */
-  esp_read_mac(incomingBuf, ESP_MAC_WIFI_STA);
-  sprintf(macString, "walter%02X:%02X:%02X:%02X:%02X:%02X",
-    incomingBuf[0],
-    incomingBuf[1],
-    incomingBuf[2],
-    incomingBuf[3],
-    incomingBuf[4],
-    incomingBuf[5]);
+    /* Get the MAC address for board validation */
+    esp_read_mac(incomingBuf, ESP_MAC_WIFI_STA);
+    sprintf(
+        macString,
+        "walter%02X:%02X:%02X:%02X:%02X:%02X",
+        incomingBuf[0],
+        incomingBuf[1],
+        incomingBuf[2],
+        incomingBuf[3],
+        incomingBuf[4],
+        incomingBuf[5]);
 
-  /* Initialize the modem */
-  if(WalterModem::begin(UART_NUM_1)) {
-    ESP_LOGI(TAG, "Successfully initialized modem");
-  } else {
-    ESP_LOGE(TAG, "Could not initialize modem");
-    return;
-  }
-  
-  WalterModemRsp rsp = {};
+    /* Initialize the modem */
+    if (WalterModem::begin(UART_NUM_1)) {
+        ESP_LOGI(TAG, "Successfully initialized modem");
+    } else {
+        ESP_LOGE(TAG, "Could not initialize modem");
+        return;
+    }
 
-  /* Define PDP context */
-  if(modem.definePDPContext(1, CELLULAR_APN)) {
-    ESP_LOGI(TAG, "Successfully defined PDP context");
-  } else {
-    ESP_LOGE(TAG, "Could not define PDP context");
-    return;
-  }
-
-  /* Set the operational state to full */
-  if(modem.setOpState(WALTER_MODEM_OPSTATE_FULL)) {
-    ESP_LOGI(TAG, "Successfully set operational state to FULL");
-  } else {
-    ESP_LOGE(TAG, "Could not set operational state to FULL");
-    return;
-  }
-  /* Set the network operator selection to automatic */
-  if(modem.setNetworkSelectionMode(WALTER_MODEM_NETWORK_SEL_MODE_AUTOMATIC)) {
-    ESP_LOGI(TAG, "Network selection mode set to automatic");
-  } else {
-    ESP_LOGE(TAG, "Could not set the network selection mode to automatic");
-    return;
-  }
-
-  /* Wait for the network connection to become available */
-  waitForNetwork();
-
-  /* other public mqtt broker with web client: mqtthq.com */
-  if (modem.mqttConfig("walter-mqtt-test-topic", "", "")) {
-    ESP_LOGI(TAG, "MQTT configuration succeeded");
-  } else {
-    ESP_LOGE(TAG, "MQTT configuration failed");
-    return;
-  }
-
-  if (modem.mqttConnect("test.mosquitto.org", 1883)) {
-    ESP_LOGI(TAG, "MQTT connection succeeded");
-  } else {
-    ESP_LOGE(TAG, "MQTT connection failed");
-    return;
-  }
-
-  if (modem.mqttSubscribe("walter-mqtt-test-topic")) {
-    ESP_LOGI(TAG, "MQTT subscribed to topic 'walter-mqtt-test-topic'");
-  } else {
-    ESP_LOGE(TAG, "MQTT subscribe failed");
-    return;
-  }
-
-  for(;;) {
     WalterModemRsp rsp = {};
-  
-    static int seq = 0;
-    static char outgoingMsg[64];
-    seq++;
-    if(seq % 3 == 0) {
-      sprintf(outgoingMsg, "%s-%d", macString, seq);
 
-      if(modem.mqttPublish("waltertopic", (uint8_t *) outgoingMsg, strlen(outgoingMsg),2,&rsp)) {
-        ESP_LOGI(TAG, "published '%s' on topic 'waltertopic'", outgoingMsg);
-      } else {
-        ESP_LOGE(TAG, "MQTT publish failed");
-      }
+    if (!lteConnect()) {
+        ESP_LOGE(TAG, "Could Not Connect to LTE");
+        return;
     }
 
-    while(modem.mqttDidRing("waltertopic", incomingBuf, sizeof(incomingBuf), &rsp)) {
-      ESP_LOGI(TAG, "incoming: qos=%d msgid=%d len=%d:",
-          rsp.data.mqttResponse.qos,
-          rsp.data.mqttResponse.messageId,
-          rsp.data.mqttResponse.length);
-      incomingBuf[rsp.data.mqttResponse.length] = '\0';
-      ESP_LOGI(TAG,"%s",incomingBuf);
+    /* other public mqtt broker with web client: mqtthq.com */
+    if (modem.mqttConfig("walter-mqtt-test-topic", "", "")) {
+        ESP_LOGI(TAG, "MQTT configuration succeeded");
+    } else {
+        ESP_LOGE(TAG, "MQTT configuration failed");
+        return;
     }
 
-    vTaskDelay(pdMS_TO_TICKS(SEND_DELAY_MS));
-  }
+    if (modem.mqttConnect("test.mosquitto.org", 1883)) {
+        ESP_LOGI(TAG, "MQTT connection succeeded");
+    } else {
+        ESP_LOGE(TAG, "MQTT connection failed");
+        return;
+    }
+
+    if (modem.mqttSubscribe("walter-mqtt-test-topic")) {
+        ESP_LOGI(TAG, "MQTT subscribed to topic 'walter-mqtt-test-topic'");
+    } else {
+        ESP_LOGE(TAG, "MQTT subscribe failed");
+        return;
+    }
+
+    for (;;) {
+        WalterModemRsp rsp = {};
+
+        static int seq = 0;
+        static char outgoingMsg[64];
+        seq++;
+        if (seq % 3 == 0) {
+            sprintf(outgoingMsg, "%s-%d", macString, seq);
+
+            if (modem.mqttPublish(
+                    "waltertopic", (uint8_t *)outgoingMsg, strlen(outgoingMsg), 2, &rsp)) {
+                ESP_LOGI(TAG, "published '%s' on topic 'waltertopic'", outgoingMsg);
+            } else {
+                ESP_LOGE(TAG, "MQTT publish failed");
+            }
+        }
+
+        while (modem.mqttDidRing("waltertopic", incomingBuf, sizeof(incomingBuf), &rsp)) {
+            ESP_LOGI(
+                TAG,
+                "incoming: qos=%d msgid=%d len=%d:",
+                rsp.data.mqttResponse.qos,
+                rsp.data.mqttResponse.messageId,
+                rsp.data.mqttResponse.length);
+            incomingBuf[rsp.data.mqttResponse.length] = '\0';
+            ESP_LOGI(TAG, "%s", incomingBuf);
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(SEND_DELAY_MS));
+    }
 }

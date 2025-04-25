@@ -249,15 +249,11 @@ void init()
     return;
   }
 
-  if (modem.checkComm()) {
-    ESP_LOGI(TAG, "Modem communication is ok");
-  } else {
-    ESP_LOGE(TAG, "Modem communication error");
-    return;
+  if (!lteConnect()) {
+      ESP_LOGE(TAG, "Could Not Connect to LTE");
+      return;
   }
-
-  lteConnect();
-
+  
   WalterModemRsp rsp = {};
   unsigned short attempt = 0;
   while (!modem.blueCherryInit(BC_TLS_PROFILE, otaBuffer, &rsp))

@@ -99,21 +99,46 @@ uint8_t incomingBuf[256] = {0};
  */
 uint16_t counter = 0;
 
-void waitForNetwork()
+bool lteConnect()
 {
-    /* Wait for the network to become available */
+    WalterModemRsp rsp = {};
 
-    WalterModemNetworkRegState regState = modem.getNetworkRegState();
-    while (!(regState == WALTER_MODEM_NETWORK_REG_REGISTERED_HOME ||
-             regState == WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING))
-    {
-        vTaskDelay(pdMS_TO_TICKS(100));
-        regState = modem.getNetworkRegState();
+    if (modem.setOpState(WALTER_MODEM_OPSTATE_NO_RF)) {
+        ESP_LOGI(TAG, "Successfully set operational state to NO RF");
+    } else {
+        ESP_LOGI(TAG, "Could not set operational state to NO RF");
+        return false;
     }
-    ESP_LOGI(TAG, "Connected to the network");
+
+    /* Give the modem time to detect the SIM */
+    vTaskDelay(pdMS_TO_TICKS(2000));
+
+    /* Create PDP context */
+    if (modem.definePDPContext(1, CELLULAR_APN)) {
+        ESP_LOGI(TAG, "Created PDP context");
+    } else {
+        ESP_LOGI(TAG, "Could not create PDP context");
+        return false;
+    }
+
+    /* Set the operational state to full */
+    if (modem.setOpState(WALTER_MODEM_OPSTATE_FULL)) {
+        ESP_LOGI(TAG, "Successfully set operational state to FULL");
+    } else {
+        ESP_LOGI(TAG, "Could not set operational state to FULL");
+        return false;
+    }
+
+    /* Set the network operator selection to automatic */
+    if (modem.setNetworkSelectionMode(WALTER_MODEM_NETWORK_SEL_MODE_AUTOMATIC)) {
+        ESP_LOGI(TAG, "Network selection mode to was set to automatic");
+    } else {
+        ESP_LOGI(TAG, "Could not set the network selection mode to automatic");
+        return false;
+    }
+
+    return waitForNetwork();
 }
-
-
 
 extern "C" void app_main(void)
 {
@@ -137,31 +162,10 @@ extern "C" void app_main(void)
     
     WalterModemRsp rsp = {};
 
-    /* Define PDP context */
-    if(modem.definePDPContext(1, CELLULAR_APN)) {
-        ESP_LOGI(TAG, "Successfully defined PDP context");
-    } else {
-        ESP_LOGE(TAG, "Could not define PDP context");
+    if(!lteConnect()) {
+        ESP_LOGE(TAG,"Could Not Connect to LTE");
         return;
     }
-
-    /* Set the operational state to full */
-    if(modem.setOpState(WALTER_MODEM_OPSTATE_FULL)) {
-        ESP_LOGI(TAG, "Successfully set operational state to FULL");
-    } else {
-        ESP_LOGE(TAG, "Could not set operational state to FULL");
-        return;
-    }
-    /* Set the network operator selection to automatic */
-    if(modem.setNetworkSelectionMode(WALTER_MODEM_NETWORK_SEL_MODE_AUTOMATIC)) {
-        ESP_LOGI(TAG, "Network selection mode set to automatic");
-    } else {
-        ESP_LOGE(TAG, "Could not set the network selection mode to automatic");
-        return;
-    }
-
-    /* Wait for the network connection to become available */
-    waitForNetwork();
 
     if (!modem.httpConfigProfile(MODEM_HTTP_PROFILE, "example.com", 80)) {
         ESP_LOGE(TAG,"Could not configure the http profile");
