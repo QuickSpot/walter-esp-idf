@@ -61,53 +61,34 @@ void WalterModem::_dispatchEvent(const WalterModemGNSSFix *fix)
 #pragma endregion
 
 #pragma region PUBLIC_METHODS
-bool WalterModem::configGNSS(
-    WalterModemGNSSSensMode sensMode,
-    WalterModemGNSSAcqMode acqMode,
-    WalterModemGNSSLocMode locMode,
-    WalterModemRsp *rsp,
-    walterModemCb cb,
-    void *args)
+bool WalterModem::configGNSS(WalterModemGNSSSensMode sensMode, WalterModemGNSSAcqMode acqMode,
+                             WalterModemGNSSLocMode locMode, WalterModemRsp *rsp, walterModemCb cb,
+                             void *args)
 {
-    _runCmd(arr(
-                "AT+LPGNSSCFG=",
-                _digitStr(locMode), ",",
-                _digitStr(sensMode),
-                ",2,,1,",
+    _runCmd(arr("AT+LPGNSSCFG=", _digitStr(locMode), ",", _digitStr(sensMode), ",2,,1,",
                 _digitStr(acqMode)),
             "OK", rsp, cb, args);
     _returnAfterReply();
 }
 
-bool WalterModem::getGNSSAssistanceStatus(
-    WalterModemRsp *rsp,
-    walterModemCb cb,
-    void *args)
+bool WalterModem::getGNSSAssistanceStatus(WalterModemRsp *rsp, walterModemCb cb, void *args)
 {
     _runCmd(arr("AT+LPGNSSASSISTANCE?"), "OK", rsp, cb, args);
     _returnAfterReply();
 }
 
-bool WalterModem::updateGNSSAssistance(
-    WalterModemGNSSAssistanceType type,
-    WalterModemRsp *rsp,
-    walterModemCb cb,
-    void *args)
+bool WalterModem::updateGNSSAssistance(WalterModemGNSSAssistanceType type, WalterModemRsp *rsp,
+                                       walterModemCb cb, void *args)
 {
     _runCmd(arr("AT+LPGNSSASSISTANCE=", _digitStr(type)), "+LPGNSSASSISTANCE:", rsp, cb, args);
     _returnAfterReply();
 }
 
-bool WalterModem::performGNSSAction(
-    WalterModemGNSSAction action,
-    WalterModemRsp *rsp,
-    walterModemCb cb,
-    void *args)
+bool WalterModem::performGNSSAction(WalterModemGNSSAction action, WalterModemRsp *rsp,
+                                    walterModemCb cb, void *args)
 {
-    auto gnssActionStr = [](WalterModemGNSSAction action)
-    {
-        switch (action)
-        {
+    auto gnssActionStr = [](WalterModemGNSSAction action) {
+        switch (action) {
         case WALTER_MODEM_GNSS_ACTION_GET_SINGLE_FIX:
             return "single";
 
