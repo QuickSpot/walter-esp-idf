@@ -343,6 +343,7 @@ bool WalterModem::socketListen(
             NULL,
             NULL,
             WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT);
+        _returnAfterReply();
     } else {
         _runCmd(
             arr("AT+SQNSLUDP=",
@@ -358,13 +359,16 @@ bool WalterModem::socketListen(
             NULL,
             NULL,
             WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT);
+        _returnAfterReply();
     }
-
-    _returnAfterReply();
 }
 
 bool WalterModem::socketDidRing(int socketId, uint8_t targetBufSize, uint8_t *targetBuf)
 {
+    WalterModemRsp *rsp = NULL;
+    walterModemCb cb = NULL;
+    void *args = NULL;
+
     WalterModemSocket *sock = _socketGet(socketId);
     if (sock == NULL) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_SOCKET);
@@ -383,6 +387,13 @@ bool WalterModem::socketDidRing(int socketId, uint8_t targetBufSize, uint8_t *ta
 bool WalterModem::socketReceive(
     uint16_t targetBufSize, uint8_t *targetBuf, int socketId, WalterModemRsp *rsp)
 {
+    /* this is by definition a blocking call without callback.
+     * it is only used when the arduino user is not taking advantage of
+     * the (TBI) ring notification events.
+     */
+    walterModemCb cb = NULL;
+    void *args = NULL;
+
     WalterModemSocket *sock = _socketGet(socketId);
     if (sock == NULL) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_SOCKET);
