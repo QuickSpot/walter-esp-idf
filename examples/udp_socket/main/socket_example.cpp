@@ -100,8 +100,9 @@ uint8_t dataBuf[8] = {0};
 uint16_t counter = 0;
 
 /**
- * @brief This function tries to connect the modem to the cellular network.
- * @return true if the connection attempt is successful, else false.
+ * @brief This function checks if we are connected to the lte network
+ *
+ * @return True when connected, False otherwise
  */
 bool lteConnected()
 {
@@ -110,6 +111,11 @@ bool lteConnected()
         regState == WALTER_MODEM_NETWORK_REG_REGISTERED_HOME ||
         regState == WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING);
 }
+
+/**
+ * @brief This function waits for the modem to be connected to the Lte network.
+ * @return true if the connected, else false on timeout.
+ */
 bool waitForNetwork()
 {
     /* Wait for the network to become available */
@@ -124,10 +130,12 @@ bool waitForNetwork()
     return true;
 }
 
+/**
+ * @brief This function tries to connect the modem to the cellular network.
+ * @return true if the connection attempt is successful, else false.
+ */
 bool lteConnect()
 {
-    WalterModemRsp rsp = {};
-
     if (modem.setOpState(WALTER_MODEM_OPSTATE_NO_RF)) {
         ESP_LOGI(TAG, "Successfully set operational state to NO RF");
     } else {
@@ -185,6 +193,7 @@ extern "C" void app_main(void)
         return;
     }
 
+    /* Connect the modem to the lte network */
     if (!lteConnect()) {
         ESP_LOGE(TAG, "Could Not Connect to LTE");
         return;

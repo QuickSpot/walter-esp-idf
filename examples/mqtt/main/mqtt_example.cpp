@@ -89,10 +89,43 @@ uint8_t incomingBuf[256] = {0};
  */
 char macString[32];
 
+/**
+ * @brief This function checks if we are connected to the lte network
+ * 
+ * @return True when connected, False otherwise
+ */
+bool lteConnected()
+{
+    WalterModemNetworkRegState regState = modem.getNetworkRegState();
+    return (
+        regState == WALTER_MODEM_NETWORK_REG_REGISTERED_HOME ||
+        regState == WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING);
+}
+
+/**
+ * @brief This function waits for the modem to be connected to the Lte network.
+ * @return true if the connected, else false on timeout.
+ */
+bool waitForNetwork()
+{
+    /* Wait for the network to become available */
+    int timeout = 0;
+    while (!lteConnected()) {
+        vTaskDelay(pdMS_TO_TICKS(100));
+        timeout += 100;
+        if (timeout > 300000)
+            return false;
+    }
+    ESP_LOGI(TAG, "Connected to the network");
+    return true;
+}
+
+/**
+ * @brief This function tries to connect the modem to the cellular network.
+ * @return true if the connection attempt is successful, else false.
+ */
 bool lteConnect()
 {
-    WalterModemRsp rsp = {};
-
     if (modem.setOpState(WALTER_MODEM_OPSTATE_NO_RF)) {
         ESP_LOGI(TAG, "Successfully set operational state to NO RF");
     } else {
@@ -150,22 +183,23 @@ extern "C" void app_main(void)
         ESP_LOGE(TAG, "Could not initialize modem");
         return;
     }
-
-    WalterModemRsp rsp = {};
-
+    
+    /* Connect the modem to the lte network */
     if (!lteConnect()) {
         ESP_LOGE(TAG, "Could Not Connect to LTE");
         return;
     }
 
-    /* other public mqtt broker with web client: mqtthq.com */
-    if (modem.mqttConfig("walter-mqtt-test-topic", "", "")) {
+    /* other public mqtt broker with web client: mqtthq.comm */
+    /* Configure the mqtt client */
+    if (modem.mqttConfig("walter-mqtt-test-topic")) {
         ESP_LOGI(TAG, "MQTT configuration succeeded");
     } else {
         ESP_LOGE(TAG, "MQTT configuration failed");
         return;
     }
 
+    /* Connect the client to the broker */
     if (modem.mqttConnect("test.mosquitto.org", 1883)) {
         ESP_LOGI(TAG, "MQTT connection succeeded");
     } else {
@@ -173,6 +207,7 @@ extern "C" void app_main(void)
         return;
     }
 
+    /* Subscribe to the MQTT test topic */
     if (modem.mqttSubscribe("walter-mqtt-test-topic")) {
         ESP_LOGI(TAG, "MQTT subscribed to topic 'walter-mqtt-test-topic'");
     } else {
@@ -190,14 +225,20 @@ extern "C" void app_main(void)
             sprintf(outgoingMsg, "%s-%d", macString, seq);
 
             if (modem.mqttPublish(
-                    "waltertopic", (uint8_t *)outgoingMsg, strlen(outgoingMsg), 2, &rsp)) {
-                ESP_LOGI(TAG, "published '%s' on topic 'waltertopic'", outgoingMsg);
+                    "walter-mqtt-test-topic",
+                    (uint8_t *)outgoingMsg,
+                    strlen(outgoingMsg),
+                    2,
+                    &rsp)) {
+                ESP_LOGI(TAG, "published '%s' on topic 'walter-mqtt-test-topic'", outgoingMsg);
             } else {
                 ESP_LOGE(TAG, "MQTT publish failed");
             }
         }
 
-        while (modem.mqttDidRing("waltertopic", incomingBuf, sizeof(incomingBuf), &rsp)) {
+        /* Read incomming MQTT messages */
+        while (
+            modem.mqttDidRing("walter-mqtt-test-topic", incomingBuf, sizeof(incomingBuf), &rsp)) {
             ESP_LOGI(
                 TAG,
                 "incoming: qos=%d msgid=%d len=%d:",
