@@ -315,7 +315,7 @@ bool WalterModem::socketSend(
     return socketSend((uint8_t *)str, strlen(str), rsp, cb, args, rai, socketId);
 }
 
-bool socketAccept(WalterModemRsp *rsp, walterModemCb cb, void *args, int socketId, bool commandMode)
+bool WalterModem::socketAccept(WalterModemRsp *rsp, walterModemCb cb, void *args, int socketId, bool commandMode)
 {
     WalterModemSocket *sock = _socketGet(socketId);
     if (sock == NULL) {
