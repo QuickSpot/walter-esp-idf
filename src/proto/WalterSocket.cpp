@@ -315,6 +315,25 @@ bool WalterModem::socketSend(
     return socketSend((uint8_t *)str, strlen(str), rsp, cb, args, rai, socketId);
 }
 
+bool socketAccept(WalterModemRsp *rsp, walterModemCb cb, void *args, int socketId, bool commandMode)
+{
+    WalterModemSocket *sock = _socketGet(socketId);
+    if (sock == NULL) {
+        _returnState(WALTER_MODEM_STATE_NO_SUCH_SOCKET);
+    }
+
+    _runCmd(
+        arr("AT+SQNSA=", _digitStr(sock->id), ",", _digitStr(commandMode)),
+        "OK",
+        rsp,
+        cb,
+        args,
+        NULL,
+        NULL,
+        WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT);
+    _returnAfterReply();
+}
+
 bool WalterModem::socketListen(
     WalterModemRsp *rsp,
     walterModemCb cb,

@@ -4692,6 +4692,25 @@ public:
         int socketId = -1);
 
     /**
+     * @brief accepts an incomming socket connetion.
+     *
+     * This function will accept an incomming connection after a ring event has been received.
+     *
+     * @param rsp Optional modem response structure to save the result in.
+     * @param cb Optional callback function, if set this function will not block.
+     * @param args Optional argument to pass to the callback.
+     * @param socketId The id of the socket to close or -1 to re-use the last one.
+     * 
+     * @warning This function must be preceded by a call to socketListen.
+     */
+    static bool socketAccept(
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL,
+        int socketId = -1,
+        bool commandMode = false);
+
+    /**
      * @brief This function listens for incomming socket connections.
      *
      * @param rsp Optional modem response structure to save the result in.
@@ -4743,30 +4762,30 @@ public:
 
 #pragma region GNSS
 #if CONFIG_WALTER_MODEM_ENABLE_GNSS
-        /**
-         * @brief Configure Walter's GNSS receiver.
-         *
-         * This function will configure the GNSS receiver. The settings are persistent over reboots
-         * but it could be that they need to be set again after a modem firmware upgrade. Inbetween
-         * fixes this function could be used to change the sensitivity mode. It is recommended to
-         * run this function at least once before GNSS is used.
-         *
-         * @param sensMode The sensitivity mode.
-         * @param acqMode The acquisition mode.
-         * @param locMode The GNSS location mode.
-         * @param rsp Optional modem response structure to save the result in.
-         * @param cb Optional callback function, if set this function will not block.
-         * @param args Optional argument to pass to the callback.
-         *
-         * @return True on success, false on error.
-         */
-        static bool configGNSS(
-            WalterModemGNSSSensMode sensMode = WALTER_MODEM_GNSS_SENS_MODE_HIGH,
-            WalterModemGNSSAcqMode acqMode = WALTER_MODEM_GNSS_ACQ_MODE_COLD_WARM_START,
-            WalterModemGNSSLocMode locMode = WALTER_MODEM_GNSS_LOC_MODE_ON_DEVICE_LOCATION,
-            WalterModemRsp *rsp = NULL,
-            walterModemCb cb = NULL,
-            void *args = NULL);
+    /**
+     * @brief Configure Walter's GNSS receiver.
+     *
+     * This function will configure the GNSS receiver. The settings are persistent over reboots
+     * but it could be that they need to be set again after a modem firmware upgrade. Inbetween
+     * fixes this function could be used to change the sensitivity mode. It is recommended to
+     * run this function at least once before GNSS is used.
+     *
+     * @param sensMode The sensitivity mode.
+     * @param acqMode The acquisition mode.
+     * @param locMode The GNSS location mode.
+     * @param rsp Optional modem response structure to save the result in.
+     * @param cb Optional callback function, if set this function will not block.
+     * @param args Optional argument to pass to the callback.
+     *
+     * @return True on success, false on error.
+     */
+    static bool configGNSS(
+        WalterModemGNSSSensMode sensMode = WALTER_MODEM_GNSS_SENS_MODE_HIGH,
+        WalterModemGNSSAcqMode acqMode = WALTER_MODEM_GNSS_ACQ_MODE_COLD_WARM_START,
+        WalterModemGNSSLocMode locMode = WALTER_MODEM_GNSS_LOC_MODE_ON_DEVICE_LOCATION,
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL);
 
     /**
      * @brief Get the current GNSS assistance data status.
