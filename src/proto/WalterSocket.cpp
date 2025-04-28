@@ -420,13 +420,14 @@ bool WalterModem::socketReceive(
 
     if (targetBufSize > 1500) {
         _returnState(WALTER_MODEM_STATE_NO_MEMORY);
-        ESP_LOGW("WalterModem", "only 1500 bytes can be received at a time!");
     }
 
     _runCmd(
         arr("AT+SQNSRECV=", _digitStr(sock->id), ",", _digitStr(targetBufSize)),
         "ok",
         rsp,
+        NULL,
+        NULL,
         NULL,
         NULL,
         WALTER_MODEM_CMD_TYPE_TX_WAIT,
