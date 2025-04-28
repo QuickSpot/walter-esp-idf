@@ -47,10 +47,9 @@
  * COAP test server.
  */
 
-#include <esp_mac.h>
-#include <esp_log.h>
-
 #include <WalterModem.h>
+#include <esp_log.h>
+#include <esp_mac.h>
 
 /**
  * @brief Cellular APN for SIM card. Leave empty to autodetect APN.
@@ -60,7 +59,7 @@ CONFIG(CELLULAR_APN, const char *, "")
 /**
  * @brief COAP profile used for COAP tests
  */
-CONFIG_UINT8(MODEM_COAP_PROFILE,0)
+CONFIG_UINT8(MODEM_COAP_PROFILE, 0)
 
 /**
  * @brief Time delay in ms of data sent to the coap demo server.
@@ -198,9 +197,9 @@ extern "C" void app_main(void)
         return;
     }
 
-    for(;;) {
+    for (;;) {
         vTaskDelay(pdMS_TO_TICKS(SEND_DELAY_MS));
-        
+
         dataBuf[6] = counter >> 8;
         dataBuf[7] = counter & 0xFF;
 
@@ -208,24 +207,28 @@ extern "C" void app_main(void)
 
         static short receiveAttemptsLeft = 0;
 
-        if(!modem.coapCreateContext(MODEM_COAP_PROFILE, "coap.me", 5683)) {
+        if (!modem.coapCreateContext(MODEM_COAP_PROFILE, "coap.me", 5683)) {
             ESP_LOGE(TAG, "Could not create COAP context. Better luck next iteration?");
             continue;
         } else {
             ESP_LOGI(TAG, "Successfully created or refreshed COAP context");
         }
 
-        if(!receiveAttemptsLeft) {
-            if(modem.coapSetHeader(MODEM_COAP_PROFILE, counter)) {
+        if (!receiveAttemptsLeft) {
+            if (modem.coapSetHeader(MODEM_COAP_PROFILE, counter)) {
                 ESP_LOGI(TAG, "Set COAP header with message id %d", counter);
             } else {
-                ESP_LOGE(TAG,"Could not set COAP header");
+                ESP_LOGE(TAG, "Could not set COAP header");
                 vTaskDelay(pdMS_TO_TICKS(1000));
                 esp_restart();
             }
 
-            if(modem.coapSendData(MODEM_COAP_PROFILE, WALTER_MODEM_COAP_SEND_TYPE_CON,
-            WALTER_MODEM_COAP_SEND_METHOD_GET, 8, dataBuf)) {
+            if (modem.coapSendData(
+                    MODEM_COAP_PROFILE,
+                    WALTER_MODEM_COAP_SEND_TYPE_CON,
+                    WALTER_MODEM_COAP_SEND_METHOD_GET,
+                    8,
+                    dataBuf)) {
                 ESP_LOGI(TAG, "Sent COAP datagram");
                 receiveAttemptsLeft = 3;
             } else {
@@ -237,23 +240,25 @@ extern "C" void app_main(void)
             receiveAttemptsLeft--;
             ESP_LOGI(TAG, "Checking for incoming COAP message or response");
 
-            while(modem.coapDidRing(MODEM_COAP_PROFILE, incomingBuf, sizeof(incomingBuf), &rsp)) {
-            receiveAttemptsLeft = 0;
+            while (modem.coapDidRing(MODEM_COAP_PROFILE, incomingBuf, sizeof(incomingBuf), &rsp)) {
+                receiveAttemptsLeft = 0;
 
-            ESP_LOGI(TAG, "COAP incoming:\r\n");
-            ESP_LOGI(TAG, "profileId: %d (profile ID used by us: %d)\r\n",
-                    rsp.data.coapResponse.profileId, MODEM_COAP_PROFILE);
-            ESP_LOGI(TAG, "Message id: %d\r\n", rsp.data.coapResponse.messageId);
-            ESP_LOGI(TAG, "Send type (CON, NON, ACK, RST): %d\r\n",
-                    rsp.data.coapResponse.sendType);
-            ESP_LOGI(TAG, "Method or response code: %d\r\n",
-                    rsp.data.coapResponse.methodRsp);
-            ESP_LOGI(TAG, "Data (%d bytes):\r\n", rsp.data.coapResponse.length);
+                ESP_LOGI(TAG, "COAP incoming:\r\n");
+                ESP_LOGI(
+                    TAG,
+                    "profileId: %d (profile ID used by us: %d)\r\n",
+                    rsp.data.coapResponse.profileId,
+                    MODEM_COAP_PROFILE);
+                ESP_LOGI(TAG, "Message id: %d\r\n", rsp.data.coapResponse.messageId);
+                ESP_LOGI(
+                    TAG, "Send type (CON, NON, ACK, RST): %d\r\n", rsp.data.coapResponse.sendType);
+                ESP_LOGI(TAG, "Method or response code: %d\r\n", rsp.data.coapResponse.methodRsp);
+                ESP_LOGI(TAG, "Data (%d bytes):\r\n", rsp.data.coapResponse.length);
 
-            for(size_t i = 0; i < rsp.data.coapResponse.length; i++) {
-                ESP_LOGI(TAG, "[%02x  %c] ", incomingBuf[i], incomingBuf[i]);
-            }
-            ESP_LOGI(TAG, "\r\n");
+                for (size_t i = 0; i < rsp.data.coapResponse.length; i++) {
+                    ESP_LOGI(TAG, "[%02x  %c] ", incomingBuf[i], incomingBuf[i]);
+                }
+                ESP_LOGI(TAG, "\r\n");
             }
         }
     }
