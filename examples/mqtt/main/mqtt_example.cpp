@@ -91,7 +91,7 @@ char macString[32];
 
 /**
  * @brief This function checks if we are connected to the lte network
- * 
+ *
  * @return True when connected, False otherwise
  */
 bool lteConnected()
@@ -183,7 +183,7 @@ extern "C" void app_main(void)
         ESP_LOGE(TAG, "Could not initialize modem");
         return;
     }
-    
+
     /* Connect the modem to the lte network */
     if (!lteConnect()) {
         ESP_LOGE(TAG, "Could Not Connect to LTE");

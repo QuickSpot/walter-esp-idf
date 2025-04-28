@@ -11,6 +11,10 @@ menu "coap example"
             default 10000
             help
                 the data transmission delay to the coap demo server
+
+        config MODEM_COAP_PROFILE
+            int "the COAP profile id"
+            default 0
     endif
     
 endmenu

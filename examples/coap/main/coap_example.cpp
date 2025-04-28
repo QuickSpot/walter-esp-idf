@@ -97,68 +97,107 @@ uint8_t incomingBuf[256] = {0};
  */
 uint16_t counter = 0;
 
-void waitForNetwork()
+/**
+ * @brief This function checks if we are connected to the lte network
+ *
+ * @return True when connected, False otherwise
+ */
+bool lteConnected()
+{
+    WalterModemNetworkRegState regState = modem.getNetworkRegState();
+    return (
+        regState == WALTER_MODEM_NETWORK_REG_REGISTERED_HOME ||
+        regState == WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING);
+}
+
+/**
+ * @brief This function waits for the modem to be connected to the Lte network.
+ * @return true if the connected, else false on timeout.
+ */
+bool waitForNetwork()
 {
     /* Wait for the network to become available */
-    WalterModemNetworkRegState regState = modem.getNetworkRegState();
-    while (!(regState == WALTER_MODEM_NETWORK_REG_REGISTERED_HOME ||
-             regState == WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING))
-    {
+    int timeout = 0;
+    while (!lteConnected()) {
         vTaskDelay(pdMS_TO_TICKS(100));
-        regState = modem.getNetworkRegState();
+        timeout += 100;
+        if (timeout > 300000)
+            return false;
     }
-    ESP_LOGI("mqtt_test", "Connected to the network");
+    ESP_LOGI(TAG, "Connected to the network");
+    return true;
+}
+
+/**
+ * @brief This function tries to connect the modem to the cellular network.
+ * @return true if the connection attempt is successful, else false.
+ */
+bool lteConnect()
+{
+    if (modem.setOpState(WALTER_MODEM_OPSTATE_NO_RF)) {
+        ESP_LOGI(TAG, "Successfully set operational state to NO RF");
+    } else {
+        ESP_LOGI(TAG, "Could not set operational state to NO RF");
+        return false;
+    }
+
+    /* Create PDP context */
+    if (modem.definePDPContext(1, CELLULAR_APN)) {
+        ESP_LOGI(TAG, "Created PDP context");
+    } else {
+        ESP_LOGI(TAG, "Could not create PDP context");
+        return false;
+    }
+
+    /* Set the operational state to full */
+    if (modem.setOpState(WALTER_MODEM_OPSTATE_FULL)) {
+        ESP_LOGI(TAG, "Successfully set operational state to FULL");
+    } else {
+        ESP_LOGI(TAG, "Could not set operational state to FULL");
+        return false;
+    }
+
+    /* Set the network operator selection to automatic */
+    if (modem.setNetworkSelectionMode(WALTER_MODEM_NETWORK_SEL_MODE_AUTOMATIC)) {
+        ESP_LOGI(TAG, "Network selection mode to was set to automatic");
+    } else {
+        ESP_LOGI(TAG, "Could not set the network selection mode to automatic");
+        return false;
+    }
+
+    return waitForNetwork();
 }
 
 extern "C" void app_main(void)
 {
-    ESP_LOGI("mqtt_test", "Walter modem test v0.0.1");
+    ESP_LOGI(TAG, "Walter modem coap example v1.0.0");
 
     /* Get the MAC address for board validation */
-    esp_read_mac(dataBuf, ESP_MAC_WIFI_STA);
-    ESP_LOGI("socket_test", "Walter's MAC is: %02X:%02X:%02X:%02X:%02X:%02X",
-        dataBuf[0],
-        dataBuf[1],
-        dataBuf[2],
-        dataBuf[3],
-        dataBuf[4],
-        dataBuf[5]);
+    esp_read_mac(incomingBuf, ESP_MAC_WIFI_STA);
+    ESP_LOGI(
+        TAG,
+        "Walter's MAC is: %02X:%02X:%02X:%02X:%02X:%02X",
+        incomingBuf[0],
+        incomingBuf[1],
+        incomingBuf[2],
+        incomingBuf[3],
+        incomingBuf[4],
+        incomingBuf[5]);
 
+    /* Initialize the modem */
     if (WalterModem::begin(UART_NUM_1)) {
-        ESP_LOGI(TAG, "Modem initialization OK");
+        ESP_LOGI(TAG, "Successfully initialized modem");
     } else {
-        ESP_LOGI(TAG, "Modem initialization ERROR");
+        ESP_LOGE(TAG, "Could not initialize modem");
         return;
     }
 
-    WalterModemRsp rsp = {};
-
-    /* Create PDP context */
-    if(modem.definePDPContext(1, CELLULAR_APN)) {
-        ESP_LOGI(TAG, "Created PDP context");
-    } else {
-        ESP_LOGI(TAG, "Could not create PDP context");
+    /* Connect the modem to the lte network */
+    if (!lteConnect()) {
+        ESP_LOGE(TAG, "Could Not Connect to LTE");
         return;
     }
 
-    /* Set the operational state to full */
-    if(modem.setOpState(WALTER_MODEM_OPSTATE_FULL)) {
-        ESP_LOGI(TAG, "Successfully set operational state to FULL");
-    } else {
-        ESP_LOGI(TAG, "Could not set operational state to FULL");
-        return;
-    }
-
-    /* Set the network operator selection to automatic */
-    if(modem.setNetworkSelectionMode(WALTER_MODEM_NETWORK_SEL_MODE_AUTOMATIC)) {
-        ESP_LOGI(TAG, "Network selection mode to was set to automatic");
-    } else {
-        ESP_LOGI(TAG, "Could not set the network selection mode to automatic");
-        return;
-    }
-
-    waitForNetwork();
-    
     for(;;) {
         vTaskDelay(pdMS_TO_TICKS(SEND_DELAY_MS));
         
