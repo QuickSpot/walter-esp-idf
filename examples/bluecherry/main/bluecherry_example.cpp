@@ -230,35 +230,8 @@ void syncBlueCherry()
     return;
 }
 
-void init()
+void configureBluecherry()
 {
-    ESP_LOGI(TAG, "Walter modem bluecherry example v1.0.0");
-
-    /* Get the MAC address for board validation */
-    esp_read_mac(dataBuf, ESP_MAC_WIFI_STA);
-    ESP_LOGI(
-        TAG,
-        "Walter's MAC is: %02X:%02X:%02X:%02X:%02X:%02X",
-        dataBuf[0],
-        dataBuf[1],
-        dataBuf[2],
-        dataBuf[3],
-        dataBuf[4],
-        dataBuf[5]);
-
-    /* Initialize the modem */
-    if (WalterModem::begin(UART_NUM_1)) {
-        ESP_LOGI(TAG, "Modem initialization OK");
-    } else {
-        ESP_LOGE(TAG, "Modem initialization ERROR");
-        return;
-    }
-
-    if (!lteConnect()) {
-        ESP_LOGE(TAG, "Could Not Connect to LTE");
-        return;
-    }
-
     WalterModemRsp rsp = {};
     unsigned short attempt = 0;
     while (!modem.blueCherryInit(BC_TLS_PROFILE, otaBuffer, &rsp)) {
@@ -330,9 +303,37 @@ void init()
     ESP_LOGI(TAG, "Successfully initialized BlueCherry cloud platform");
 }
 
-void loop()
+extern "C" void app_main(void)
 {
-    /* this loop is basically the Arduino loop function */
+    ESP_LOGI(TAG, "Walter modem bluecherry example v1.0.0");
+
+    /* Get the MAC address for board validation */
+    esp_read_mac(dataBuf, ESP_MAC_WIFI_STA);
+    ESP_LOGI(
+        TAG,
+        "Walter's MAC is: %02X:%02X:%02X:%02X:%02X:%02X",
+        dataBuf[0],
+        dataBuf[1],
+        dataBuf[2],
+        dataBuf[3],
+        dataBuf[4],
+        dataBuf[5]);
+
+    /* Initialize the modem */
+    if (WalterModem::begin(UART_NUM_1)) {
+        ESP_LOGI(TAG, "Modem initialization OK");
+    } else {
+        ESP_LOGE(TAG, "Modem initialization ERROR");
+        return;
+    }
+
+    /* Connect the modem to the lte network */
+    if (!lteConnect()) {
+        ESP_LOGE(TAG, "Could Not Connect to LTE");
+        return;
+    }
+    
+    configureBluecherry();
 
     for (;;) {
         WalterModemRsp rsp = {};
@@ -345,10 +346,4 @@ void loop()
         // Poll BlueCherry platform if an incoming message or firmware update is available
         syncBlueCherry();
     }
-}
-
-extern "C" void app_main(void)
-{
-    init();
-    loop();
 }

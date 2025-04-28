@@ -61,7 +61,7 @@
 /**
  * @brief The address of the server to upload the data to.
  */
-#define SERV_ADDR "64.225.64.140"
+#define SERV_ADDR "walterdemo.quickspot.io"
 
 /**
  * @brief The UDP port on which the server is listening.
@@ -396,15 +396,9 @@ bool socketConnect(const char *ip, uint16_t port)
         return false;
     }
 
-    /* Construct a socket */
+    /* Configure the socket */
     if (!modem.socketConfig(&rsp)) {
         ESP_LOGI("positioning", "Could not create a new socket");
-        return false;
-    }
-
-    /* Configure the socket */
-    if (!modem.socketConfigExtended()) {
-        ESP_LOGI("positioning", "Could not configure the socket");
         return false;
     }
 

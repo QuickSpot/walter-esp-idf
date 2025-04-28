@@ -192,9 +192,8 @@ extern "C" void app_main(void)
         ESP_LOGE(TAG, "Could not initialize modem");
         return;
     }
-
-    WalterModemRsp rsp = {};
-
+    
+    /* Connect the modem to the lte network */
     if (!lteConnect()) {
         ESP_LOGE(TAG, "Could Not Connect to LTE");
         return;
