@@ -113,8 +113,6 @@ WalterModemGNSSFix posFix = {};
  */
 uint8_t dataBuf[PACKET_SIZE] = {0};
 
-static constexpr int maxWaitMs = 30000; /* maximum wait time of 30 seconds */
-
 /**
  * @brief Configure the modem's network.
  *
