@@ -2597,7 +2597,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         char *commaPos = strchr(start, ',');
         if (commaPos) {
             *commaPos = '\0';
-            sock->dataReceived = sock->atoi(commaPos);
+            sock->dataReceived = atoi(commaPos);
             start = ++commaPos;
             commaPos = strchr(commaPos, ',');
         }
