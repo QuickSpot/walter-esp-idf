@@ -65,11 +65,6 @@ CONFIG(CELLULAR_APN, const char *, "")
 CONFIG_UINT16(SEND_DELAY_MS, 10000)
 
 /**
- * @brief The Modem TLS profile
- */
-CONFIG_UINT8(MODEM_TLS_PROFILE, 1)
-
-/**
  * @brief ESP-IDF log prefix.
  */
 static constexpr const char *TAG = "mqtt_example";

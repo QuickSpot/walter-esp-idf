@@ -214,15 +214,8 @@ extern "C" void app_main(void)
         static char ctbuf[32];
 
         if (!httpReceiveAttemptsLeft) {
-            if (modem.httpSend(
-                    HTTP_PROFILE,
-                    "/",
-                    dataBuf,
-                    8,
-                    WALTER_MODEM_HTTP_SEND_CMD_POST,
-                    WALTER_MODEM_HTTP_POST_PARAM_OCTET_STREAM,
-                    ctbuf,
-                    sizeof(ctbuf))) {
+            if (modem.httpQuery(
+                    HTTP_PROFILE, "/", WALTER_MODEM_HTTP_QUERY_CMD_GET, ctbuf, sizeof(ctbuf))) {
                 ESP_LOGI(TAG, "query performed\r\n");
                 httpReceiveAttemptsLeft = MAX_RECEIVE_COUNT;
             } else {

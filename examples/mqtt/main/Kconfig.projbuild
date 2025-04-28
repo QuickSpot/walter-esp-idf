@@ -10,14 +10,6 @@ menu "mqtt example"
             int "data transmission delay"
             default 10000
             help
-                the data transmission delay to the mqtt demo server
-        
-        config MODEM_TLS_PROFILE
-            int "modem tls profile"
-            range 1 6
-            default 1
-            help
-                the tls profile for the MQTT connection.
-            
+                the data transmission delay to the mqtt demo server        
     endif
 endmenu

@@ -169,6 +169,7 @@ bool lteConnect()
 
     return waitForNetwork();
 }
+
 extern "C" void app_main(void)
 {
     ESP_LOGI(TAG, "Walter UDP Socket example v1");
