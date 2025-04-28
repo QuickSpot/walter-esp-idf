@@ -1,13 +1,13 @@
 /**
  * @file positioning.cpp
  * @author Jonas Maes <jonas@dptechnics.com>
- * @date 30 Nov 2023
+ * @date 24 Apr 2025
  * @copyright DPTechnics bv
  * @brief Walter Modem library examples
  *
  * @section LICENSE
  *
- * Copyright (C) 2023, DPTechnics bv
+ * Copyright (C) 2025, DPTechnics bv
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -57,26 +57,35 @@
 #include <esp_system.h>
 #include <inttypes.h>
 
+/**
+ * @brief Cellular APN for SIM card. Leave empty to autodetect APN.
+ */
+CONFIG(CELLULAR_APN, const char *, "")
 
 /**
  * @brief The address of the server to upload the data to.
  */
-#define SERV_ADDR "walterdemo.quickspot.io"
+CONFIG(SERV_ADDR, const char *, "walterdemo.quickspot.io")
 
 /**
  * @brief The UDP port on which the server is listening.
  */
-#define SERV_PORT 1999
+CONFIG_INT(SERV_PORT, 1999)
 
 /**
  * @brief The size in bytes of a minimal sensor + GNSS packet.
  */
-#define PACKET_SIZE 18
+static constexpr uint8_t PACKET_SIZE = 18;
 
 /**
  * @brief All fixes with a confidence below this number are considered ok.
  */
-#define MAX_GNSS_CONFIDENCE 100.0
+CONFIG(MAX_GNSS_CONFIDENCE, float, 100.0)
+
+/**
+ * @brief ESP-IDF log prefix.
+ */
+static constexpr const char *TAG = "positioning";
 
 /**
  * @brief The radio access technology to use - LTEM or NBIOT.
@@ -104,7 +113,7 @@ WalterModemGNSSFix posFix = {};
  */
 uint8_t dataBuf[PACKET_SIZE] = {0};
 
-const int maxWaitMs = 30000; /* maximum wait time of 30 seconds */
+static constexpr int maxWaitMs = 30000; /* maximum wait time of 30 seconds */
 
 /**
  * @brief Configure the modem's network.
@@ -118,16 +127,16 @@ const int maxWaitMs = 30000; /* maximum wait time of 30 seconds */
  *
  * @return True on success, false on error.
  */
-bool lteInit(const char *apn, const char *user = NULL, const char *pass = NULL)
+bool lteInit(const char *apn)
 {
     /* Create PDP context */
 
     if (!modem.definePDPContext(1, apn)) {
-        ESP_LOGI("positioning", "Could not create PDP context");
+        ESP_LOGI(TAG, "Could not create PDP context");
         return false;
     }
 
-    /* Authenticate the PDP context */
+   
     return true;
 }
 
@@ -143,13 +152,13 @@ bool lteConnect()
 {
     /* Set the operational state to full */
     if (!modem.setOpState(WALTER_MODEM_OPSTATE_FULL)) {
-        ESP_LOGI("positioning", "Could not set operational state to FULL");
+        ESP_LOGI(TAG, "Could not set operational state to FULL");
         return false;
     }
 
     /* Set the network operator selection to automatic */
     if (!modem.setNetworkSelectionMode(WALTER_MODEM_NETWORK_SEL_MODE_AUTOMATIC)) {
-        ESP_LOGI("positioning", "Could not set the network selection mode to automatic");
+        ESP_LOGI(TAG, "Could not set the network selection mode to automatic");
         return false;
     }
 
@@ -161,12 +170,12 @@ bool lteConnect()
         vTaskDelay(pdMS_TO_TICKS(1000));
         WalterModemRsp rsp;
         modem.getRSSI(&rsp);
-        ESP_LOGI("positioning", "rssi: %d", rsp.data.rssi);
+        ESP_LOGI(TAG, "rssi: %d", rsp.data.rssi);
         regState = modem.getNetworkRegState();
     }
 
     /* Stabilization time */
-    ESP_LOGI("positioning", "Connected to the network");
+    ESP_LOGI(TAG, "Connected to the network");
     return true;
 }
 
@@ -183,7 +192,7 @@ bool lteDisconnect()
 {
     /* Set the operational state to minimum */
     if (!modem.setOpState(WALTER_MODEM_OPSTATE_MINIMUM)) {
-        ESP_LOGI("positioning", "Could not set operational state to MINIMUM");
+        ESP_LOGI(TAG, "Could not set operational state to MINIMUM");
         return false;
     }
 
@@ -194,7 +203,7 @@ bool lteDisconnect()
         regState = modem.getNetworkRegState();
     }
 
-    ESP_LOGI("positioning", "Disconnected from the network");
+    ESP_LOGI(TAG, "Disconnected from the network");
     return true;
 }
 
@@ -224,33 +233,33 @@ void checkAssistanceData(
         *updateEphemeris = false;
     }
 
-    ESP_LOGI("positioning", "Almanac data is ");
+    ESP_LOGI(TAG, "Almanac data is ");
     if (rsp->data.gnssAssistance.almanac.available) {
         ESP_LOGI(
-            "positioning",
+            TAG,
             "available and should be updated within %lds",
             rsp->data.gnssAssistance.almanac.timeToUpdate);
         if (updateAlmanac != NULL) {
             *updateAlmanac = rsp->data.gnssAssistance.almanac.timeToUpdate <= 0;
         }
     } else {
-        ESP_LOGI("positioning", "not available.");
+        ESP_LOGI(TAG, "not available.");
         if (updateAlmanac != NULL) {
             *updateAlmanac = true;
         }
     }
 
-    ESP_LOGI("positioning", "Real-time ephemeris data is ");
+    ESP_LOGI(TAG, "Real-time ephemeris data is ");
     if (rsp->data.gnssAssistance.realtimeEphemeris.available) {
         ESP_LOGI(
-            "positioning",
+            TAG,
             "available and should be updated within %lds",
             rsp->data.gnssAssistance.realtimeEphemeris.timeToUpdate);
         if (updateEphemeris != NULL) {
             *updateEphemeris = rsp->data.gnssAssistance.realtimeEphemeris.timeToUpdate <= 0;
         }
     } else {
-        ESP_LOGI("positioning", "not available.");
+        ESP_LOGI(TAG, "not available.");
         if (updateEphemeris != NULL) {
             *updateEphemeris = true;
         }
@@ -275,14 +284,14 @@ bool updateGNSSAssistance()
 
     /* Even with valid assistance data the system clock could be invalid */
     if (!modem.getClock(&rsp)) {
-        ESP_LOGI("positioning", "Could not check the modem time");
+        ESP_LOGE(TAG, "Could not check the modem time");
         return false;
     }
 
     if (rsp.data.clock <= 0) {
         /* The system clock is invalid, connect to LTE network to sync time */
         if (!lteConnect()) {
-            ESP_LOGI("positioning", "Could not connect to LTE network");
+            ESP_LOGE(TAG, "Could not connect to LTE network");
             return false;
         }
 
@@ -294,15 +303,15 @@ bool updateGNSSAssistance()
          */
         for (int i = 0; i < 5; ++i) {
             if (!modem.getClock(&rsp)) {
-                ESP_LOGI("positioning", "Could not check the modem time");
+                ESP_LOGE(TAG, "Could not check the modem time");
                 return false;
             }
 
             if (rsp.data.clock > 0) {
-                ESP_LOGI("positioning", "Synchronized clock with network: %lld", rsp.data.clock);
+                ESP_LOGE(TAG, "Synchronized clock with network: %lld", rsp.data.clock);
                 break;
             } else if (i == 4) {
-                ESP_LOGI("positioning", "Could not sync time with network");
+                ESP_LOGE(TAG, "Could not sync time with network");
                 return false;
             }
 
@@ -313,7 +322,7 @@ bool updateGNSSAssistance()
     /* Check the availability of assistance data */
     if (!modem.getGNSSAssistanceStatus(&rsp) ||
         rsp.type != WALTER_MODEM_RSP_DATA_TYPE_GNSS_ASSISTANCE_DATA) {
-        ESP_LOGI("positioning", "Could not request GNSS assistance status");
+        ESP_LOGE(TAG, "Could not request GNSS assistance status");
         return false;
     }
 
@@ -324,7 +333,7 @@ bool updateGNSSAssistance()
     if (!(updateAlmanac || updateEphemeris)) {
         if (lteConnected) {
             if (!lteDisconnect()) {
-                ESP_LOGI("positioning", "Could not disconnect from the LTE network");
+                ESP_LOGE(TAG, "Could not disconnect from the LTE network");
                 return false;
             }
         }
@@ -334,35 +343,35 @@ bool updateGNSSAssistance()
 
     if (!lteConnected) {
         if (!lteConnect()) {
-            ESP_LOGI("positioning", "Could not connect to LTE network");
+            ESP_LOGE(TAG, "Could not connect to LTE network");
             return false;
         }
     }
 
     if (updateAlmanac) {
         if (!modem.updateGNSSAssistance(WALTER_MODEM_GNSS_ASSISTANCE_TYPE_ALMANAC)) {
-            ESP_LOGI("positioning", "Could not update almanac data");
+            ESP_LOGE(TAG, "Could not update almanac data");
             return false;
         }
     }
 
     if (updateEphemeris) {
         if (!modem.updateGNSSAssistance(WALTER_MODEM_GNSS_ASSISTANCE_TYPE_REALTIME_EPHEMERIS)) {
-            ESP_LOGI("positioning", "Could not update real-time ephemeris data");
+            ESP_LOGE(TAG, "Could not update real-time ephemeris data");
             return false;
         }
     }
 
     if (!modem.getGNSSAssistanceStatus(&rsp) ||
         rsp.type != WALTER_MODEM_RSP_DATA_TYPE_GNSS_ASSISTANCE_DATA) {
-        ESP_LOGI("positioning", "Could not request GNSS assistance status");
+        ESP_LOGE(TAG, "Could not request GNSS assistance status");
         return false;
     }
 
     checkAssistanceData(&rsp);
 
     if (!lteDisconnect()) {
-        ESP_LOGI("positioning", "Could not disconnect from the LTE network");
+        ESP_LOGE(TAG, "Could not disconnect from the LTE network");
         return false;
     }
 
@@ -384,29 +393,17 @@ bool socketConnect(const char *ip, uint16_t port)
 {
     WalterModemRsp rsp = {};
 
-    /* Activate the PDP context */
-    if (!modem.setPDPContextActive(true)) {
-        ESP_LOGI("positioning", "Could not activate the PDP context");
-        return false;
-    }
-
-    /* Attach the MT to the Packet Domain Service */
-    if (!modem.setNetworkAttachmentState(true)) {
-        ESP_LOGI("positioning", "Could not attach to the PDS(Packet Domain Service)");
-        return false;
-    }
-
     /* Configure the socket */
     if (!modem.socketConfig(&rsp)) {
-        ESP_LOGI("positioning", "Could not create a new socket");
+        ESP_LOGE(TAG, "Could not create a new socket");
         return false;
     }
 
     /* Connect to the UDP test server */
     if (modem.socketDial(ip, port, port)) {
-        ESP_LOGI("positioning", "Connected to UDP server %s:%d", ip, port);
+        ESP_LOGI(TAG, "Connected to UDP server %s:%d", ip, port);
     } else {
-        ESP_LOGI("positioning", "Could not connect UDP socket");
+        ESP_LOGE(TAG, "Could not connect UDP socket");
         return false;
     }
 
@@ -445,12 +442,12 @@ float temperatureRead(void)
 
 extern "C" void app_main(void)
 {
-    ESP_LOGI("positioning", "Walter Positioning v0.0.1");
+    ESP_LOGI(TAG, "Walter Positioning example v1.0.0");
 
     /* Get the MAC address for board validation */
     esp_read_mac(dataBuf, ESP_MAC_WIFI_STA);
     ESP_LOGI(
-        "positioning",
+        TAG,
         "Walter's MAC is: %02X:%02X:%02X:%02X:%02X:%02X",
         dataBuf[0],
         dataBuf[1],
@@ -461,9 +458,9 @@ extern "C" void app_main(void)
 
     /* Modem initialization */
     if (WalterModem::begin(UART_NUM_1)) {
-        ESP_LOGI("positioning", "Modem initialization OK");
+        ESP_LOGI(TAG, "Modem initialization OK");
     } else {
-        ESP_LOGI("positioning", "Modem initialization ERROR");
+        ESP_LOGE(TAG, "Modem initialization ERROR");
         return;
     }
 
@@ -471,28 +468,26 @@ extern "C" void app_main(void)
     if (modem.getRAT(&rsp)) {
         if (rsp.data.rat != RADIO_TECHNOLOGY) {
             modem.setRAT(RADIO_TECHNOLOGY);
-            ESP_LOGI("positioning", "Switched modem radio technology");
+            ESP_LOGI(TAG, "Switched modem radio technology");
         }
     } else {
-        ESP_LOGI("positioning", "Could not retrieve radio access technology");
+        ESP_LOGE(TAG, "Could not retrieve radio access technology");
     }
 
-    if (lteInit("soracom.io", "sora", "sora")) {
-        ESP_LOGI("positioning", "Initialized LTE parameters");
-    } else {
-        ESP_LOGI("positioning", "Could not initialize LTE network parameters");
-        return;
+    if (!modem.definePDPContext(1, CELULLAR_APN)) {
+        ESP_LOGI(TAG, "Could not create PDP context");
+        return false;
     }
 
     if (!modem.setOpState(WALTER_MODEM_OPSTATE_MINIMUM)) {
-        ESP_LOGI("positioning", "Could not set operational state to MINIMUM");
+        ESP_LOGE(TAG, "Could not set operational state to MINIMUM");
         return;
     }
 
     vTaskDelay(pdMS_TO_TICKS(500));
 
     if (!modem.configGNSS()) {
-        ESP_LOGI("positioning", "Could not configure the GNSS subsystem");
+        ESP_LOGI(TAG, "Could not configure the GNSS subsystem");
         return;
     }
 
@@ -502,7 +497,7 @@ extern "C" void app_main(void)
     for (;;) {
         /* Check clock and assistance data, update if required */
         if (!updateGNSSAssistance()) {
-            ESP_LOGI("positioning", "Could not update GNSS assistance data");
+            ESP_LOGI(TAG, "Could not update GNSS assistance data");
             return;
         }
 
@@ -510,15 +505,15 @@ extern "C" void app_main(void)
         for (int i = 0; i < 5; ++i) {
             fixRcvd = false;
             if (!modem.performGNSSAction()) {
-                ESP_LOGI("positioning", "Could not request GNSS fix");
+                ESP_LOGI(TAG, "Could not request GNSS fix");
                 return;
             }
-            ESP_LOGI("positioning", "Started GNSS fix");
+            ESP_LOGI(TAG, "Started GNSS fix");
 
             int j = 0;
             while (!fixRcvd) {
                 if (j >= 300) {
-                    ESP_LOGI("positioning", "Timed out while waiting for GNSS fix");
+                    ESP_LOGI(TAG, "Timed out while waiting for GNSS fix");
                     return;
                 }
                 j++;
@@ -538,7 +533,7 @@ extern "C" void app_main(void)
         }
 
         ESP_LOGI(
-            "positioning",
+            TAG,
             "GNSS fix attempt finished:"
             "  Confidence: %.02f"
             "  Latitude: %.06f"
@@ -553,7 +548,7 @@ extern "C" void app_main(void)
 
         /* Read the temperature of Walter */
         float temp = temperatureRead();
-        ESP_LOGI("positioning", "The temperature of Walter is %.02f degrees Celsius", temp);
+        ESP_LOGI(TAG, "The temperature of Walter is %.02f degrees Celsius", temp);
 
         float lat = posFix.latitude;
         float lon = posFix.longitude;
@@ -562,7 +557,7 @@ extern "C" void app_main(void)
             posFix.satCount = 0xFF;
             lat = 0.0;
             lon = 0.0;
-            ESP_LOGI("positioning", "Could not get a valid fix");
+            ESP_LOGI(TAG, "Could not get a valid fix");
         }
 
         /* Construct the minimal sensor + GNSS */
@@ -576,24 +571,24 @@ extern "C" void app_main(void)
 
         /* Transmit the packet */
         if (!lteConnect()) {
-            ESP_LOGI("positioning", "Could not connect to the LTE network");
+            ESP_LOGI(TAG, "Could not connect to the LTE network");
             return;
         }
 
         if (!socketConnect(SERV_ADDR, SERV_PORT)) {
-            ESP_LOGI("positioning", "Could not connect to UDP server socket");
+            ESP_LOGI(TAG, "Could not connect to UDP server socket");
             return;
         }
 
         if (!modem.socketSend(dataBuf, PACKET_SIZE)) {
-            ESP_LOGI("positioning", "Could not transmit data");
+            ESP_LOGI(TAG, "Could not transmit data");
             return;
         }
 
         vTaskDelay(pdMS_TO_TICKS(5000));
 
         if (!modem.socketClose()) {
-            ESP_LOGI("positioning", "Could not close the socket");
+            ESP_LOGI(TAG, "Could not close the socket");
             return;
         }
 

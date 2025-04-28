@@ -7,7 +7,7 @@
  *
  * @section LICENSE
  *
- * Copyright (C) 2023, DPTechnics bv
+ * Copyright (C) 2025, DPTechnics bv
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -43,8 +43,8 @@
  *
  * @section DESCRIPTION
  *
- * This program uses the modem in Walter to make a connection to a network
- * and upload counter values to the Walter coap bluecherry server.
+ * This program uses the modem in Walter to make a connection to example.com
+ * and querry the example page.
  */
 
 #include "WalterModem.h"

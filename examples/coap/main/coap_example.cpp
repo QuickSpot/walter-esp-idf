@@ -1,5 +1,5 @@
 /**
- * @file coap_test.cpp
+ * @file coap_example.cpp
  * @author Dries Vandenbussche <dries@dptechnics.com>
  * @date 24 Apr 2025
  * @copyright DPTechnics bv
@@ -7,7 +7,7 @@
  *
  * @section LICENSE
  *
- * Copyright (C) 2023, DPTechnics bv
+ * Copyright (C) 2025, DPTechnics bv
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
