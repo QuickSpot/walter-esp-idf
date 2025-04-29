@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This example will send a counter value to the [coap.me](https://coap.me/) test server And receive the response from the demo server.
+This example will send a counter value to the [coap.me](https://coap.me/) test server and receive the response from the demo server.
 
 ## Required hardware
 

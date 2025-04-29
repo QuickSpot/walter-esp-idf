@@ -1592,6 +1592,17 @@ typedef struct {
     char name[WALTER_MODEM_OPERATOR_BUF_SIZE];
 } WalterModemOperator;
 
+typedef struct {
+    /**
+     * @brief Unix timestamp of the current time and date in the modem.
+     */
+    int64_t epochTime;
+
+    /**
+     * @brief Timezone offset in hours
+     */
+    int8_t timeZoneOffset;
+} WalterModemClockInfo;
 #pragma region BAND_SELECTION
 /**
  * @brief This structure represents a band selection for a given RAT and operator.
@@ -2461,11 +2472,7 @@ union WalterModemRspData {
      */
     WalterModemGNSSAssistance gnssAssistance;
 #endif
-
-    /**
-     * @brief Unix timestamp of the current time and date in the modem.
-     */
-    int64_t clock;
+    WalterModemClockInfo clock;
 
     /**
      * @brief The modem identity.

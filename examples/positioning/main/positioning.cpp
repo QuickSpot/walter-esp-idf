@@ -286,7 +286,7 @@ bool updateGNSSAssistance()
         return false;
     }
 
-    if (rsp.data.clock <= 0) {
+    if (rsp.data.clock.epochTime <= 0) {
         /* The system clock is invalid, connect to LTE network to sync time */
         if (!lteConnect()) {
             ESP_LOGE(TAG, "Could not connect to LTE network");
@@ -305,8 +305,8 @@ bool updateGNSSAssistance()
                 return false;
             }
 
-            if (rsp.data.clock > 0) {
-                ESP_LOGE(TAG, "Synchronized clock with network: %lld", rsp.data.clock);
+            if (rsp.data.clock.epochTime > 0) {
+                ESP_LOGE(TAG, "Synchronized clock with network: %lld", rsp.data.clock.epochTime);
                 break;
             } else if (i == 4) {
                 ESP_LOGE(TAG, "Could not sync time with network");

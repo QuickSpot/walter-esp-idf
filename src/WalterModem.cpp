@@ -1955,9 +1955,12 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         } else {
             tzOffset = atoi(data + 18) * -15 * 60;
         }
-        cmd->rsp->data.clock = utcTime - tzOffset;
-        if (cmd->rsp->data.clock < WALTER_MODEM_MIN_VALID_TIMESTAMP) {
-            cmd->rsp->data.clock = -1;
+
+        cmd->rsp->data.clock.epochTime = utcTime - tzOffset;
+        cmd->rsp->data.clock.timeZoneOffset = tzOffset;
+        if (cmd->rsp->data.clock.epochTime < WALTER_MODEM_MIN_VALID_TIMESTAMP) {
+            cmd->rsp->data.clock.epochTime = -1;
+            cmd->rsp->data.clock.timeZoneOffset = 0;
         }
     }
 #pragma endregion

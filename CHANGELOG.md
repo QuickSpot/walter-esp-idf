@@ -54,7 +54,7 @@ This is the Changelog for WalterModem
 
 - added support for [`KCONFIG`](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/kconfig.html) (ESP-IDF)
 - added support for disabeling unused protocols (ESP-IDF,ARDUINO)
-- added CONFIG macro. 
+- added CONFIG macro.
 
 #### Breaking changes
 
@@ -63,4 +63,6 @@ This is the Changelog for WalterModem
 3) socketCreate => socketConfig
 4) configSocket => socketConfigExtended
 5) connectSocket => socketDial
+6) clock is now a struct wich contains the `epochTime` and the `timeZoneOffset`
+
 `all examples have been reworked.`
