@@ -1601,7 +1601,7 @@ typedef struct {
     /**
      * @brief Timezone offset in hours
      */
-    int8_t timeZoneOffset;
+    int32_t timeZoneOffset;
 } WalterModemClockInfo;
 #pragma region BAND_SELECTION
 /**

@@ -65,3 +65,4 @@ This is the Changelog for WalterModem
 6) clock is now a struct which contains the `epochTime` and the `timeZoneOffset`
 
 `all examples have been reworked.`
+ 

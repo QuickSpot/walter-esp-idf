@@ -1949,7 +1949,8 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         char *data = (char *)buff->data + _strLitLen("+CCLK: \"");
         cmd->rsp->type = WALTER_MODEM_RSP_DATA_TYPE_CLOCK;
         int64_t utcTime = strTotime(data, "%y/%m/%d,%H:%M:%S");
-        uint16_t tzOffset;
+        int32_t tzOffset;
+        /* 18 is the timezone offset*/
         if (data[17] == '+') {
             tzOffset = atoi(data + 18) * 15 * 60;
         } else {
