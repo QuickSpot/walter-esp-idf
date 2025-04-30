@@ -1,5 +1,6 @@
 name: Push walter-modem to https://components.espressif.com
 on:
+  workflow_dispatch:
   push:
     tags:
       - v*
@@ -15,3 +16,5 @@ jobs:
         with:
           namespace: "dptechnics"
           api_token: ${{ secrets.IDF_COMPONENT_API_TOKEN }}
+          name: "walter-modem"
+          directories: "."
