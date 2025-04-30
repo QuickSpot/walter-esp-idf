@@ -1,0 +1,34 @@
+menu "http example"
+    if WALTER_MODEM_KCONFIG
+        config CELLULAR_APN
+            string "cellular apn"
+            default ""
+            help
+                the apn to connect to
+
+        config SERVER_NAME
+            string "http server name"
+            default "example.com"
+            
+        config SERVER_PORT
+            int "http server port"
+            default 80
+            
+        config SEND_DELAY_MS
+            int "data transmission delay"
+            default 10000
+            help
+                the data transmission delay to the http demo server
+
+        config MODEM_HTTP_PROFILE
+            int "modem HTTP profile"
+            range 1 6
+            default 1
+            help
+                the tls profile for the MQTT connection.
+
+        config MAX_RECEIVE_COUNT
+            int "max http receive count"
+            default 3
+    endif
+endmenu
