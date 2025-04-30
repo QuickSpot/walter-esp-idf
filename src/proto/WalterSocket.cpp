@@ -127,10 +127,6 @@ bool WalterModem::socketConfig(
         _returnState(WALTER_MODEM_STATE_NO_FREE_SOCKET);
     }
 
-    if (ctx->state != WALTER_MODEM_PDP_CONTEXT_STATE_ATTACHED) {
-        _returnState(WALTER_MODEM_STATE_ERROR);
-    }
-
     sock->pdpContextId = ctx->id;
     sock->mtu = mtu;
     sock->exchangeTimeout = exchangeTimeout;

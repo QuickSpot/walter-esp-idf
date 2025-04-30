@@ -1948,17 +1948,41 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         buff->data[buff->size - 1] = '\0';
         char *data = (char *)buff->data + _strLitLen("+CCLK: \"");
         cmd->rsp->type = WALTER_MODEM_RSP_DATA_TYPE_CLOCK;
-        int64_t utcTime = strTotime(data, "%y/%m/%d,%H:%M:%S");
-        int32_t tzOffset;
-        /* 18 is the timezone offset*/
-        if (data[17] == '+') {
-            tzOffset = atoi(data + 18) * 15 * 60;
+        struct tm tm = {};
+        int tz_offset = 0;
+        char tz_sign = '+';
+
+        // Parse time and timezone
+        if (sscanf(
+                data,
+                "%2d/%2d/%2d,%2d:%2d:%2d%c%2d",
+                &tm.tm_year,
+                &tm.tm_mon,
+                &tm.tm_mday,
+                &tm.tm_hour,
+                &tm.tm_min,
+                &tm.tm_sec,
+                &tz_sign,
+                &tz_offset) != 8) {
+        }
+        tm.tm_year += 2000 - 1900; // years since 1900
+        tm.tm_mon -= 1; // months since January
+
+        // mktime assumes system local time — use as-is then offset to UTC
+        time_t local_time = mktime(&tm);
+
+        // Convert quarter-hour offset (e.g. +08 = 8 * 900)
+        int offset_seconds = tz_offset * 15 * 60;
+        /* there is always an 18 minute difference from ESP-IDF*/
+        if (tz_sign == '+') {
+            cmd->rsp->data.clock.epochTime = local_time - offset_seconds - 1080;
+            cmd->rsp->data.clock.timeZoneOffset = tz_offset;
+
         } else {
-            tzOffset = atoi(data + 18) * -15 * 60;
+            cmd->rsp->data.clock.epochTime = local_time + offset_seconds - 1080;
+            cmd->rsp->data.clock.timeZoneOffset = -tz_offset;
         }
 
-        cmd->rsp->data.clock.epochTime = utcTime - tzOffset;
-        cmd->rsp->data.clock.timeZoneOffset = tzOffset;
         if (cmd->rsp->data.clock.epochTime < WALTER_MODEM_MIN_VALID_TIMESTAMP) {
             cmd->rsp->data.clock.epochTime = -1;
             cmd->rsp->data.clock.timeZoneOffset = 0;
