@@ -1599,7 +1599,7 @@ typedef struct {
     int64_t epochTime;
 
     /**
-     * @brief Timezone offset in hours
+     * @brief Timezone offset in seconds
      */
     int32_t timeZoneOffset;
 } WalterModemClockInfo;
