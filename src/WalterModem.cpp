@@ -1973,13 +1973,12 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
 
         // Convert quarter-hour offset (e.g. +08 = 8 * 900)
         int offset_seconds = tz_offset * 15 * 60;
-        /* there is always an 18 minute difference from ESP-IDF*/
         if (tz_sign == '+') {
-            cmd->rsp->data.clock.epochTime = local_time - offset_seconds - 1080;
+            cmd->rsp->data.clock.epochTime = local_time - offset_seconds;
             cmd->rsp->data.clock.timeZoneOffset = tz_offset;
 
         } else {
-            cmd->rsp->data.clock.epochTime = local_time + offset_seconds - 1080;
+            cmd->rsp->data.clock.epochTime = local_time + offset_seconds;
             cmd->rsp->data.clock.timeZoneOffset = -tz_offset;
         }
 
