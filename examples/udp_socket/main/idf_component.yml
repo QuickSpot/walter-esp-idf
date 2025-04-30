@@ -1,5 +1,4 @@
 dependencies:
   idf: ">=5.0.0"
   dptechnics/walter-modem:
-    git: "https://github.com/lolrobbe2/walter-esp-idf"
-    version: "update-examples"
+    version: ">=1.2.0"
