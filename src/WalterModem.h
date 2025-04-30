@@ -4664,6 +4664,8 @@ public:
      * @param socketId The id of the socket to close or -1 to re-use the last one.
      *
      * @return True on success, false otherwise.
+     * 
+     * @warning The modem internally chunks the data!
      */
     static bool socketSend(
         uint8_t *data,
