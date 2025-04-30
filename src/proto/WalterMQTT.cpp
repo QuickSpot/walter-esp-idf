@@ -263,7 +263,7 @@ bool WalterModem::mqttDidRing(
     }
 }
 
-void WalterModem::setMQTTEventHandler(walterModemMQTTEventHandler handler, void *args)
+void WalterModem::mqttSetEventHandler(walterModemMQTTEventHandler handler, void *args)
 {
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_MQTT].mqttHandler = handler;
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_MQTT].args = args;

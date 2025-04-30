@@ -432,7 +432,7 @@ bool WalterModem::socketReceive(
     _returnAfterReply();
 }
 
-void WalterModem::setSocketEventHandler(walterModemSocketEventHandler handler, void *args = NULL)
+void WalterModem::socketSetEventHandler(walterModemSocketEventHandler handler, void *args = NULL)
 {
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_SOCKET].socketHandler = handler;
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_SOCKET].args = args;

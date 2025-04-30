@@ -338,7 +338,7 @@ bool WalterModem::httpDidRing(
     _returnAfterReply();
 }
 
-void WalterModem::setHTTPEventHandler(walterModemHttpEventHandler handler, void *args)
+void WalterModem::httpSetEventHandler(walterModemHttpEventHandler handler, void *args)
 {
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_HTTP].httpHandler = handler;
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_HTTP].args = args;

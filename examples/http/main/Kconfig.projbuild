@@ -6,6 +6,14 @@ menu "http example"
             help
                 the apn to connect to
 
+        config SERVER_NAME
+            string "http server name"
+            default "example.com"
+            
+        config SERVER_PORT
+            int "http server port"
+            default 80
+            
         config SEND_DELAY_MS
             int "data transmission delay"
             default 10000

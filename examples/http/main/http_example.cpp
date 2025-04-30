@@ -1,5 +1,5 @@
 /**
- * @file http_test.cpp
+ * @file http_example.cpp
  * @author Daan Pape <daan@dptechnics.com>
  * @date 24 Apr 2025
  * @copyright DPTechnics bv
@@ -59,6 +59,12 @@
  */
 CONFIG(CELLULAR_APN, const char *, "")
 
+/**
+ * @brief http address
+ */
+CONFIG(SERVER_NAME, const char* , "example.com")
+
+CONFIG_UINT16(SERVER_PORT, 80)
 /**
  * @brief HTTP profile
  */
@@ -199,7 +205,7 @@ extern "C" void app_main(void)
         return;
     }
 
-    if (!modem.httpConfigProfile(MODEM_HTTP_PROFILE, "example.com", 80)) {
+    if (!modem.httpConfigProfile(MODEM_HTTP_PROFILE, SERVER_NAME, SERVER_PORT)) {
         ESP_LOGE(TAG, "Could not configure the http profile");
     }
 

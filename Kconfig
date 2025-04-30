@@ -122,7 +122,7 @@ menu "walter-modem"
                 
                 if WALTER_MODEM_ENABLE_BLUE_CHERRY
                     menu "Bluecherry"
-                        comment "Mota and OTA functions are forced on when bluecherry is enabled!"
+                        comment "Mota and OTA functions are forced on when BlueCherry is enabled!"
                         
                         config WALTER_MODEM_BLUE_CHERRY_HOSTNAME
                             string "blue cherry server hostname"
@@ -303,7 +303,7 @@ menu "walter-modem"
    
         menu "Firmware upgrade"
         if WALTER_MODEM_ENABLE_BLUE_CHERRY
-            comment "Blue cherry has been enabled MOTA & OTA have been forced on!"
+            comment "BlueCherry has been enabled MOTA & OTA have been forced on!"
         endif
         config WALTER_MODEM_ENABLE_MOTA
             bool "Enable MOTA functionality (Modem firmware)"

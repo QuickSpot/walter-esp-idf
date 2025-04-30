@@ -273,7 +273,7 @@ void checkAssistanceData(
  *
  * @return True on success, false on error.
  */
-bool updateGNSSAssistance()
+bool gnssUpdateAssistance()
 {
     bool lteConnected = false;
     WalterModemRsp rsp = {};
@@ -318,7 +318,7 @@ bool updateGNSSAssistance()
     }
 
     /* Check the availability of assistance data */
-    if (!modem.getGNSSAssistanceStatus(&rsp) ||
+    if (!modem.gnssGetAssistanceStatus(&rsp) ||
         rsp.type != WALTER_MODEM_RSP_DATA_TYPE_GNSS_ASSISTANCE_DATA) {
         ESP_LOGE(TAG, "Could not request GNSS assistance status");
         return false;
@@ -347,20 +347,20 @@ bool updateGNSSAssistance()
     }
 
     if (updateAlmanac) {
-        if (!modem.updateGNSSAssistance(WALTER_MODEM_GNSS_ASSISTANCE_TYPE_ALMANAC)) {
+        if (!modem.gnssUpdateAssistance(WALTER_MODEM_GNSS_ASSISTANCE_TYPE_ALMANAC)) {
             ESP_LOGE(TAG, "Could not update almanac data");
             return false;
         }
     }
 
     if (updateEphemeris) {
-        if (!modem.updateGNSSAssistance(WALTER_MODEM_GNSS_ASSISTANCE_TYPE_REALTIME_EPHEMERIS)) {
+        if (!modem.gnssUpdateAssistance(WALTER_MODEM_GNSS_ASSISTANCE_TYPE_REALTIME_EPHEMERIS)) {
             ESP_LOGE(TAG, "Could not update real-time ephemeris data");
             return false;
         }
     }
 
-    if (!modem.getGNSSAssistanceStatus(&rsp) ||
+    if (!modem.gnssGetAssistanceStatus(&rsp) ||
         rsp.type != WALTER_MODEM_RSP_DATA_TYPE_GNSS_ASSISTANCE_DATA) {
         ESP_LOGE(TAG, "Could not request GNSS assistance status");
         return false;
@@ -484,17 +484,17 @@ extern "C" void app_main(void)
 
     vTaskDelay(pdMS_TO_TICKS(500));
 
-    if (!modem.configGNSS()) {
+    if (!modem.gnssConfig()) {
         ESP_LOGI(TAG, "Could not configure the GNSS subsystem");
         return;
     }
 
-    modem.setGNSSEventHandler(fixHandler);
+    modem.gnssSetEventHandler(fixHandler);
 
     /* this loop is basically the Arduino loop function */
     for (;;) {
         /* Check clock and assistance data, update if required */
-        if (!updateGNSSAssistance()) {
+        if (!gnssUpdateAssistance()) {
             ESP_LOGI(TAG, "Could not update GNSS assistance data");
             return;
         }
@@ -502,7 +502,7 @@ extern "C" void app_main(void)
         /* Try up to 5 times to get a good fix */
         for (int i = 0; i < 5; ++i) {
             fixRcvd = false;
-            if (!modem.performGNSSAction()) {
+            if (!modem.gnssPerformAction()) {
                 ESP_LOGI(TAG, "Could not request GNSS fix");
                 return;
             }

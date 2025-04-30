@@ -4788,7 +4788,7 @@ public:
      *
      * @return True on success, false on error.
      */
-    static bool configGNSS(
+    static bool gnssConfig(
         WalterModemGNSSSensMode sensMode = WALTER_MODEM_GNSS_SENS_MODE_HIGH,
         WalterModemGNSSAcqMode acqMode = WALTER_MODEM_GNSS_ACQ_MODE_COLD_WARM_START,
         WalterModemGNSSLocMode locMode = WALTER_MODEM_GNSS_LOC_MODE_ON_DEVICE_LOCATION,
@@ -4808,7 +4808,7 @@ public:
      *
      * @return True on success, false on error.
      */
-    static bool getGNSSAssistanceStatus(
+    static bool gnssGetAssistanceStatus(
         WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
 
     /**
@@ -4825,7 +4825,7 @@ public:
      *
      * @return True on success, false on error.
      */
-    static bool updateGNSSAssistance(
+    static bool gnssUpdateAssistance(
         WalterModemGNSSAssistanceType type = WALTER_MODEM_GNSS_ASSISTANCE_TYPE_REALTIME_EPHEMERIS,
         WalterModemRsp *rsp = NULL,
         walterModemCb cb = NULL,
@@ -4843,7 +4843,7 @@ public:
      *
      * @return True on success, false on error.
      */
-    static bool performGNSSAction(
+    static bool gnssPerformAction(
         WalterModemGNSSAction action = WALTER_MODEM_GNSS_ACTION_GET_SINGLE_FIX,
         WalterModemRsp *rsp = NULL,
         walterModemCb cb = NULL,
@@ -5356,7 +5356,7 @@ public:
      *
      * @return None.
      */
-    static void setGNSSEventHandler(walterModemGNSSEventHandler handler, void *args = NULL);
+    static void gnssSetEventHandler(walterModemGNSSEventHandler handler, void *args = NULL);
 #endif
 
 #if CONFIG_WALTER_MODEM_ENABLE_MQTT
@@ -5367,7 +5367,7 @@ public:
      * When this function is called multiple times, only the last handler will be set. To remove
      * the MQTT event handler, this function must be called with a nullptr as the handler.
      */
-    static void setMQTTEventHandler(walterModemMQTTEventHandler handler, void *args = NULL);
+    static void mqttSetEventHandler(walterModemMQTTEventHandler handler, void *args = NULL);
 #endif
 
 #if CONFIG_WALTER_MODEM_ENABLE_HTTP
@@ -5378,7 +5378,7 @@ public:
      * When this function is called multiple times, only the last handler will be set. To remove
      * the HTTP event handler, this function must be called with a nullptr as the handler.
      */
-    static void setHTTPEventHandler(walterModemHttpEventHandler handler, void *args = NULL);
+    static void httpSetEventHandler(walterModemHttpEventHandler handler, void *args = NULL);
 #endif
 
 #if CONFIG_WALTER_MODEM_ENABLE_COAP
@@ -5389,7 +5389,7 @@ public:
      * When this function is called multiple times, only the last handler will be set. To remove
      * the CoAP event handler, this function must be called with a nullptr as the handler.
      */
-    static void setCoAPEventHandler(walterModemCoAPEventHandler handler, void *args = NULL);
+    static void coapSetEventHandler(walterModemCoAPEventHandler handler, void *args = NULL);
 #endif
 
 #if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
@@ -5400,7 +5400,7 @@ public:
      * When this function is called multiple times, only the last handler will be set. To remove
      * the Socket event handler, this function must be called with a nullptr as the handler.
      */
-    static void setSocketEventHandler(walterModemSocketEventHandler handler, void *args);
+    static void socketSetEventHandler(walterModemSocketEventHandler handler, void *args);
 #endif
 #pragma endregion
 

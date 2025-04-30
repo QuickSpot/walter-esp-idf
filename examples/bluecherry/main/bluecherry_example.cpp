@@ -1,5 +1,5 @@
 /**
- * @file bluecherry_test.cpp
+ * @file bluecherry_example.cpp
  * @author Jonas Maes <jonas@dptechnics.com>
  * @date 24 Apr 2025
  * @copyright DPTechnics bv
@@ -48,8 +48,8 @@
  */
 
 #include <WalterModem.h>
-#include <components/Bluecherry_ZTP/BlueCherryZTP.h>
-#include <components/Bluecherry_ZTP/BlueCherryZTP_CBOR.h>
+#include <Bluecherry_ZTP/BlueCherryZTP.h>
+#include <Bluecherry_ZTP/BlueCherryZTP_CBOR.h>
 #include <driver/uart.h>
 #include <esp_log.h>
 #include <esp_mac.h>

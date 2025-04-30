@@ -1,17 +1,20 @@
-menu "bluecherry example"
+menu "Walter BlueCherry example"
     if WALTER_MODEM_KCONFIG
         config CELLULAR_APN
-            string "cellular apn"
+            string "Cellular APN"
             default ""
             help
-                the apn to connect to
-        
+                Set the cellular APN to connect to.
         config BC_DEVICE_TYPE
-            string "Bluecherry device type"
+            string "BlueCherry Device type"
             default "walter01"
-        
+            help
+                Set the BlueCherry Device type as found in the BlueApp.
         config BC_TLS_PROFILE
-            int "bluecherry TLS profile"
+            string "Modem TLS profile ID for BlueCherry"
             default 1
+            help
+                Specify what TLS profile ID the modem will use to configure TLS communication with BlueCherry.
+                It is recommended to not re-use this profile for other TLS-enabled communication.
     endif
 endmenu

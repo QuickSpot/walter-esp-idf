@@ -1450,7 +1450,7 @@ TickType_t WalterModem::_processQueueCmd(WalterModemCmd *cmd, bool queueError)
 }
 
 #if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
-static void coap_received_from_bluecherry(const WalterModemRsp *rsp, void *args)
+static void coapReceivedFromBlueCherry(const WalterModemRsp *rsp, void *args)
 {
     WalterModemBlueCherryState *blueCherry = (WalterModemBlueCherryState *)args;
 
@@ -2487,7 +2487,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
                         _cmdArr,
                         "+SQNCOAPRCV: ",
                         NULL,
-                        coap_received_from_bluecherry,
+                        coapReceivedFromBlueCherry,
                         &blueCherry,
                         NULL,
                         NULL,
