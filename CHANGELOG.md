@@ -12,7 +12,7 @@ This is the Changelog for WalterModem
 
 - Changed the `CORE_DEBUG_LEVEL` macro to the `ARDUINO` macro to distinguish between ESP-IDF and Arduino.
 
-## [V1.1.3](https://github.com/QuickSpot/walter-esp-idf/releases/tag/v1.1.3)
+## [V0.1.3](https://github.com/QuickSpot/walter-esp-idf/releases/tag/v1.1.3)
 
 ### Features
 
@@ -23,7 +23,7 @@ This is the Changelog for WalterModem
 
 - Fixed compile errors for `ESP-IDF V5.4.0`
 
-## [V1.2.0](https://github.com/QuickSpot/walter-esp-idf/releases/tag/v1.1.2)
+## [V0.2.0](https://github.com/QuickSpot/walter-esp-idf/releases/tag/v1.1.2)
 
 ### Features
 
