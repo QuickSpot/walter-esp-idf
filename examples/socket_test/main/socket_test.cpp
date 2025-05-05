@@ -174,22 +174,20 @@ extern "C" void app_main(void)
   }
 
   /* Create PDP context */
-  if(modem.createPDPContext("", WALTER_MODEM_PDP_AUTH_PROTO_PAP, "sora", "sora"))
-  {
+  if(modem.definePDPContext()) {
     ESP_LOGI("socket_test", "Created PDP context");
   } else {
     ESP_LOGI("socket_test", "Could not create PDP context");
     return;
   }
 
-  /* Authenticate the PDP context */
-  if(modem.authenticatePDPContext()) {
+  if(modem.setPDPAuthParams(WALTER_MODEM_PDP_AUTH_PROTO_NONE,"sora","sora")) {
     ESP_LOGI("socket_test", "Authenticated the PDP context");
   } else {
     ESP_LOGI("socket_test", "Could not authenticate the PDP context");
     return;
   }
-
+  
   /* Set the operational state to full */
   if(modem.setOpState(WALTER_MODEM_OPSTATE_FULL)) {
     ESP_LOGI("socket_test", "Successfully set operational state to FULL");
@@ -197,7 +195,6 @@ extern "C" void app_main(void)
     ESP_LOGI("socket_test", "Could not set operational state to FULL");
     return;
   }
-
   /* Set the network operator selection to automatic */
   if(modem.setNetworkSelectionMode(WALTER_MODEM_NETWORK_SEL_MODE_AUTOMATIC)) {
     ESP_LOGI("socket_test", "Network selection mode to was set to automatic");
@@ -205,25 +202,8 @@ extern "C" void app_main(void)
     ESP_LOGI("socket_test", "Could not set the network selection mode to automatic");
     return;
   }
-
   /* Wait for the network to become available */
   waitForNetwork();
-
-  /* Activate the PDP context */
-  if(modem.setPDPContextActive(true)) {
-    ESP_LOGI("socket_test", "Activated the PDP context");
-  } else {
-    ESP_LOGI("socket_test", "Could not activate the PDP context");
-    return;
-  }
-
-  /* Attach the PDP context */
-  if(modem.attachPDPContext(true)) {
-    ESP_LOGI("socket_test", "Attached to the PDP context");
-  } else {
-    ESP_LOGI("socket_test", "Could not attach to the PDP context");
-    return;
-  }
 
   if(modem.getPDPAddress(&rsp)) {
     ESP_LOGI("socket_test", "PDP context address list:");

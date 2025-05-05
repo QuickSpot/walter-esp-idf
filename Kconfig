@@ -1,0 +1,323 @@
+menu "walter-modem"
+    config WALTER_MODEM_KCONFIG
+            bool "Enable Kconfig"
+            default y
+            help
+                enable Kconfig for Walter Modem.
+
+    if WALTER_MODEM_KCONFIG
+        menu "Protocols"
+            config WALTER_MODEM_ENABLE_SOCKETS
+                bool "Enable Socket functions"
+                default y
+                help
+                    Enable socket functions.
+
+            if WALTER_MODEM_ENABLE_SOCKETS
+                menu "Socket (TCP/UDP)"
+                    config WALTER_MODEM_MAX_SOCKETS
+                        int "Max socket connections"
+                        range 1 6
+                        default 6
+                        help
+                            The maximum number of sockets.
+                endmenu
+            endif
+
+            config WALTER_MODEM_ENABLE_MQTT
+                bool "Enable MQTT functions"
+                default y
+                help
+                    Enable MQTT support for the WalterModem.
+            
+            if WALTER_MODEM_ENABLE_MQTT
+                menu "MQTT"
+                    config WALTER_MODEM_MQTT_TOPIC_MAX_SIZE
+                        int "Max topic lenght"
+                        default 127
+                        help
+                            The maximum number of characters in an MQTT topic.
+                    
+                    config WALTER_MODEM_MQTT_MAX_PENDING_RINGS
+                        int "Max pending rings"
+                        default 8
+                        help
+                            The maximum number of rings that can be pending for the MQTT protocol.
+                    
+                    config WALTER_MODEM_MQTT_MIN_PREF_KEEP_ALIVE
+                        int "minimum keep alive time"
+                        default 20
+                        help
+                            The recommended minimum for the mqtt keep alive time
+
+                    config WALTER_MODEM_MQTT_MAX_TOPICS
+                        int "max MQTT topics the modem can subscribe to"
+                        default 4
+                        help
+                            The maximum allowed mqtt topics to subscribe to.
+                endmenu
+            endif
+
+            config WALTER_MODEM_ENABLE_GNSS
+                bool "Enable GNSS functions"
+                default y
+                help
+                    Enable GNSS ofloading functions.
+            
+            if WALTER_MODEM_ENABLE_GNSS
+                menu "GNSS"
+                    config WALTER_MODEM_GNSS_MAX_SATS
+                        int "Max tracked sats"
+                        default 32
+                        help
+                            The maximum number of tracked GNSS satellites.
+                endmenu
+            endif
+
+            config WALTER_MODEM_ENABLE_HTTP
+                bool "Enable HTTP functions"
+                default y
+                help
+                    Enable HTTP ofloading functions.
+            
+            if WALTER_MODEM_ENABLE_HTTP
+                menu "HTTP"
+                    config WALTER_MODEM_MAX_HTTP_PROFILES
+                        int "Max http profiles"
+                        default 3
+                        help
+                            The maximum number of HTTP profiles that the library can support.
+                endmenu
+            endif
+            
+            config WALTER_MODEM_ENABLE_COAP
+                bool "Enable CoAP functions"
+                default y
+                help
+                    Enable CoAP ofloading functions
+
+            if WALTER_MODEM_ENABLE_COAP
+                menu "CoAP"
+                    config WALTER_MODEM_MAX_COAP_PROFILES
+                        int "Max CoAP profiles"
+                        default y
+                        range 1 3
+                        help
+                            The maximum number of CoAP profiles that the library can support.
+
+                    config WALTER_MODEM_COAP_MAX_PENDING_RINGS
+                        int "Max pending CoAP rings"
+                        default 8
+                        range 4 16
+                        help
+                            The maximum number of rings that can be pending for the CoAP protocol.
+                endmenu
+
+                config WALTER_MODEM_ENABLE_BLUE_CHERRY
+                    bool "Enable Blue cherry functions"
+                    default y
+                    select WALTER_MODEM_ENABLE_MOTA
+                    select WALTER_MODEM_ENABLE_OTA
+                    help
+                        Disable bluecherry for walterModem
+                
+                if WALTER_MODEM_ENABLE_BLUE_CHERRY
+                    menu "Bluecherry"
+                        comment "Mota and OTA functions are forced on when bluecherry is enabled!"
+                        
+                        config WALTER_MODEM_BLUE_CHERRY_HOSTNAME
+                            string "blue cherry server hostname"
+                            default coap.bluecherry.io
+                            help
+                                The hostname to use for bluecherry.
+                    endmenu
+                endif
+            endif
+
+
+        endmenu
+        menu "Pinout"
+            if WALTER_MODEM_KCONFIG
+                config WALTER_MODEM_PIN_RX
+                    int "RX"
+                    default 14
+                    help
+                        The RX pin on which modem data is received.
+
+                config WALTER_MODEM_PIN_TX
+                    int "TX"
+                    default 48
+                    help
+                        The TX to which modem data must be transmitted.
+                
+                config WALTER_MODEM_PIN_RTS
+                    int "RTS"
+                    default 21
+                    help
+                        The RTS pin on the ESP32 side.
+                
+                config WALTER_MODEM_PIN_CTS
+                    int "CTS"
+                    default 47
+                    help
+                        The CTS pin on the ESP32 size.
+                    
+                config WALTER_MODEM_PIN_RESET
+                    int "Reset pin"
+                    default 45
+                    help
+                        The active low modem reset pin.
+            endif
+        endmenu
+        menu "UART"
+            config WALTER_MODEM_BAUD
+                int "The modem BAUD rate"
+                default 115200
+                help 
+                    The baud rate used to talk to the modem.
+            
+            config UART_BUF_SIZE
+                int "Uart buffer size"
+                default 128
+                help
+                    The uart buffer size for modem communication.
+        endmenu
+        menu "AT Commands"
+            config WALTER_MODEM_CMD_TIMEOUT_MS
+                int "Default cmd timeout in MS"
+                default 300000
+                help
+                    The maximum number of milliseconds to wait.
+            
+            config WALTER_MODEM_MAX_PENDING_COMMANDS
+                int "The maximum commands that can be pending at one moment"
+                default 32
+                help
+                    The maximum number of pending commands. 
+            
+            config WALTER_MODEM_DEFAULT_CMD_ATTEMTS
+                int "Number of attempts to execute a command"
+                default 3
+                range 1 6
+                help
+                    The default number of attempts to execute a command.
+            
+            config WALTER_MODEM_COMMAND_MAX_ELEMS
+                int "Number of elements allowed to build an AT command."
+                default 63
+                help
+                    The maximum number of elements allowed to build an AT command.
+            
+            config WALTER_MODEM_RSP_BUF_SIZE
+                int "The size of an AT response buffer"
+                default 1536
+                help
+                    The size of an AT response buffer.
+        endmenu
+        menu "modem task"
+            config WALTER_MODEM_TASK_QUEUE_MAX_ITEMS
+                int "Queue Mac items"
+                range 10 255
+                default 32
+                help
+                    The maximum number of items in the task queue.
+            
+            config WALTER_MODEM_TASK_STACK_SIZE
+                int "The stack size of the modem task in bytes"
+                default 4096
+                range 2048 8192
+                help
+                    The size of the stack of the command and response processing task.
+
+            menu "Events"
+                config WALTER_MODEM_MAX_EVENT_DURATION_MS
+                    int "Max event handler duration in MS"
+                    default 500
+                    help
+                        The event handlers of the Walter modem library are as lightweight as possible and are not
+                        executed in their own thread. Therefore an application should handle them as interrupt handlers.
+                        It is not allowed to call other WalterModem functions from within an event handler and no
+                        blocking operations should be performed in an event handler. To aid the user in achieving this
+                        the library prints a warning when the handler takes more than the defined number of milliseconds.
+            endmenu
+        endmenu
+        menu "Memory"
+            config WALTER_MODEM_BUFFER_POOL_SIZE
+                int "Buffer pool size"
+                range 4 16
+                default 8
+                help
+                    The number of buffers in the buffer pool.
+            
+            config ENCRYPTED_BLOCK_SIZE
+                int "Encrypted block size"
+                default 16
+                help
+                    Encrypted block size within flash.
+            
+            config SPI_SECTORS_PER_BLOCK
+                int "SPI sectors per block"
+                default 16
+                help
+                    SPI flash sectors per erase block, usually large erase block is 32k/64k.
+        endmenu
+        menu "PDP"
+            config WALTER_MODEM_MAX_PDP_CTXTS
+                int "Maximum pdp context count"
+                range 1 8
+                default 8
+                help
+                    The maximum number of PDP contexts that the library can support.
+
+            config WALTER_MODEM_APN_MAX_SIZE
+                int "Maximum chars in APN"
+                default 99
+                range 10 99
+                help
+                    The maximum numbers of characters of the APN.
+            
+            config WALTER_MODEM_PDP_ADDR_MAX_SIZE
+                int "Max chars in pdp addr"
+                default 63
+                help
+                    The maximum number of characters in the string representation of the PDP address.
+            
+            config  WALTER_MODEM_PDP_AUTH_USER_MAX_SIZE
+                int "Max chars in pdp username"
+                default 63
+                help
+                    The maximum number of characters of a PDP context username.
+
+            config WALTER_MODEM_PDP_AUTH_PASS_MAX_SIZE
+                int "Max chars in pdp password"
+                default 63
+                help
+                    The maximum number of characters of a PDP context password.
+
+            config WALTER_MODEM_MAX_TLS_PROFILES
+                int "Max tls profiles"
+                range 1 3
+                default 3
+                help
+                    The maximum number of TLS profiles that the library can support.
+        endmenu
+   
+        menu "Firmware upgrade"
+        if WALTER_MODEM_ENABLE_BLUE_CHERRY
+            comment "Blue cherry has been enabled MOTA & OTA have been forced on!"
+        endif
+        config WALTER_MODEM_ENABLE_MOTA
+            bool "Enable MOTA functionality (Modem firmware)"
+            default y
+            help
+                Enable Modem firmware upgrade functions.
+
+        config WALTER_MODEM_ENABLE_OTA
+            bool "Enable OTA functionality (ESP32 firmware)"
+            depends on WALTER_MODEM_ENABLE_BLUE_CHERRY
+            default y
+            help
+                Enable ESP32 firmware upgrade functions.
+        endmenu
+    endif
+endmenu

@@ -240,7 +240,7 @@ extern "C" void app_main(void)
   }
 
   /* Attach the PDP context */
-  if(modem.attachPDPContext(true)) {
+  if(modem.setNetworkAttachementState(true)) {
     ESP_LOGI("bluecherry_test", "Attached to the PDP context");
   } else {
     ESP_LOGI("bluecherry_test", "Could not attach to the PDP context");
