@@ -100,7 +100,7 @@ menu "walter-modem"
                 menu "CoAP"
                     config WALTER_MODEM_MAX_COAP_PROFILES
                         int "Max CoAP profiles"
-                        default y
+                        default 3
                         range 1 3
                         help
                             The maximum number of CoAP profiles that the library can support.
@@ -114,22 +114,21 @@ menu "walter-modem"
                 endmenu
 
                 config WALTER_MODEM_ENABLE_BLUE_CHERRY
-                    bool "Enable Blue cherry functions"
+                    bool "Enable BlueCherry IoT functionality"
                     default y
                     select WALTER_MODEM_ENABLE_MOTA
-                    select WALTER_MODEM_ENABLE_OTA
                     help
-                        Disable bluecherry for walterModem
+                        Enable BlueCherry IoT functionality
                 
                 if WALTER_MODEM_ENABLE_BLUE_CHERRY
                     menu "Bluecherry"
-                        comment "Mota and OTA functions are forced on when bluecherry is enabled!"
+                        comment "Mota and OTA functions are forced on when BlueCherry is enabled!"
                         
                         config WALTER_MODEM_BLUE_CHERRY_HOSTNAME
                             string "blue cherry server hostname"
                             default coap.bluecherry.io
                             help
-                                The hostname to use for bluecherry.
+                                The hostname to use for Bluecherry.
                     endmenu
                 endif
             endif
@@ -304,20 +303,13 @@ menu "walter-modem"
    
         menu "Firmware upgrade"
         if WALTER_MODEM_ENABLE_BLUE_CHERRY
-            comment "Blue cherry has been enabled MOTA & OTA have been forced on!"
+            comment "BlueCherry has been enabled MOTA & OTA have been forced on!"
         endif
         config WALTER_MODEM_ENABLE_MOTA
             bool "Enable MOTA functionality (Modem firmware)"
             default y
             help
                 Enable Modem firmware upgrade functions.
-
-        config WALTER_MODEM_ENABLE_OTA
-            bool "Enable OTA functionality (ESP32 firmware)"
-            depends on WALTER_MODEM_ENABLE_BLUE_CHERRY
-            default y
-            help
-                Enable ESP32 firmware upgrade functions.
         endmenu
     endif
 endmenu
