@@ -65,4 +65,10 @@ This is the Changelog for WalterModem
 6) clock is now a struct which contains the `epochTime` and the `timeZoneOffset`
 
 `all examples have been reworked.`
- 
+
+## [v1.2.1](https://github.com/QuickSpot/walter-esp-idf/releases/tag/v1.1.2)
+
+### Bug Fixes
+
+- fixed mqttConfig wrong defaults ([#47](https://github.com/QuickSpot/walter-esp-idf/issues/47))
+- fixed `out of bounds` compile error in release mode ([#46](https://github.com/QuickSpot/walter-esp-idf/issues/46))
