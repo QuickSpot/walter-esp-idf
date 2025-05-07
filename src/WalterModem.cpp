@@ -1041,6 +1041,7 @@ void WalterModem::_parseRxData(char *rxData, size_t len)
     if (firstCRLF != nullptr && _parserData.buf->size == 0) {
         rxDataStart = rxData + 2;
         rxDataLen -= 2;
+        ESP_LOGD("WalterParser","leading CRLF");
     }
 
     bool hasCR = memchr(rxDataStart, '\r', len) != nullptr;
@@ -1051,10 +1052,14 @@ void WalterModem::_parseRxData(char *rxData, size_t len)
 
     if ((hasCR && hasLF) || hasTripleChevron)
     {
+        ESP_LOGD("WalterParser", "trailing CRLF found");
+
         //OUR PAYLOAD is complete
         _parserData.rawChunkSize = _extractPayloadSize();
 
         if (_parserData.rawChunkSize > 0) {
+            ESP_LOGD("WalterParser", "expecting payload");
+
             /* expecting payload */
             size_t currentPayloadSize = _getCurrentPayloadSize();
             if (currentPayloadSize < _parserData.rawChunkSize) 
@@ -1074,16 +1079,17 @@ void WalterModem::_parseRxData(char *rxData, size_t len)
                 _queueRxBuffer();
             }
         } else if(len > 0) {
-            char *crlf_pos = (char *)memmem(rxData, len, "\r\n", 2);
+            char *crlf_pos = (char *)memmem(rxDataStart, len, "\r\n", 2);
             if (crlf_pos != nullptr) {
-                size_t bytesToAdd = crlf_pos - rxData + 2;
+                size_t bytesToAdd = crlf_pos - rxDataStart + 2;
                 _addATBytesToBuffer(rxData, bytesToAdd);
                 _queueRxBuffer();
                 size_t remainingBytes = len - bytesToAdd;
-                _addATBytesToBuffer(rxData + bytesToAdd, remainingBytes);
+                _addATBytesToBuffer(rxDataStart + bytesToAdd, remainingBytes);
             }
         }
     } else {
+        ESP_LOGD("WalterParser", "no trailling CRLF");
         _addATBytesToBuffer(rxData,len);
     }
 }
