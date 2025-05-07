@@ -1033,64 +1033,42 @@ void WalterModem::_queueRxBuffer()
 
 void WalterModem::_parseRxData(char *rxData, size_t len)
 {
-    /* The messages always start and end with it CRLF if this is the case*/
-    char *firstCRLF = (char *)memmem(rxData, len, "\r\n", 2);
-    char *rxDataStart = rxData;
-    size_t rxDataLen = len;
+    if (len == 0 || rxData == nullptr)
+        return;
 
-    if (firstCRLF != nullptr && _parserData.buf->size == 0) {
-        rxDataStart = rxData + 2;
-        rxDataLen -= 2;
-        ESP_LOGD("WalterParser","leading CRLF");
-    }
+    ESP_LOGD("WalterModem", "UART: received %u bytes", (unsigned int)len);
+    _addATBytesToBuffer(rxData, len);
 
-    bool hasCR = memchr(rxDataStart, '\r', len) != nullptr;
-    bool hasLF = memchr(rxDataStart, '\n', len) != nullptr;
-    bool hasTripleChevron = memmem(rxDataStart, len, "<<<", 3) != nullptr; //HTTP data sequence
-   
+    char *dataStart = (char *)_parserData.buf->data;
+    size_t dataLen = _parserData.buf->size;
+    // Check for the expected command structure or the leading characters
+    if (_parserData.buf->size > 2) {
+        if (dataStart[0] == '\r' && dataStart[1] == '\n') {
+            ESP_LOGD("WalterModem", "Skipping leading CRLF");
+            dataLen -= 2;
+            _parserData.buf->size -= 2; // Decrease the size to reflect the removed bytes
+            memmove(_parserData.buf->data, &_parserData.buf->data[2], _parserData.buf->size);
+            ESP_LOGD("WalterParser", "memmove");
+        }
 
+        bool hasCR = memchr(dataStart, '\r', dataLen) != nullptr;
+        bool hasLF = memchr(dataStart, '\n', dataLen) != nullptr;
+        bool hasTripleChevron = memmem(dataStart, dataLen, "<<<", 3) != nullptr;
+        bool dataPrompt = dataStart[0] == '>';
+        bool httpPrompt = size >= 3 ? dataStart[0] == '>' && dataStart[1] == '>' && dataStart[2] == '>' : false;
 
-    if ((hasCR && hasLF) || hasTripleChevron)
-    {
-        ESP_LOGD("WalterParser", "trailing CRLF found");
+                if ((hasCR && hasLF) || hasTripleChevron)
+        {
+            size_t payloadSize = _extractPayloadSize();
+            ESP_LOGD("WalterModem", "found ending");
 
-        //OUR PAYLOAD is complete
-        _parserData.rawChunkSize = _extractPayloadSize();
-
-        if (_parserData.rawChunkSize > 0) {
-            ESP_LOGD("WalterParser", "expecting payload");
-
-            /* expecting payload */
-            size_t currentPayloadSize = _getCurrentPayloadSize();
-            if (currentPayloadSize < _parserData.rawChunkSize) 
-            {
-                size_t remainingBytes = _parserData.rawChunkSize - currentPayloadSize;
-                size_t bytesToAdd = (remainingBytes <= len) ? remainingBytes : len;
-                // Add the received bytes to the buffer
-                _addATBytesToBuffer(rxDataStart, bytesToAdd);
-
-                /* if we have more bytes then neccesary we queue the RX buffer*/
-                if (bytesToAdd < len) {
-                    _queueRxBuffer();
-                    /* add the remaining bytes to the buffer and continue*/
-                    _addATBytesToBuffer(rxDataStart + bytesToAdd, len - bytesToAdd);
-                }
-            } else{
+            if (payloadSize > 0) {
+                // TODO implement payload loading
+            } else {
                 _queueRxBuffer();
-            }
-        } else if(len > 0) {
-            char *crlf_pos = (char *)memmem(rxDataStart, len, "\r\n", 2);
-            if (crlf_pos != nullptr) {
-                size_t bytesToAdd = crlf_pos - rxDataStart + 2;
-                _addATBytesToBuffer(rxData, bytesToAdd);
-                _queueRxBuffer();
-                size_t remainingBytes = len - bytesToAdd;
-                _addATBytesToBuffer(rxDataStart + bytesToAdd, remainingBytes);
             }
         }
-    } else {
-        ESP_LOGD("WalterParser", "no trailling CRLF");
-        _addATBytesToBuffer(rxData,len);
+        else if (dataPrompt || httpPrompt) { _queueRxBuffer(); }
     }
 }
 
