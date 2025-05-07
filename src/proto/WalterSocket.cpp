@@ -117,17 +117,12 @@ bool WalterModem::socketConfig(
     uint16_t connTimeout,
     uint16_t sendDelayMs)
 {
-    WalterModemPDPContext *ctx = _pdpContextGet(pdpCtxId);
-    if (ctx == NULL || pdpCtxId < 0) {
-        _returnState(WALTER_MODEM_STATE_NO_SUCH_PDP_CONTEXT);
-    }
-
     WalterModemSocket *sock = _socketReserve();
     if (sock == NULL) {
         _returnState(WALTER_MODEM_STATE_NO_FREE_SOCKET);
     }
 
-    sock->pdpContextId = ctx->id;
+    sock->pdpContextId = pdpCtxId;
     sock->mtu = mtu;
     sock->exchangeTimeout = exchangeTimeout;
     sock->connTimeout = connTimeout;
