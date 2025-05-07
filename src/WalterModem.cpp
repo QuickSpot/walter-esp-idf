@@ -1037,7 +1037,7 @@ void WalterModem::_parseRxData(char *rxData, size_t len)
     bool hasLF = memchr(rxData, '\n', len) != nullptr;
     bool hasTripleChevron = memmem(rxData, len, "<<<", 3) != nullptr; //HTTP data sequence
 
-    if (hasCR && hasLF || hasTripleChevron)
+    if ((hasCR && hasLF) || hasTripleChevron)
     {
         //OUR PAYLOAD is complete
         _parserData.rawChunkSize = _extractPayloadSize();
