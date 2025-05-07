@@ -928,7 +928,10 @@ size_t WalterModem::_extractPayloadSize()
     if (_parserData.buf == NULL || !_parserData.buf->size) {
         return 0;
     }
-    //if(_buffStartsWith(_parserData.buf)
+    if (_buffStartsWith(_parserData.buf, "<<<") &&
+        _httpCurrentProfile < WALTER_MODEM_MAX_HTTP_PROFILES) {
+        return _httpContextSet[_httpCurrentProfile].contentLength + _strLitLen("\r\nOK\r\n");
+    }
     return 0;
 }
 
@@ -938,16 +941,19 @@ size_t WalterModem::_getCurrentPayloadSize()
     if (_parserData.buf == NULL || _parserData.buf->size < 2) {
         return 0; // Not enough data to contain CRLF
     }
-
+    
     // Search for the CRLF \r\n in the buffer
     char* crlf_pos = (char*)memmem(_parserData.buf->data, _parserData.buf->size, "\r\n", 2);
+    if (_parserData.buf->size >= 3 && _parserData.buf->data[0] == '<' &&
+        _parserData.buf->data[1] == '<' && _parserData.buf->data[2] == '<') {
+        return _parserData.buf->size - 3;
+    } else if (crlf_pos != NULL) {
+        // If CRLF is found, return the size of the data after it
 
-    // If CRLF is found, return the size of the data after it
-    if (crlf_pos != NULL) {
         size_t payload_size = _parserData.buf->size -
             (crlf_pos - reinterpret_cast<char *>(_parserData.buf->data)) - 2;
         return payload_size;
-    }
+    } else 
 
     // If CRLF not found, return 0 (payload not ready)
     return 0;
@@ -998,6 +1004,7 @@ void WalterModem::_addATBytesToBuffer(const char *data, size_t length)
     /* Try to get a free buffer if not already set */
     if (_parserData.buf == NULL) {
         _parserData.buf = _getFreeBuffer();
+        _parserData.buf->size = 0;
     }
 
     /* If still NULL, drop data silently */
@@ -1033,10 +1040,9 @@ void WalterModem::_queueRxBuffer()
 
 void WalterModem::_parseRxData(char *rxData, size_t len)
 {
-    if (len == 0 || rxData == nullptr)
+    if (len == 0 || _hardwareReset)
         return;
 
-    ESP_LOGD("WalterModem", "UART: received %u bytes", (unsigned int)len);
     _addATBytesToBuffer(rxData, len);
 
     char *dataStart = (char *)_parserData.buf->data;
@@ -1044,26 +1050,28 @@ void WalterModem::_parseRxData(char *rxData, size_t len)
     // Check for the expected command structure or the leading characters
     if (_parserData.buf->size > 2) {
         if (dataStart[0] == '\r' && dataStart[1] == '\n') {
-            ESP_LOGD("WalterModem", "Skipping leading CRLF");
             dataLen -= 2;
             _parserData.buf->size -= 2; // Decrease the size to reflect the removed bytes
             memmove(_parserData.buf->data, &_parserData.buf->data[2], _parserData.buf->size);
-            ESP_LOGD("WalterParser", "memmove");
         }
 
         bool hasCR = memchr(dataStart, '\r', dataLen) != nullptr;
         bool hasLF = memchr(dataStart, '\n', dataLen) != nullptr;
         bool hasTripleChevron = memmem(dataStart, dataLen, "<<<", 3) != nullptr;
         bool dataPrompt = dataStart[0] == '>';
-        bool httpPrompt = size >= 3 ? dataStart[0] == '>' && dataStart[1] == '>' && dataStart[2] == '>' : false;
+        bool httpPrompt = dataLen >= 3 ? dataStart[0] == '>' && dataStart[1] == '>' && dataStart[2] == '>' : false;
 
-                if ((hasCR && hasLF) || hasTripleChevron)
+        if ((hasCR && hasLF) || hasTripleChevron)
         {
             size_t payloadSize = _extractPayloadSize();
-            ESP_LOGD("WalterModem", "found ending");
 
             if (payloadSize > 0) {
-                // TODO implement payload loading
+                size_t currentPayload = _getCurrentPayloadSize();
+                int32_t remaining = payloadSize - currentPayload;
+
+                if (remaining <= 0) {
+                    _queueRxBuffer();
+                }
             } else {
                 _queueRxBuffer();
             }
@@ -3528,6 +3536,7 @@ bool WalterModem::softReset(WalterModemRsp *rsp, walterModemCb cb, void *args)
 
 bool WalterModem::reset(WalterModemRsp *rsp, walterModemCb cb, void *args)
 {
+    _hardwareReset = true;
     _runCmd({}, "+SYSSTART", rsp, cb, args, NULL, NULL, WALTER_MODEM_CMD_TYPE_WAIT);
 
     gpio_hold_dis((gpio_num_t)WALTER_MODEM_PIN_RESET);
@@ -3535,6 +3544,7 @@ bool WalterModem::reset(WalterModemRsp *rsp, walterModemCb cb, void *args)
     vTaskDelay(pdMS_TO_TICKS(10));
     gpio_set_level((gpio_num_t)WALTER_MODEM_PIN_RESET, 1);
     gpio_hold_en((gpio_num_t)WALTER_MODEM_PIN_RESET);
+    _hardwareReset = false;
 
     /* Also (re)initialize internal modem related library state */
     _regState = WALTER_MODEM_NETWORK_REG_NOT_SEARCHING;

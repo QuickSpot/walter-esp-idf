@@ -2831,6 +2831,11 @@ private:
     static inline bool _initialized = false;
 
     /**
+     * @brief boolean for when we are doing a hardware reset.
+     */
+    static inline bool _hardwareReset = false;
+
+    /**
      * @brief We remember the configured watchdog timeout.
      */
     static inline uint8_t _watchdogTimeout = false;
