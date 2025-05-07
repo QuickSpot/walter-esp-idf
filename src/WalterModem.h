@@ -2715,7 +2715,7 @@ typedef struct {
     /**
      * @brief In raw data chunk parser state, we remember nr expected bytes
      */
-    uint16_t rawChunkSize = 0;
+    size_t rawChunkSize = 0;
 } WalterModemATParserData;
 
 /**
@@ -3211,12 +3211,18 @@ private:
 
 #pragma region CMD_PROCESSING
     /**
-     * @brief Test if the new buffer line starts a raw data chunk
+     * @brief this function extracts the expected payloadSize.
      *
-     * @return Size of the expected raw data chunk
+     * @return Size of the expected payload
      */
-    static uint16_t _extractRawBufferChunkSize();
+    static size_t _extractPayloadSize();
 
+    /**
+     * @brief this function extracts the current payloadSize in the _parserData buffer.
+     * 
+     * @return currentSize fo the payload already received.
+     */
+    static size_t _getCurrentPayloadSize();
     /**
      * @brief Get a free buffer from the buffer pool.
      *
@@ -3236,6 +3242,19 @@ private:
      * @return None.
      */
     static void _addATByteToBuffer(char data, bool raw);
+
+    /**
+     * @brief Handle an AT data byte.
+     *
+     * This function is used by the AT data parser to add a databyte to the buffer currently in
+     * use or to reserve a new buffer to add a byte to.
+     *
+     * @param data The data byte to handle.
+     * @param lenght The lenght of the data to add.
+     *
+     * @return None.
+     */
+    static void _addATBytesToBuffer(const char *data, size_t length);
 
     /**
      * @brief Copy the currently received data buffer into the task queue.
