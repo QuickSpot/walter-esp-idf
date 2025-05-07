@@ -923,42 +923,6 @@ void WalterModem::_loadRTCPdpContextSet(WalterModemPDPContext *_pdpCtxSetRTC)
 
 #pragma region CMD_PROCESSING
 
-size_t WalterModem::_extractPayloadSize()
-{
-    if (_parserData.buf == NULL || !_parserData.buf->size) {
-        return 0;
-    }
-    if (_buffStartsWith(_parserData.buf, "<<<") &&
-        _httpCurrentProfile < WALTER_MODEM_MAX_HTTP_PROFILES) {
-        return _httpContextSet[_httpCurrentProfile].contentLength + _strLitLen("\r\nOK\r\n");
-    }
-    return 0;
-}
-
-size_t WalterModem::_getCurrentPayloadSize()
-{
-    // Check if the buffer has at least enough data to contain CRLF
-    if (_parserData.buf == NULL || _parserData.buf->size < 2) {
-        return 0; // Not enough data to contain CRLF
-    }
-    
-    // Search for the CRLF \r\n in the buffer
-    char* crlf_pos = (char*)memmem(_parserData.buf->data, _parserData.buf->size, "\r\n", 2);
-    if (_parserData.buf->size >= 3 && _parserData.buf->data[0] == '<' &&
-        _parserData.buf->data[1] == '<' && _parserData.buf->data[2] == '<') {
-        return _parserData.buf->size - 3;
-    } else if (crlf_pos != NULL) {
-        // If CRLF is found, return the size of the data after it
-
-        size_t payload_size = _parserData.buf->size -
-            (crlf_pos - reinterpret_cast<char *>(_parserData.buf->data)) - 2;
-        return payload_size;
-    } else 
-
-    // If CRLF not found, return 0 (payload not ready)
-    return 0;
-}
-
 WalterModemBuffer *WalterModem::_getFreeBuffer(void)
 {
     WalterModemBuffer *chosenBuf = NULL;
@@ -1063,15 +1027,16 @@ void WalterModem::_parseRxData(char *rxData, size_t len)
 
         if ((hasCR && hasLF) || hasTripleChevron)
         {
-            size_t payloadSize = _extractPayloadSize();
+            if (_receiving && (_parserData.buf->size >= 6 || _parserData.buf->size >= 6)) {
+                uint8_t *data = _parserData.buf->data;
+                size_t size = _parserData.buf->size;
 
-            if (payloadSize > 0) {
-                size_t currentPayload = _getCurrentPayloadSize();
-                int32_t remaining = payloadSize - currentPayload;
-
-                if (remaining <= 0) {
+                if (memcmp(&data[size - 6], "\r\nOK\r\n", 6) == 0 ||
+                    memcmp(&data[size - 7], "\r\nERROR\r\n", 7) == 0) {
+                    _receiving = false;
                     _queueRxBuffer();
                 }
+                //TODO on error
             } else {
                 _queueRxBuffer();
             }

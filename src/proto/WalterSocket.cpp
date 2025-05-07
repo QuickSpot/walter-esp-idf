@@ -413,7 +413,7 @@ bool WalterModem::socketReceive(
     if (targetBufSize > 1500) {
         _returnState(WALTER_MODEM_STATE_NO_MEMORY);
     }
-
+    _receiving = true;
     _runCmd(
         arr("AT+SQNSRECV=", _digitStr(sock->id), ",", _atNum(targetBufSize)),
         "OK",
