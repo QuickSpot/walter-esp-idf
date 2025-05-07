@@ -1033,9 +1033,21 @@ void WalterModem::_queueRxBuffer()
 
 void WalterModem::_parseRxData(char *rxData, size_t len)
 {
-    bool hasCR = memchr(rxData, '\r', len) != nullptr;
-    bool hasLF = memchr(rxData, '\n', len) != nullptr;
-    bool hasTripleChevron = memmem(rxData, len, "<<<", 3) != nullptr; //HTTP data sequence
+    /* The messages always start and end with it CRLF if this is the case*/
+    char *firstCRLF = (char *)memmem(rxData, len, "\r\n", 2);
+    char *rxDataStart = rxData;
+    size_t rxDataLen = len;
+
+    if (firstCRLF != nullptr && _parserData.buf->size == 0) {
+        rxDataStart = rxData + 2;
+        rxDataLen -= 2;
+    }
+
+    bool hasCR = memchr(rxDataStart, '\r', len) != nullptr;
+    bool hasLF = memchr(rxDataStart, '\n', len) != nullptr;
+    bool hasTripleChevron = memmem(rxDataStart, len, "<<<", 3) != nullptr; //HTTP data sequence
+   
+
 
     if ((hasCR && hasLF) || hasTripleChevron)
     {
@@ -1050,13 +1062,13 @@ void WalterModem::_parseRxData(char *rxData, size_t len)
                 size_t remainingBytes = _parserData.rawChunkSize - currentPayloadSize;
                 size_t bytesToAdd = (remainingBytes <= len) ? remainingBytes : len;
                 // Add the received bytes to the buffer
-                _addATBytesToBuffer(rxData, bytesToAdd);
+                _addATBytesToBuffer(rxDataStart, bytesToAdd);
 
                 /* if we have more bytes then neccesary we queue the RX buffer*/
                 if (bytesToAdd < len) {
                     _queueRxBuffer();
                     /* add the remaining bytes to the buffer and continue*/
-                    _addATBytesToBuffer(rxData + bytesToAdd, len - bytesToAdd);
+                    _addATBytesToBuffer(rxDataStart + bytesToAdd, len - bytesToAdd);
                 }
             } else{
                 _queueRxBuffer();
