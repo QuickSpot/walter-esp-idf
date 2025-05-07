@@ -944,8 +944,8 @@ size_t WalterModem::_getCurrentPayloadSize()
 
     // If CRLF is found, return the size of the data after it
     if (crlf_pos != NULL) {
-        size_t payload_size =
-            _parserData.buf->size - (crlf_pos - (char *)_parserData.buf->data) - 2;
+        size_t payload_size = _parserData.buf->size -
+            (crlf_pos - reinterpret_cast<char *>(_parserData.buf->data)) - 2;
         return payload_size;
     }
 
