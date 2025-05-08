@@ -1004,44 +1004,67 @@ void WalterModem::_queueRxBuffer()
 
 void WalterModem::_parseRxData(char *rxData, size_t len)
 {
+    static bool foundCRLF = false;
     if (len == 0 || _hardwareReset)
         return;
-
-    _addATBytesToBuffer(rxData, len);
-
-    char *dataStart = (char *)_parserData.buf->data;
-    size_t dataLen = _parserData.buf->size;
-    // Check for the expected command structure or the leading characters
-    if (_parserData.buf->size > 2) {
-        if (dataStart[0] == '\r' && dataStart[1] == '\n') {
-            dataLen -= 2;
-            _parserData.buf->size -= 2; // Decrease the size to reflect the removed bytes
-            memmove(_parserData.buf->data, &_parserData.buf->data[2], _parserData.buf->size);
+    char *dataStart = rxData;
+    size_t dataLen = len;
+    /* remove the leading CRLF*/
+    if (_parserData.buf == NULL) {
+        if (dataStart[0] == '\r') {
+            ESP_LOGV("WalterParser", "Removed the leading CRLF");
+            dataLen--;
+            dataStart++;
         }
+        if (dataStart[0] == '\n') {
+            ESP_LOGV("WalterParser", "Removed the leading CRLF");
+            dataLen--;
+            dataStart++;
+        }
+    }
+    ESP_LOGV("WalterParser", "rxData (%d bytes): '%.*s'", dataLen, dataLen, dataStart);
 
-        bool hasCR = memchr(dataStart, '\r', dataLen) != nullptr;
-        bool hasLF = memchr(dataStart, '\n', dataLen) != nullptr;
-        bool hasTripleChevron = memmem(dataStart, dataLen, "<<<", 3) != nullptr;
-        bool dataPrompt = dataStart[0] == '>';
-        bool httpPrompt = dataLen >= 3 ? dataStart[0] == '>' && dataStart[1] == '>' && dataStart[2] == '>' : false;
+    size_t CRLFPos = _getCRLFPosition(dataStart, dataLen);
+    bool hasTripleChevron = memmem(dataStart, dataLen, "<<<", 3) != nullptr;
+    if (CRLFPos > 0 || hasTripleChevron || foundCRLF) {
+        if (_receiving) {
+            ESP_LOGV("WalterParser", "Receiving payload data");
+            // TODO wait until we have the ending \r\nOK\r\n or \r\nERROR\r\n
+            _addATBytesToBuffer(dataStart, dataLen);
+            char *okPos = (char *)memmem(dataStart, dataLen, "\r\nOK\r\n", 6);
+            char *errorPos = (char *)memmem(dataStart, dataLen, "\r\nERROR\r\n", 8);
 
-        if ((hasCR && hasLF) || hasTripleChevron)
-        {
-            if (_receiving && (_parserData.buf->size >= 6 || _parserData.buf->size >= 6)) {
-                uint8_t *data = _parserData.buf->data;
-                size_t size = _parserData.buf->size;
-
-                if (memcmp(&data[size - 6], "\r\nOK\r\n", 6) == 0 ||
-                    memcmp(&data[size - 7], "\r\nERROR\r\n", 7) == 0) {
-                    _receiving = false;
-                    _queueRxBuffer();
-                }
-                //TODO on error
-            } else {
+            char *endMarker = (okPos && (!errorPos || okPos < errorPos)) ? okPos : errorPos;
+            if (endMarker) {
+                _addATBytesToBuffer(dataStart, endMarker - dataStart);
+                _receiving = false;
                 _queueRxBuffer();
+                /* add the OK or ERROR as a seperate message*/
+                /* the third char from the endmarker is expected to be an O in the case of OK*/
+                size_t resultLenght = okPos != nullptr ? 6 : 8;
+                _parseRxData(endMarker, dataLen - (endMarker - dataStart));
+            } else {
+                foundCRLF = true;
             }
+        } else {
+            ESP_LOGV("WalterParser", "Receiving full message");
+
+            _addATBytesToBuffer(dataStart, CRLFPos);
+            /* a full message has been found so queue it an*/
+            _queueRxBuffer();
+            _parseRxData(dataStart + CRLFPos + 1, dataLen - CRLFPos - 1);
         }
-        else if (dataPrompt || httpPrompt) { _queueRxBuffer(); }
+    } else if (dataLen > 0) {
+        bool dataPrompt = dataStart[0] == '>';
+        bool httpPrompt = dataLen >= 3
+            ? dataStart[0] == '>' && dataStart[1] == '>' && dataStart[2] == '>'
+            : false;
+        _addATBytesToBuffer(dataStart, dataLen);
+        ESP_LOGV("WalterParser", "Receiving partial or prompt");
+
+        if (dataPrompt || httpPrompt) {
+            _queueRxBuffer();
+        }
     }
 }
 

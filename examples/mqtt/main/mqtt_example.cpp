@@ -187,7 +187,7 @@ extern "C" void app_main(void)
 
     /* other public mqtt broker with web client: mqtthq.comm */
     /* Configure the mqtt client */
-    if (modem.mqttConfig("walter-mqtt-test-topic")) {
+    if (modem.mqttConfig("walter-mqtt-test-topic","","",0)) {
         ESP_LOGI(TAG, "MQTT configuration succeeded");
     } else {
         ESP_LOGE(TAG, "MQTT configuration failed");
