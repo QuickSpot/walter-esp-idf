@@ -1035,9 +1035,9 @@ void WalterModem::_parseRxData(char *rxData, size_t len)
             dataStart++;
         }
     }
-    if(dataLen <= 0)
+    if (dataLen <= 0 || dataLen > UART_BUF_SIZE)
         return;
-    ESP_LOGD("WalterParser", "rxData (%d bytes): '%.*s'", dataLen, dataLen, dataStart);
+    ESP_LOGD("WalterParser", "rxData (%u bytes): '%.*s'", dataLen, dataLen, dataStart);
 
     size_t CRLFPos = _getCRLFPosition(dataStart, dataLen);
     bool hasTripleChevron = memmem(dataStart, dataLen, "<<<", 3) != nullptr;
@@ -1058,9 +1058,11 @@ void WalterModem::_parseRxData(char *rxData, size_t len)
                 /* add the OK or ERROR as a seperate message*/
                 /* the third char from the endmarker is expected to be an O in the case of OK*/
                 _receiving = false;
-                _parseRxData(
-                    endMarker, dataLen - (endMarker -  dataStart)
-                );
+                ESP_LOGD(
+                    "WalterParser",
+                    "Remaining bytes after end marker: %u",
+                    dataLen - (endMarker - dataStart));
+                _parseRxData(endMarker, dataLen - (endMarker - dataStart));
             } else {
                 
                 foundCRLF = true;
@@ -3449,7 +3451,7 @@ bool WalterModem::begin(uart_port_t uartNo, uint8_t watchdogTimeout)
         "uart_rx_task",
         WALTER_MODEM_TASK_STACK_SIZE,
         NULL,
-        2,
+        3,
         _rxTaskStack,
         &_rxTaskBuf,
         0);
@@ -3461,7 +3463,7 @@ bool WalterModem::begin(uart_port_t uartNo, uint8_t watchdogTimeout)
         "queueProcessingTask",
         WALTER_MODEM_TASK_STACK_SIZE,
         NULL,
-        1,
+        2,
         _queueTaskStack,
         &_queueTaskBuf,
         1);
@@ -3471,7 +3473,7 @@ bool WalterModem::begin(uart_port_t uartNo, uint8_t watchdogTimeout)
         "queueProcessingTask",
         WALTER_MODEM_TASK_STACK_SIZE,
         NULL,
-        1,
+        2,
         _queueTaskStack,
         &_queueTaskBuf,
         0);
