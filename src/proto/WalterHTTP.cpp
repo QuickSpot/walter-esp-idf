@@ -326,7 +326,7 @@ bool WalterModem::httpDidRing(
     _receiving = true;
     _runCmd(
         arr("AT+SQNHTTPRCV=", _atNum(profileId)),
-        "<<<",
+        "OK",
         rsp,
         cb,
         args,

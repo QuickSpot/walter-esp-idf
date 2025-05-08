@@ -1002,15 +1002,27 @@ void WalterModem::_queueRxBuffer()
     }
 }
 
+size_t WalterModem::_getCRLFPosition(const char *rxData, size_t len) 
+{
+    const char *lfPtr = (const char *)memchr(rxData, '\n', len);
+
+    if (lfPtr != NULL && lfPtr > rxData) {
+        return (size_t)(lfPtr - rxData);
+    }
+
+    return 0;
+}
+
 void WalterModem::_parseRxData(char *rxData, size_t len)
 {
     static bool foundCRLF = false;
     if (len == 0 || _hardwareReset)
         return;
-    char *dataStart = rxData;
+    char* dataStart = rxData;
     size_t dataLen = len;
     /* remove the leading CRLF*/
-    if (_parserData.buf == NULL) {
+    if (_parserData.buf == NULL)
+    {
         if (dataStart[0] == '\r') {
             ESP_LOGV("WalterParser", "Removed the leading CRLF");
             dataLen--;
@@ -1031,8 +1043,8 @@ void WalterModem::_parseRxData(char *rxData, size_t len)
             ESP_LOGV("WalterParser", "Receiving payload data");
             // TODO wait until we have the ending \r\nOK\r\n or \r\nERROR\r\n
             _addATBytesToBuffer(dataStart, dataLen);
-            char *okPos = (char *)memmem(dataStart, dataLen, "\r\nOK\r\n", 6);
-            char *errorPos = (char *)memmem(dataStart, dataLen, "\r\nERROR\r\n", 8);
+            char *okPos = (char*)memmem(dataStart, dataLen, "\r\nOK\r\n", 6);
+            char *errorPos = (char*)memmem(dataStart, dataLen, "\r\nERROR\r\n", 8);
 
             char *endMarker = (okPos && (!errorPos || okPos < errorPos)) ? okPos : errorPos;
             if (endMarker) {
@@ -1041,8 +1053,10 @@ void WalterModem::_parseRxData(char *rxData, size_t len)
                 _queueRxBuffer();
                 /* add the OK or ERROR as a seperate message*/
                 /* the third char from the endmarker is expected to be an O in the case of OK*/
-                size_t resultLenght = okPos != nullptr ? 6 : 8;
-                _parseRxData(endMarker, dataLen - (endMarker - dataStart));
+                size_t resultLenght = okPos != nullptr  ? 6 : 8;
+                _parseRxData(
+                    endMarker, dataLen - (endMarker -  dataStart)
+                );
             } else {
                 foundCRLF = true;
             }
@@ -1054,7 +1068,7 @@ void WalterModem::_parseRxData(char *rxData, size_t len)
             _queueRxBuffer();
             _parseRxData(dataStart + CRLFPos + 1, dataLen - CRLFPos - 1);
         }
-    } else if (dataLen > 0) {
+    } else if(dataLen > 0) {
         bool dataPrompt = dataStart[0] == '>';
         bool httpPrompt = dataLen >= 3
             ? dataStart[0] == '>' && dataStart[1] == '>' && dataStart[2] == '>'
@@ -1308,12 +1322,14 @@ TickType_t WalterModem::_processQueueCmd(WalterModemCmd *cmd, bool queueError)
         if (cmd->state == WALTER_MODEM_CMD_STATE_NEW) {
             /* hack for handling AT+SQNSMQTTRCVMESSAGE response */
 #if CONFIG_WALTER_MODEM_ENABLE_MQTT
+            /*
             if (cmd->type == WALTER_MODEM_CMD_TYPE_TX_WAIT &&
                 !strcmp(cmd->atCmd[0], "AT+SQNSMQTTRCVMESSAGE=0,")) {
                 _parserData.state = WALTER_MODEM_RSP_PARSER_RAW;
-                /* add 4 bytes for prepending and trailing \r\n */
+                //add 4 bytes for prepending and trailing \r\n 
                 _parserData.rawChunkSize = cmd->dataSize + 4;
             }
+            */
 #endif
             _transmitCmd(cmd->type, cmd->atCmd);
             cmd->attempt = 1;
@@ -2719,7 +2735,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
 
         if (cmd->data) {
             /* skip leading \r\n */
-            memcpy(cmd->data, rspStr + 2, cmd->dataSize);
+            memcpy(cmd->data, rspStr, cmd->rsp->data.mqttResponse.length);
         }
     }
 #endif

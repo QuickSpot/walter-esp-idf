@@ -3277,6 +3277,13 @@ private:
     static void _queueRxBuffer();
 
     /**
+     * @brief returns the CRLF position
+     *
+     * @param data The incoming data buffer.
+     * @param len The number of bytes in the rxData buffer.
+     */
+    static size_t _getCRLFPosition(const char *rxData, size_t len);
+    /**
      * @brief Parse incoming modem data.
      *
      * @param rxData The incoming data buffer.
