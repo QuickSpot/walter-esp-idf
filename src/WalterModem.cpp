@@ -968,7 +968,6 @@ void WalterModem::_addATBytesToBuffer(const char *data, size_t length)
     /* Try to get a free buffer if not already set */
     if (_parserData.buf == NULL) {
         _parserData.buf = _getFreeBuffer();
-        _parserData.buf->size = 0;
     }
 
     /* If still NULL, drop data silently */
@@ -976,9 +975,10 @@ void WalterModem::_addATBytesToBuffer(const char *data, size_t length)
         return;
     }
 
-    /* Directly copy bytes without checking bounds */
+  
     memcpy(&_parserData.buf->data[_parserData.buf->size], data, length);
     _parserData.buf->size += length;
+
 }
 
 void WalterModem::_queueRxBuffer()
@@ -987,7 +987,7 @@ void WalterModem::_queueRxBuffer()
         if (_parserData.buf->size > 0) {
             WalterModemTaskQueueItem qItem = {};
             qItem.rsp = _parserData.buf;
-
+            ESP_LOGD("WalterParser", "Queued the buffer (size: %u bytes)", _parserData.buf->size);
             if (xQueueSend(_taskQueue.handle, &qItem, 0) != pdTRUE) {
                 /*
                  * When we can not send the buffer to the queue we release it immediately and thus
@@ -995,6 +995,7 @@ void WalterModem::_queueRxBuffer()
                  * consumer.
                  */
                 _parserData.buf->free = true;
+                ESP_LOGD("WalterParser","unable to queue the buffer");
             }
         }
 
@@ -1016,7 +1017,7 @@ size_t WalterModem::_getCRLFPosition(const char *rxData, size_t len)
 void WalterModem::_parseRxData(char *rxData, size_t len)
 {
     static bool foundCRLF = false;
-    if (len == 0 || _hardwareReset)
+    if (len <= 0 || _hardwareReset)
         return;
     char* dataStart = rxData;
     size_t dataLen = len;
@@ -1024,44 +1025,68 @@ void WalterModem::_parseRxData(char *rxData, size_t len)
     if (_parserData.buf == NULL)
     {
         if (dataStart[0] == '\r') {
-            ESP_LOGV("WalterParser", "Removed the leading CRLF");
+            ESP_LOGD("WalterParser", "Removed the leading CRLF");
             dataLen--;
             dataStart++;
         }
         if (dataStart[0] == '\n') {
-            ESP_LOGV("WalterParser", "Removed the leading CRLF");
+            ESP_LOGD("WalterParser", "Removed the leading CRLF");
             dataLen--;
             dataStart++;
         }
     }
-    ESP_LOGV("WalterParser", "rxData (%d bytes): '%.*s'", dataLen, dataLen, dataStart);
+    if(dataLen <= 0)
+        return;
+    ESP_LOGD("WalterParser", "rxData (%d bytes): '%.*s'", dataLen, dataLen, dataStart);
 
     size_t CRLFPos = _getCRLFPosition(dataStart, dataLen);
     bool hasTripleChevron = memmem(dataStart, dataLen, "<<<", 3) != nullptr;
     if (CRLFPos > 0 || hasTripleChevron || foundCRLF) {
         if (_receiving) {
-            ESP_LOGV("WalterParser", "Receiving payload data");
+            ESP_LOGD("WalterParser", "Receiving payload data");
             // TODO wait until we have the ending \r\nOK\r\n or \r\nERROR\r\n
-            _addATBytesToBuffer(dataStart, dataLen);
             char *okPos = (char*)memmem(dataStart, dataLen, "\r\nOK\r\n", 6);
             char *errorPos = (char*)memmem(dataStart, dataLen, "\r\nERROR\r\n", 8);
 
             char *endMarker = (okPos && (!errorPos || okPos < errorPos)) ? okPos : errorPos;
             if (endMarker) {
+                ESP_LOGD("WalterParser", "End marker found");
+
                 _addATBytesToBuffer(dataStart, endMarker - dataStart);
-                _receiving = false;
+                foundCRLF = false;
                 _queueRxBuffer();
                 /* add the OK or ERROR as a seperate message*/
                 /* the third char from the endmarker is expected to be an O in the case of OK*/
-                size_t resultLenght = okPos != nullptr  ? 6 : 8;
+                _receiving = false;
                 _parseRxData(
                     endMarker, dataLen - (endMarker -  dataStart)
                 );
             } else {
+                
                 foundCRLF = true;
+                _addATBytesToBuffer(dataStart, dataLen);
+
+                /* check if the OK/ERROR has been returned seperated */
+                char *okPos = (char *)memmem(_parserData.buf->data, _parserData.buf->size, "\r\nOK\r\n", 6);
+                char *errorPos = (char *)memmem(_parserData.buf->data, _parserData.buf->size, "\r\nERROR\r\n", 9);
+                if(okPos){
+                    ESP_LOGD("WalterParser", "End ok marker found");
+                    _parserData.buf->size -= 6;
+                    _queueRxBuffer();
+                    _receiving = false;
+                    _parseRxData("\r\nOK\r\n", 6);
+                } else if(errorPos) {
+                    ESP_LOGD("WalterParser", "End error marker found");
+                    _parserData.buf->size -= 9;
+                    _receiving = false;
+                    foundCRLF = false;
+                    _queueRxBuffer();
+                    _addATBytesToBuffer("\r\nERROR\r\n", 9);
+                    _queueRxBuffer();
+                }
             }
         } else {
-            ESP_LOGV("WalterParser", "Receiving full message");
+            ESP_LOGD("WalterParser", "Receiving full message");
 
             _addATBytesToBuffer(dataStart, CRLFPos);
             /* a full message has been found so queue it an*/
@@ -1074,7 +1099,7 @@ void WalterModem::_parseRxData(char *rxData, size_t len)
             ? dataStart[0] == '>' && dataStart[1] == '>' && dataStart[2] == '>'
             : false;
         _addATBytesToBuffer(dataStart, dataLen);
-        ESP_LOGV("WalterParser", "Receiving partial or prompt");
+        ESP_LOGD("WalterParser", "Receiving partial or prompt");
 
         if (dataPrompt || httpPrompt) {
             _queueRxBuffer();
