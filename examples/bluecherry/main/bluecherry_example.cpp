@@ -218,10 +218,17 @@ void syncBlueCherry()
                 ESP_LOGI(TAG, "Topic: %02x\r\n", rsp.data.blueCherry.messages[msgIdx].topic);
                 ESP_LOGI(TAG, "Data size: %d\r\n", rsp.data.blueCherry.messages[msgIdx].dataSize);
 
+                /*
                 for (uint8_t byteIdx = 0; byteIdx < rsp.data.blueCherry.messages[msgIdx].dataSize;
                      byteIdx++) {
                     ESP_LOGI(TAG, "%c", rsp.data.blueCherry.messages[msgIdx].data[byteIdx]);
                 }
+                */
+                rsp.data.blueCherry.messages[msgIdx]
+                    .data[rsp.data.blueCherry.messages[msgIdx].dataSize] = '\0';
+
+                // Log the message as a string
+                ESP_LOGI(TAG, "%s", rsp.data.blueCherry.messages[msgIdx].data);
             }
         }
     } while (!rsp.data.blueCherry.syncFinished);
