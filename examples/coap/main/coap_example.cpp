@@ -256,7 +256,7 @@ extern "C" void app_main(void)
                 ESP_LOGI(TAG, "Data (%d bytes):\r\n", rsp.data.coapResponse.length);
 
                 incomingBuf[rsp.data.coapResponse.length] = '\0'; // Null-terminate the buffer
-                ESP_LOGI(TAG, "Response: %s", incomingBuf);
+                ESP_LOGI(TAG, "Response: '%s'", incomingBuf);
                 
                 ESP_LOGI(TAG, "\r\n");
             }

@@ -1046,7 +1046,7 @@ void WalterModem::_parseRxData(char *rxData, size_t len)
             ESP_LOGD("WalterParser", "Receiving payload data");
             // TODO wait until we have the ending \r\nOK\r\n or \r\nERROR\r\n
             char *okPos = (char*)memmem(dataStart, dataLen, "\r\nOK\r\n", 6);
-            char *errorPos = (char*)memmem(dataStart, dataLen, "\r\nERROR\r\n", 8);
+            char *errorPos = (char*)memmem(dataStart, dataLen, "\r\nERROR\r\n", 9);
 
             char *endMarker = (okPos && (!errorPos || okPos < errorPos)) ? okPos : errorPos;
             if (endMarker) {
@@ -2276,7 +2276,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         const char *rspStr = _buffStr(buff);
         char *payload = strstr(rspStr, "\r\n");
         if(payload) {
-            payload += 1;
+            payload += 2;
         }
         char *commaPos = strchr(rspStr, ',');
         char *start = (char *)rspStr + _strLitLen("+SQNCOAPRCV: ");
@@ -2358,6 +2358,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
 
             if (length > cmd->dataSize) {
                 cmd->rsp->data.coapResponse.length = cmd->dataSize;
+                ESP_LOGD("WalterModem", "datasize");
             } else {
                 cmd->rsp->data.coapResponse.length = length;
             }
