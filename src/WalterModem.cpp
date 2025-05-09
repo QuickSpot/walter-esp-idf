@@ -2276,7 +2276,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         const char *rspStr = _buffStr(buff);
         char *payload = strstr(rspStr, "\r\n");
         if(payload) {
-            payload += 2;
+            payload += 1;
         }
         char *commaPos = strchr(rspStr, ',');
         char *start = (char *)rspStr + _strLitLen("+SQNCOAPRCV: ");
