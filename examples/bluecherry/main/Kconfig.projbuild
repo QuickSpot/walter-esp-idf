@@ -11,7 +11,7 @@ menu "Walter BlueCherry example"
             help
                 Set the BlueCherry Device type as found in the BlueApp.
         config BC_TLS_PROFILE
-            string "Modem TLS profile ID for BlueCherry"
+            int "Modem TLS profile ID for BlueCherry"
             default 1
             help
                 Specify what TLS profile ID the modem will use to configure TLS communication with BlueCherry.

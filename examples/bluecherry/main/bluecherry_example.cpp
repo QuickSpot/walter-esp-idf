@@ -48,8 +48,8 @@
  */
 
 #include <WalterModem.h>
-#include <Bluecherry_ZTP/BlueCherryZTP.h>
-#include <Bluecherry_ZTP/BlueCherryZTP_CBOR.h>
+#include <BlueCherryZTP.h>
+#include <BlueCherryZTP_CBOR.h>
 #include <driver/uart.h>
 #include <esp_log.h>
 #include <esp_mac.h>
