@@ -98,10 +98,11 @@ bool WalterModem::coapDidRing(
         profileId,
         _coapContextSet[profileId].rings[ringIdx].messageId,
         _coapContextSet[profileId].rings[ringIdx].length);
-
+        
+    _receiving = true;
     _runCmd(
         arr((const char *)stringsBuffer->data),
-        "+SQNCOAPRCV: ",
+        "OK",
         rsp,
         cb,
         args,

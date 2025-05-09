@@ -2158,11 +2158,11 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
          * If data and dataSize are null, we cannot store the result. We can only hope the user is
          * using a callback which has access to the raw buffer.
          */
-        if (cmd->data && cmd->dataSize >= buff->size-2) {
+        if (cmd->data && cmd->dataSize >= buff->size - 2) {
             memcpy(cmd->data, buff->data + 3, buff->size - 3);
             cmd->data[buff->size - 2] = '\0';
         } else {
-            ESP_LOGW("WalterModem","Unable to store HTTP payload (buffer to small)");
+            ESP_LOGW("WalterModem", "Unable to store HTTP payload (buffer to small)");
             result = WALTER_MODEM_STATE_NO_MEMORY;
         }
     } else if (_buffStartsWith(buff, "+SQNHTTPRING: ")) {
@@ -2274,11 +2274,10 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
 #if CONFIG_WALTER_MODEM_ENABLE_COAP
     if (_buffStartsWith(buff, "+SQNCOAPRCV: ")) {
         const char *rspStr = _buffStr(buff);
-        char *payload = strchr(rspStr, '\r');
-        if (payload != 0) {
-            payload++;
+        char *payload = strstr(rspStr, "\r\n");
+        if(payload) {
+            payload += 2;
         }
-
         char *commaPos = strchr(rspStr, ',');
         char *start = (char *)rspStr + _strLitLen("+SQNCOAPRCV: ");
         uint8_t profileId = 0;
@@ -2368,6 +2367,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
              * is using a callback which has access to the raw buffer.
              */
             if (cmd->data) {
+                ESP_LOGD("WalterModem","copied data");
                 memcpy(cmd->data, payload, cmd->rsp->data.coapResponse.length);
             }
         }
@@ -2441,10 +2441,10 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
                         lengthStr);
                     const char *_cmdArr[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] =
                         arr((const char *)stringsBuffer->data);
-
+                    _receiving = true;
                     _addQueueCmd(
                         _cmdArr,
-                        "+SQNCOAPRCV: ",
+                        "OK",
                         NULL,
                         coapReceivedFromBlueCherry,
                         &blueCherry,
