@@ -2146,6 +2146,9 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         cmd->rsp->data.httpResponse.httpStatus = _httpContextSet[_httpCurrentProfile].httpStatus;
         if (_httpContextSet[_httpCurrentProfile].contentLength > cmd->dataSize - 1) {
             cmd->rsp->data.httpResponse.contentLength = cmd->dataSize - 1;
+        } else if (_httpContextSet[_httpCurrentProfile].contentLength == 0) {
+            /* content lenght 0 equals chunked encoding */
+            cmd->rsp->data.httpResponse.contentLength = buff->size - 3;
         } else {
             cmd->rsp->data.httpResponse.contentLength =
                 _httpContextSet[_httpCurrentProfile].contentLength;
@@ -2155,9 +2158,12 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
          * If data and dataSize are null, we cannot store the result. We can only hope the user is
          * using a callback which has access to the raw buffer.
          */
-        if (cmd->data) {
-            memcpy(cmd->data, buff->data + 3, cmd->rsp->data.httpResponse.contentLength);
-            cmd->data[cmd->rsp->data.httpResponse.contentLength] = '\0';
+        if (cmd->data && cmd->dataSize >= buff->size-2) {
+            memcpy(cmd->data, buff->data + 3, buff->size - 3);
+            cmd->data[buff->size - 2] = '\0';
+        } else {
+            ESP_LOGW("WalterModem","Unable to store HTTP payload (buffer to small)");
+            result = WALTER_MODEM_STATE_NO_MEMORY;
         }
     } else if (_buffStartsWith(buff, "+SQNHTTPRING: ")) {
         const char *rspStr = _buffStr(buff);
