@@ -2840,7 +2840,7 @@ private:
      */
     static inline bool _receiving = false;
 
-    static inline bool foundCRLF = false;
+    static inline bool _foundCRLF = false;
 
     static inline size_t currentCRLF = 0;
 
@@ -3298,6 +3298,13 @@ private:
      */
     static void _parseRxData(char *rxData, size_t len);
 
+    /**
+     * @brief This function resets the payload receiving flags.
+     */
+    static void _resetParseRxFlags();
+    /**
+     * @brief This function checks if a full payload was received, if so it queues it and sends the appropriate return RX command.
+     */
     static bool _checkPayloadComplete();
 #ifdef ARDUINO
         /**
@@ -4440,37 +4447,53 @@ public:
      */
     static bool blueCherryClose(
         WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
+
+    /**
+     * @brief This function returns the current OTA progress.
+     */
+    static size_t blueCherryGetOtaProgressPercentage();
+
+    /**
+     * @brief This function returns the current OTA progress in bytes.
+     */
+    static size_t blueCherryGetOtaProgressBytes();
+
+    /**
+     * @brief This function returns the total OTA size.
+     */
+    static size_t blueCherryGetOtaSize();
 #endif
 #pragma endregion
 
 #pragma region COAP
 #if CONFIG_WALTER_MODEM_ENABLE_COAP
-    /**
-     * @brief Create a CoAP context.
-     *
-     * This function will create a CoAP context if it was not open yet. This needs to be done
-     * before you can set headers or options or send or receive data.
-     *
-     * @param profileId CoAP profile id (0 is used by BlueCherry)
-     * @param serverName The server name to connect to.
-     * @param port The port of the server to connect to.
-     * @param tlsProfileId If not 0, DTLS is used with the given profile (1-6).
-     * @param localPort The local port to use (default 0=random).
-     * @param rsp Optional modem response structure to save the result in.
-     * @param cb Optional callback function, if set this function will not block.
-     * @param args Optional argument to pass to the callback.
-     *
-     * @return True on success, false otherwise.
-     */
-    static bool coapCreateContext(
-        uint8_t profileId,
-        const char *serverName,
-        int port,
-        uint8_t tlsProfileId = 0,
-        int localPort = -1,
-        WalterModemRsp *rsp = NULL,
-        walterModemCb cb = NULL,
-        void *args = NULL);
+        /**
+         * @brief Create a CoAP context.
+         *
+         * This function will create a CoAP context if it was not open yet. This needs to be done
+         * before you can set headers or options or send or receive data.
+         *
+         * @param profileId CoAP profile id (0 is used by BlueCherry)
+         * @param serverName The server name to connect to.
+         * @param port The port of the server to connect to.
+         * @param tlsProfileId If not 0, DTLS is used with the given profile (1-6).
+         * @param localPort The local port to use (default 0=random).
+         * @param rsp Optional modem response structure to save the result in.
+         * @param cb Optional callback function, if set this function will not block.
+         * @param args Optional argument to pass to the callback.
+         *
+         * @return True on success, false otherwise.
+         */
+        static bool
+        coapCreateContext(
+            uint8_t profileId,
+            const char *serverName,
+            int port,
+            uint8_t tlsProfileId = 0,
+            int localPort = -1,
+            WalterModemRsp *rsp = NULL,
+            walterModemCb cb = NULL,
+            void *args = NULL);
 
     /**
      * @brief Close a CoAP context.

@@ -210,7 +210,10 @@ void syncBlueCherry()
 
         for (uint8_t msgIdx = 0; msgIdx < rsp.data.blueCherry.messageCount; msgIdx++) {
             if (rsp.data.blueCherry.messages[msgIdx].topic == 0) {
-                ESP_LOGI(TAG, "Downloading new firmware version");
+                ESP_LOGI(
+                    TAG,
+                    "Downloading new firmware version: %d%% complete",
+                    modem.blueCherryGetOtaProgressPercentage());
                 break;
             } else {
                 ESP_LOGI(
