@@ -3506,21 +3506,6 @@ private:
 
 #pragma region TLS
     /**
-     * @brief Upload key or certificate to modem NVRAM.
-     *
-     * This function uploads a key or certificate to the modem NVRAM. It is recommended to save
-     * credentials in index 10-19 to avoid overwriting preinstalled certificates and
-     * (if applicable) BlueCherry cloud platform credentials.
-     *
-     * @param isPrivateKey True if it's a private key, false if it's a certificate
-     * @param slotIdx slot index within the modem NVRAM keystore
-     * @param credential NULL-terminated string containing the PEM key/cert data
-     *
-     * @return True if succeeded, false if not.
-     */
-    static bool tlsWriteCredential(bool isPrivateKey, uint8_t slotIdx, const char *credential);
-
-    /**
      * @brief Check if a key or certificate is present in modem's NVRAM.
      *
      * This function checks if a key or certificate is present on a specific slot index inside
@@ -3945,6 +3930,7 @@ public:
      */
     static bool getIdentity(WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
 
+#pragma region TLS
     /**
      * @brief Configure a TLS profile.
      *
@@ -3976,6 +3962,22 @@ public:
         WalterModemRsp *rsp = NULL,
         walterModemCb cb = NULL,
         void *args = NULL);
+
+    /**
+     * @brief Upload key or certificate to modem NVRAM.
+     *
+     * This function uploads a key or certificate to the modem NVRAM. It is recommended to save
+     * credentials in index 10-19 to avoid overwriting preinstalled certificates and
+     * (if applicable) BlueCherry cloud platform credentials.
+     *
+     * @param isPrivateKey True if it's a private key, false if it's a certificate
+     * @param slotIdx slot index within the modem NVRAM keystore
+     * @param credential NULL-terminated string containing the PEM key/cert data
+     *
+     * @return True if succeeded, false if not.
+     */
+    static bool tlsWriteCredential(bool isPrivateKey, uint8_t slotIdx, const char *credential);
+#pragma endregion
 #pragma endregion
 
 /* protocol api functions: SOCKET, HTTP, MQTT, COAP, BLUECHERRY */
