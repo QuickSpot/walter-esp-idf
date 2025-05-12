@@ -2598,7 +2598,14 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
     if(_buffStartsWith(buff, "+SQNSRECV: "))
     {
         const char *rspStr = _buffStr(buff);
+
+        char *payload = strstr(rspStr, "\r\n");
+        if (payload) {
+            payload += 2;
+        }
+
         char *start = (char *)rspStr + _strLitLen("+SQNSRECV: ");
+        
         int sockId = atoi(start);
 
         WalterModemSocket *sock = _socketGet(sockId);
@@ -2609,19 +2616,16 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         char *commaPos = strchr(start, ',');
         if (commaPos) {
             *commaPos = '\0';
-            sock->dataReceived = atoi(commaPos);
             start = ++commaPos;
-            commaPos = strchr(commaPos, ',');
+            sock->dataReceived = atoi(start);
         }
-
-        char *data = strchr(rspStr, '\r');
 
         /*
          * If data and dataSize are null, we cannot store the result. We can only hope the user
          * is using a callback which has access to the raw buffer.
          */
-        if (cmd->data) {
-            memcpy(cmd->data, data + 1, sock->dataReceived);
+        if (cmd->data != nullptr) {
+            memcpy(cmd->data, payload, sock->dataReceived);
         }
     }
 #endif
