@@ -90,7 +90,9 @@ bool WalterModem::coapDidRing(
     if (ringIdx == WALTER_MODEM_COAP_MAX_PENDING_RINGS) {
         _returnState(WALTER_MODEM_STATE_NO_DATA);
     }
-
+    if(_coapContextSet[profileId].rings[ringIdx].length == 0) {
+        _returnState(WALTER_MODEM_STATE_OK);
+    }
     WalterModemBuffer *stringsBuffer = _getFreeBuffer();
     stringsBuffer->size += sprintf(
         (char *)stringsBuffer->data,
@@ -100,6 +102,7 @@ bool WalterModem::coapDidRing(
         _coapContextSet[profileId].rings[ringIdx].length);
         
     _receiving = true;
+    _receiveExpected = _coapContextSet[profileId].rings[ringIdx].length;
     _runCmd(
         arr((const char *)stringsBuffer->data),
         "OK",

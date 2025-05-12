@@ -2840,6 +2840,11 @@ private:
      */
     static inline bool _receiving = false;
 
+    static inline bool foundCRLF = false;
+
+    static inline size_t currentCRLF = 0;
+
+    static inline size_t _receiveExpected = true;
     /**
      * @brief We remember the configured watchdog timeout.
      */
@@ -3292,30 +3297,32 @@ private:
      * @return None.
      */
     static void _parseRxData(char *rxData, size_t len);
+
+    static bool _checkPayloadComplete();
 #ifdef ARDUINO
-    /**
-     * @brief Handle and parse modem RX data.
-     *
-     * This function is called when the modem placed data in the UART RX buffer. The context is
-     * a vTask in the ESP32 Arduino core framework and not an ISR, therefore this function also
-     * immediately parses the incoming data into a free pool buffer.
-     *
-     * @return None.
-     */
-    static void _handleRxData(void);
+        /**
+         * @brief Handle and parse modem RX data.
+         *
+         * This function is called when the modem placed data in the UART RX buffer. The context is
+         * a vTask in the ESP32 Arduino core framework and not an ISR, therefore this function also
+         * immediately parses the incoming data into a free pool buffer.
+         *
+         * @return None.
+         */
+        static void _handleRxData(void);
 #else
-    /**
-     * @brief Handle and parse modem RX data.
-     *
-     * This function is called when the modem placed data in the UART RX buffer. The context is
-     * a vTask in the ESP32 Arduino core framework and not an ISR, therefore this function also
-     * immediately parses the incoming data into a free pool buffer.
-     *
-     * @param params Incoming params for this FreeRTOS task handler.
-     *
-     * @return None.
-     */
-    static void _handleRxData(void *params);
+        /**
+         * @brief Handle and parse modem RX data.
+         *
+         * This function is called when the modem placed data in the UART RX buffer. The context is
+         * a vTask in the ESP32 Arduino core framework and not an ISR, therefore this function also
+         * immediately parses the incoming data into a free pool buffer.
+         *
+         * @param params Incoming params for this FreeRTOS task handler.
+         *
+         * @return None.
+         */
+        static void _handleRxData(void *params);
 #endif
     /**
      * @brief This is the entrypoint of the queue processing task.
