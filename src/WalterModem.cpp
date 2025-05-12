@@ -1021,7 +1021,6 @@ bool WalterModem::_checkPayloadComplete()
         &_parserData.buf->data[_receiveExpected], _parserData.buf->size, "\r\nOK\r\n", 6);
 
     if (resultPos && _parserData.buf->size >= _receiveExpected) {
-        ESP_LOGD("WalterParser", "End ok marker found");
         _parserData.buf->size -= 6;
         _queueRxBuffer();
         _resetParseRxFlags();
@@ -1038,7 +1037,6 @@ bool WalterModem::_checkPayloadComplete()
         9);
 
     if (resultPos && _parserData.buf->size >= _receiveExpected) {
-        ESP_LOGD("WalterParser", "End error marker found");
         _parserData.buf->size -= 9;
         _resetParseRxFlags();
         _queueRxBuffer();
