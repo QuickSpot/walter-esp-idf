@@ -2621,7 +2621,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
          * is using a callback which has access to the raw buffer.
          */
         if (cmd->data) {
-            memcpy(cmd->data, data, sock->dataReceived);
+            memcpy(cmd->data, data + 1, sock->dataReceived);
         }
     }
 #endif
