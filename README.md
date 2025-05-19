@@ -1,5 +1,7 @@
 # Walter Modem Driver for ESP-IDF
 
+[![arduino-library-badge](https://www.ardu-badge.com/badge/WalterModem.svg?)](https://www.ardu-badge.com/WalterModem)
+
 ## Overview
 
 This component contains the WalterModem library which is used to use the 
