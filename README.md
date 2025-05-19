@@ -1,6 +1,6 @@
 # Walter Modem Driver for ESP-IDF
 
-[![arduino-library-badge](https://www.ardu-badge.com/badge/WalterModem.svg?)](https://www.ardu-badge.com/WalterModem)
+[![Component Registry](https://components.espressif.com/components/dptechnics/walter-modem/badge.svg)](https://components.espressif.com/components/dptechnics/walter-modem)
 
 ## Overview
 
