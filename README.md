@@ -1,5 +1,7 @@
 # Walter Modem Driver for ESP-IDF
 
+[![Component Registry](https://components.espressif.com/components/dptechnics/walter-modem/badge.svg)](https://components.espressif.com/components/dptechnics/walter-modem)
+
 ## Overview
 
 This component contains the WalterModem library which is used to use the 
@@ -14,7 +16,7 @@ and 16MB of flash memory.
 This is the easiest way to use Walter Modem component.
 
 ```bash
-idf.py add-dependency "dptechnics/walter-modem^1.1.3" 
+idf.py add-dependency "dptechnics/walter-modem^1.2.1" 
 ```
 
 To use this component inside your project you must add `dptechnics/walter-modem` to the `idf_components.yml`
@@ -23,7 +25,7 @@ file inside the `main` folder of your project, or copy and modify `idf_component
 ```yml
 dependencies:
   dptechnics/walter-modem:
-    version: ">=1.1.3"
+    version: ">=1.2.1"
 ```
 
 ## Contributing
