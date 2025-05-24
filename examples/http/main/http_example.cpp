@@ -99,7 +99,7 @@ uint8_t dataBuf[8] = {0};
 /**
  * @brief Buffer for incoming HTTP response
  */
-uint8_t incomingBuf[256] = {0};
+uint8_t incomingBuf[2500] = {0};
 
 /**
  * @brief The counter used in the ping packets.
@@ -221,7 +221,7 @@ extern "C" void app_main(void)
 
         if (!httpReceiveAttemptsLeft) {
             if (modem.httpQuery(
-                    HTTP_PROFILE, "/", WALTER_MODEM_HTTP_QUERY_CMD_GET, ctbuf, sizeof(ctbuf))) {
+                    MODEM_HTTP_PROFILE, "/", WALTER_MODEM_HTTP_QUERY_CMD_GET, ctbuf, sizeof(ctbuf))) {
                 ESP_LOGI(TAG, "query performed\r\n");
                 httpReceiveAttemptsLeft = MAX_RECEIVE_COUNT;
             } else {
@@ -229,7 +229,7 @@ extern "C" void app_main(void)
                 vTaskDelay(pdMS_TO_TICKS(SEND_DELAY_MS));
             }
         } else {
-            while (modem.httpDidRing(HTTP_PROFILE, incomingBuf, sizeof(incomingBuf), &rsp)) {
+            while (modem.httpDidRing(MODEM_HTTP_PROFILE, incomingBuf, sizeof(incomingBuf), &rsp)) {
                 httpReceiveAttemptsLeft = 0;
 
                 ESP_LOGI(TAG, "status code: %d\r\n", rsp.data.httpResponse.httpStatus);
