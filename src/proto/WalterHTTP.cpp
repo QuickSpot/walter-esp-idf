@@ -100,6 +100,9 @@ bool WalterModem::httpConfigProfile(
         stringsBuffer->size += sprintf((char *)stringsBuffer->data + stringsBuffer->size, ",0");
     }
 
+    /**
+     * cnxTimeout needs to be larger then maxTimout, otherwise modem will return error.
+     */
     if (cnxTimeout > maxTimeout) {
         _returnState(WALTER_MODEM_STATE_ERROR);
     }
