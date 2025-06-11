@@ -120,8 +120,6 @@ bool WalterModem::httpConfigProfile(
     stringsBuffer->size += sprintf(
         (char *)stringsBuffer->data + stringsBuffer->size, "%u,%u", cnxTimeout, inactivityTimeout);
 
-    stringsBuffer->size += sprintf((char *)stringsBuffer->data + stringsBuffer->size, "%u", inactivityTimeout);
-
     _runCmd(
         arr((const char *)stringsBuffer->data),
         "OK",
