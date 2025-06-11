@@ -116,7 +116,7 @@ bool WalterModem::httpConfigProfile(
             sprintf((char *)stringsBuffer->data + stringsBuffer->size, "%u,", tlsProfileId);
     } else {
         stringsBuffer->size +=
-            sprintf((char *)stringsBuffer->data + stringsBuffer->size, ",", tlsProfileId);
+            sprintf((char *)stringsBuffer->data + stringsBuffer->size, ",");
     }
 
     stringsBuffer->size += sprintf((char *)stringsBuffer->data + stringsBuffer->size, "%u", inactivityTimeout);
