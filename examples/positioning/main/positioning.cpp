@@ -472,9 +472,9 @@ extern "C" void app_main(void)
         ESP_LOGE(TAG, "Could not retrieve radio access technology");
     }
 
-    if (!modem.definePDPContext(1, CELULLAR_APN)) {
+    if (!modem.definePDPContext(1, CELLULAR_APN)) {
         ESP_LOGI(TAG, "Could not create PDP context");
-        return false;
+        return;
     }
 
     if (!modem.setOpState(WALTER_MODEM_OPSTATE_MINIMUM)) {

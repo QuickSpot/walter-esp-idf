@@ -2185,7 +2185,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             result = WALTER_MODEM_STATE_ERROR;
         } else {
             cmd->rsp->data.clock.epochTime = strTotime(start);
-            result = WALTER_MODEM_STATE_OK
+            result = WALTER_MODEM_STATE_OK;
         }
     }
 #endif
