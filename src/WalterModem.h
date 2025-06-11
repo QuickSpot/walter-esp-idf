@@ -4190,6 +4190,9 @@ public:
         bool useBasicAuth = false,
         const char *authUser = "",
         const char *authPass = "",
+        uint16_t maxTimeout = 120,
+        uint16_t cnxTimeout = 60,
+        uint8_t inactivityTimeout = 15,
         WalterModemRsp *rsp = NULL,
         walterModemCb cb = NULL,
         void *args = NULL);

@@ -68,6 +68,9 @@ bool WalterModem::httpConfigProfile(
     bool useBasicAuth,
     const char *authUser,
     const char *authPass,
+    uint16_t maxTimeout,
+    uint16_t cnxTimeout,
+    uint8_t inactivityTimeout,
     WalterModemRsp *rsp,
     walterModemCb cb,
     void *args)
@@ -93,8 +96,30 @@ bool WalterModem::httpConfigProfile(
 
     if (tlsProfileId) {
         stringsBuffer->size +=
+            sprintf((char *)stringsBuffer->data + stringsBuffer->size, ",1");
+        /*
+        stringsBuffer->size +=
             sprintf((char *)stringsBuffer->data + stringsBuffer->size, ",1,,,%u", tlsProfileId);
+        */
+    } else {
+        stringsBuffer->size += sprintf((char *)stringsBuffer->data + stringsBuffer->size, ",0");
     }
+
+    if(cnxTimeout >= maxTimeout) {
+        _returnState(WALTER_MODEM_STATE_ERROR);
+    }
+
+    stringsBuffer->size += sprintf((char *)stringsBuffer->data + stringsBuffer->size, ",%u,%u,,", maxTimeout, cnxTimeout);
+
+    if (tlsProfileId) {
+        stringsBuffer->size +=
+            sprintf((char *)stringsBuffer->data + stringsBuffer->size, "%u,", tlsProfileId);
+    } else {
+        stringsBuffer->size +=
+            sprintf((char *)stringsBuffer->data + stringsBuffer->size, ",", tlsProfileId);
+    }
+
+    stringsBuffer->size += sprintf((char *)stringsBuffer->data + stringsBuffer->size, "%u", inactivityTimeout);
 
     _runCmd(
         arr((const char *)stringsBuffer->data),
