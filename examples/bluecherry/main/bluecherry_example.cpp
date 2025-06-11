@@ -355,5 +355,7 @@ extern "C" void app_main(void)
 
         // Poll BlueCherry platform if an incoming message or firmware update is available
         syncBlueCherry();
+
+        vTaskDelay(pdMS_TO_TICKS(60000));
     }
 }

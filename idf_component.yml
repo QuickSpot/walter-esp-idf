@@ -1,4 +1,4 @@
-version: "1.2.0"
+version: "1.2.1"
 
 description: "Walter Modem Driver"
 url: "https://github.com/QuickSpot/walter-esp-idf"
@@ -7,7 +7,12 @@ documentation: "https://www.quickspot.io/documentation.html#/esp_idf"
 issues: "https://github.com/QuickSpot/walter-esp-idf/issues"
 discussion: "https://discord.gg/RH7qCfRmkx"
 license: LICENSE
+exclude:
+  - examples/**
 tags:
   - IoT
   - cellular
   - Communication
+
+targets:
+  - esp32s3
