@@ -95,29 +95,27 @@ bool WalterModem::httpConfigProfile(
         authPass);
 
     if (tlsProfileId) {
-        stringsBuffer->size +=
-            sprintf((char *)stringsBuffer->data + stringsBuffer->size, ",1");
-        /*
-        stringsBuffer->size +=
-            sprintf((char *)stringsBuffer->data + stringsBuffer->size, ",1,,,%u", tlsProfileId);
-        */
+        stringsBuffer->size += sprintf((char *)stringsBuffer->data + stringsBuffer->size, ",1");
     } else {
         stringsBuffer->size += sprintf((char *)stringsBuffer->data + stringsBuffer->size, ",0");
     }
 
-    if(cnxTimeout >= maxTimeout) {
+    if (cnxTimeout > maxTimeout) {
         _returnState(WALTER_MODEM_STATE_ERROR);
     }
 
-    stringsBuffer->size += sprintf((char *)stringsBuffer->data + stringsBuffer->size, ",%u,%u,,", maxTimeout, cnxTimeout);
+    stringsBuffer->size +=
+        sprintf((char *)stringsBuffer->data + stringsBuffer->size, ",%u,,", maxTimeout);
 
     if (tlsProfileId) {
         stringsBuffer->size +=
             sprintf((char *)stringsBuffer->data + stringsBuffer->size, "%u,", tlsProfileId);
     } else {
-        stringsBuffer->size +=
-            sprintf((char *)stringsBuffer->data + stringsBuffer->size, ",");
+        stringsBuffer->size += sprintf((char *)stringsBuffer->data + stringsBuffer->size, ",");
     }
+
+    stringsBuffer->size += sprintf(
+        (char *)stringsBuffer->data + stringsBuffer->size, "%u,%u", cnxTimeout, inactivityTimeout);
 
     stringsBuffer->size += sprintf((char *)stringsBuffer->data + stringsBuffer->size, "%u", inactivityTimeout);
 
