@@ -295,6 +295,42 @@ int64_t strTotime(const char *timeStr, const char *format = "%Y-%m-%dT%H:%M:%S")
 }
 
 /**
+ * @brief Convert a unix timestamp to a formatted time string.
+ *
+ * The time string is in UTC (no time zone offset applied).
+ *
+ * @param timestamp The unix timestamp to convert.
+ * @param buffer The output buffer to hold the formatted string.
+ * @param buffer_len The length of the output buffer.
+ * @param format The time format to use (default: "%Y-%m-%dT%H:%M:%S").
+ *
+ * @return true on success, false on error.
+ */
+bool timeToStr(uint64_t timestamp, char *buffer, size_t buffer_len, const char *format = "%Y-%m-%dT%H:%M:%S")
+{
+    if (buffer == NULL || buffer_len == 0) {
+        return false;
+    }
+
+    // Use gmtime_r to convert timestamp to UTC broken-down time
+    time_t time_val = (time_t)timestamp;
+    struct tm tm_utc;
+
+    if (gmtime_r(&time_val, &tm_utc) == NULL) {
+        return false;
+    }
+
+    // Format time according to format string
+    size_t written = strftime(buffer, buffer_len, format, &tm_utc);
+    if (written == 0) {
+        // Buffer too small or formatting error
+        return false;
+    }
+
+    return true;
+}
+
+/**
  * @brief Convert a string into an unsigned 32-bit integer.
  *
  * This function will convert a string into a 32-bit unsigned integer.
@@ -2139,6 +2175,17 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
                 start = (char *)data + i + 1;
                 partNo += 1;
             }
+        }
+    } else if (_buffStartsWith(buff, "+LPGNSSUTCTIME: ")) {
+        uint16_t dataSize = buff->size - _strLitLen("+LPGNSSUTCTIME: ");
+        uint8_t *data = buff->data + _strLitLen("+LPGNSSUTCTIME: ");
+
+        char *start = (char *)data;
+        if (strstr(start, "NO_CLOCK_DEFINED") != nullptr) {
+            result = WALTER_MODEM_STATE_ERROR;
+        } else {
+            cmd->rsp->data.clock.epochTime = strTotime(start);
+            result = WALTER_MODEM_STATE_OK
         }
     }
 #endif
