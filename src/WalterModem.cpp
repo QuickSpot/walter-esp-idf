@@ -306,7 +306,7 @@ int64_t strTotime(const char *timeStr, const char *format = "%Y-%m-%dT%H:%M:%S")
  *
  * @return true on success, false on error.
  */
-bool timeToStr(uint64_t timestamp, char *buffer, size_t buffer_len, const char *format = "%Y-%m-%dT%H:%M:%S")
+bool timeToStr(uint64_t timestamp, char *buffer, size_t buffer_len, const char *format)
 {
     if (buffer == NULL || buffer_len == 0) {
         return false;
