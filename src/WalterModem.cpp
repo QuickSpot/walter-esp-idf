@@ -1371,17 +1371,6 @@ TickType_t WalterModem::_processQueueCmd(WalterModemCmd *cmd, bool queueError)
     case WALTER_MODEM_CMD_TYPE_TX_WAIT:
     case WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT:
         if (cmd->state == WALTER_MODEM_CMD_STATE_NEW) {
-            /* hack for handling AT+SQNSMQTTRCVMESSAGE response */
-#if CONFIG_WALTER_MODEM_ENABLE_MQTT
-            /*
-            if (cmd->type == WALTER_MODEM_CMD_TYPE_TX_WAIT &&
-                !strcmp(cmd->atCmd[0], "AT+SQNSMQTTRCVMESSAGE=0,")) {
-                _parserData.state = WALTER_MODEM_RSP_PARSER_RAW;
-                //add 4 bytes for prepending and trailing \r\n 
-                _parserData.rawChunkSize = cmd->dataSize + 4;
-            }
-            */
-#endif
             _transmitCmd(cmd->type, cmd->atCmd);
             cmd->attempt = 1;
             cmd->attemptStart = xTaskGetTickCount();
@@ -2382,7 +2371,6 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
 
             if (length > cmd->dataSize) {
                 cmd->rsp->data.coapResponse.length = cmd->dataSize;
-                ESP_LOGD("WalterModem", "datasize");
             } else {
                 cmd->rsp->data.coapResponse.length = length;
             }
@@ -2392,7 +2380,6 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
              * is using a callback which has access to the raw buffer.
              */
             if (cmd->data) {
-                ESP_LOGD("WalterModem","copied data");
                 memcpy(cmd->data, payload, cmd->rsp->data.coapResponse.length);
             }
         }
