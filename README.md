@@ -25,7 +25,7 @@ file inside the `main` folder of your project, or copy and modify `idf_component
 ```yml
 dependencies:
   dptechnics/walter-modem:
-    version: ">=1.2.1"
+    version: ">=1.3.0"
 ```
 
 ## Contributing
