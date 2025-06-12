@@ -146,7 +146,7 @@ bool lteInit(const char *apn)
  *
  * @return True on success, false on error.
  */
-bool lteConnect()
+bool  lteConnect()
 {
     /* Set the operational state to full */
     if (!modem.setOpState(WALTER_MODEM_OPSTATE_FULL)) {
@@ -281,12 +281,10 @@ bool gnssUpdateAssistance()
     lteDisconnect();
 
     /* Even with valid assistance data the system clock could be invalid */
-    if (!modem.getClock(&rsp)) {
-        ESP_LOGE(TAG, "Could not check the modem time");
-        return false;
-    }
+    modem.gnssGetUTCTime(&rsp);
 
-    if (rsp.data.clock.epochTime <= 0) {
+    /* 4 is used as the +CME ERROR handler overwrites the value */
+    if (rsp.data.clock.epochTime <= 4) {
         /* The system clock is invalid, connect to LTE network to sync time */
         if (!lteConnect()) {
             ESP_LOGE(TAG, "Could not connect to LTE network");
@@ -300,12 +298,8 @@ bool gnssUpdateAssistance()
          * with a delay of 500ms.
          */
         for (int i = 0; i < 5; ++i) {
-            if (!modem.getClock(&rsp)) {
-                ESP_LOGE(TAG, "Could not check the modem time");
-                return false;
-            }
-
-            if (rsp.data.clock.epochTime > 0) {
+            modem.gnssGetUTCTime(&rsp);
+            if (rsp.data.clock.epochTime > 4) {
                 ESP_LOGE(TAG, "Synchronized clock with network: %lld", rsp.data.clock.epochTime);
                 break;
             } else if (i == 4) {
@@ -472,9 +466,9 @@ extern "C" void app_main(void)
         ESP_LOGE(TAG, "Could not retrieve radio access technology");
     }
 
-    if (!modem.definePDPContext(1, CELULLAR_APN)) {
+    if (!modem.definePDPContext(1, CELLULAR_APN)) {
         ESP_LOGI(TAG, "Could not create PDP context");
-        return false;
+        return;
     }
 
     if (!modem.setOpState(WALTER_MODEM_OPSTATE_MINIMUM)) {
