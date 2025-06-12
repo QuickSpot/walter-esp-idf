@@ -4937,7 +4937,7 @@ public:
         walterModemCb cb = NULL, void *args = NULL);
 
     /**
-     * @brief sets the UTC time for gnss usage
+     * @brief gets the UTC time for gnss usage
      *
      * @param rsp Optional modem response structure to save the result in.
      * @param cb Optional callback function, if set this function will not block.
