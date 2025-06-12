@@ -2182,7 +2182,8 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
 
         char *start = (char *)data;
         if (strstr(start, "NO_CLOCK_DEFINED") != nullptr) {
-            result = WALTER_MODEM_STATE_ERROR;
+            cmd->rsp->data.clock.epochTime = 0;
+            result = WALTER_MODEM_STATE_NO_DATA;
         } else {
             cmd->rsp->data.clock.epochTime = strTotime(start);
             result = WALTER_MODEM_STATE_OK;
@@ -4122,8 +4123,7 @@ uint8_t WalterModem::durationToTAU(
     return _convertDuration(base_times, 7, duration_seconds, actual_duration_seconds);
 }
 
-uint8_t WalterModem::durationToActiveTime(
-    uint32_t seconds, uint32_t minutes, uint32_t *actual_duration_seconds)
+uint8_t WalterModem::durationToActiveTime(uint32_t seconds, uint32_t minutes, uint32_t *actual_duration_seconds)
 {
     static const uint32_t base_times[] = {2, 60, 360};
     uint32_t duration_seconds = seconds + (60 * minutes);

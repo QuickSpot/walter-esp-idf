@@ -281,10 +281,7 @@ bool gnssUpdateAssistance()
     lteDisconnect();
 
     /* Even with valid assistance data the system clock could be invalid */
-    if (!modem.getClock(&rsp)) {
-        ESP_LOGE(TAG, "Could not check the modem time");
-        return false;
-    }
+    modem.gnssGetUTCTime(&rsp);
 
     if (rsp.data.clock.epochTime <= 0) {
         /* The system clock is invalid, connect to LTE network to sync time */

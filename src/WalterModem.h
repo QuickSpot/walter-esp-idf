@@ -4948,7 +4948,7 @@ public:
      * @warning
      * the utc time can be found in the clock portion of the rspData.
      */
-    static bool gnssGetUTCTime(WalterModemRsp *rsp, walterModemCb cb, void *args); 
+    static bool gnssGetUTCTime(WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL); 
 #endif
 #pragma endregion
 #pragma endregion
