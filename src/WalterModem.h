@@ -694,6 +694,7 @@ typedef enum {
     WALTER_MODEM_RSP_DATA_TYPE_PDP_ADDR,
     WALTER_MODEM_RSP_DATA_TYPE_SOCKET_ID,
     WALTER_MODEM_RSP_DATA_TYPE_GNSS_ASSISTANCE_DATA,
+    WALTER_MODEM_RSP_DATA_TYPE_GNSS_UTC_TIME,
     WALTER_MODEM_RSP_DATA_TYPE_CLOCK,
     WALTER_MODEM_RSP_DATA_TYPE_IDENTITY,
     WALTER_MODEM_RSP_DATA_TYPE_BLUECHERRY,
@@ -2715,7 +2716,7 @@ typedef struct {
     /**
      * @brief In raw data chunk parser state, we remember nr expected bytes
      */
-    uint16_t rawChunkSize = 0;
+    size_t rawChunkSize = 0;
 } WalterModemATParserData;
 
 /**
@@ -2830,6 +2831,21 @@ private:
      */
     static inline bool _initialized = false;
 
+    /**
+     * @brief boolean for when we are doing a hardware reset.
+     */
+    static inline bool _hardwareReset = false;
+
+    /**
+     * @brief boolean for when we are doing a hardware reset.
+     */
+    static inline bool _receiving = false;
+
+    static inline bool _foundCRLF = false;
+
+    static inline size_t currentCRLF = 0;
+
+    static inline size_t _receiveExpected = true;
     /**
      * @brief We remember the configured watchdog timeout.
      */
@@ -3211,12 +3227,18 @@ private:
 
 #pragma region CMD_PROCESSING
     /**
-     * @brief Test if the new buffer line starts a raw data chunk
+     * @brief this function extracts the expected payloadSize.
      *
-     * @return Size of the expected raw data chunk
+     * @return Size of the expected payload
      */
-    static uint16_t _extractRawBufferChunkSize();
+    static size_t _extractPayloadSize();
 
+    /**
+     * @brief this function extracts the current payloadSize in the _parserData buffer.
+     *
+     * @return currentSize fo the payload already received.
+     */
+    static size_t _getCurrentPayloadSize();
     /**
      * @brief Get a free buffer from the buffer pool.
      *
@@ -3238,6 +3260,19 @@ private:
     static void _addATByteToBuffer(char data, bool raw);
 
     /**
+     * @brief Handle an AT data byte.
+     *
+     * This function is used by the AT data parser to add a databyte to the buffer currently in
+     * use or to reserve a new buffer to add a byte to.
+     *
+     * @param data The data byte to handle.
+     * @param lenght The lenght of the data to add.
+     *
+     * @return None.
+     */
+    static void _addATBytesToBuffer(const char *data, size_t length);
+
+    /**
      * @brief Copy the currently received data buffer into the task queue.
      *
      * This function will copy the current modem receive buffer into the task queue. When the
@@ -3248,6 +3283,13 @@ private:
     static void _queueRxBuffer();
 
     /**
+     * @brief returns the CRLF position
+     *
+     * @param data The incoming data buffer.
+     * @param len The number of bytes in the rxData buffer.
+     */
+    static size_t _getCRLFPosition(const char *rxData, size_t len);
+    /**
      * @brief Parse incoming modem data.
      *
      * @param rxData The incoming data buffer.
@@ -3256,6 +3298,16 @@ private:
      * @return None.
      */
     static void _parseRxData(char *rxData, size_t len);
+
+    /**
+     * @brief This function resets the payload receiving flags.
+     */
+    static void _resetParseRxFlags();
+    /**
+     * @brief This function checks if a full payload was received, if so it queues it and sends the
+     * appropriate return RX command.
+     */
+    static bool _checkPayloadComplete();
 #ifdef ARDUINO
     /**
      * @brief Handle and parse modem RX data.
@@ -4126,6 +4178,7 @@ public:
      * @param useBasicAuth Set true to use basic auth and send username/pw.
      * @param authUser Username.
      * @param authPass Password.
+     * @param maxTimeout maximum data transfer time-out in seconds.
      * @param rsp Optional modem response structure to save the result in.
      * @param cb Optional callback function, if set this function will not block.
      * @param args Optional argument to pass to the callback.
@@ -4140,6 +4193,9 @@ public:
         bool useBasicAuth = false,
         const char *authUser = "",
         const char *authPass = "",
+        uint16_t maxTimeout = 120,
+        uint16_t cnxTimeout = 60,
+        uint8_t inactivityTimeout = 15,
         WalterModemRsp *rsp = NULL,
         walterModemCb cb = NULL,
         void *args = NULL);
@@ -4397,6 +4453,21 @@ public:
      */
     static bool blueCherryClose(
         WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL);
+
+    /**
+     * @brief This function returns the current OTA progress.
+     */
+    static size_t blueCherryGetOtaProgressPercentage();
+
+    /**
+     * @brief This function returns the current OTA progress in bytes.
+     */
+    static size_t blueCherryGetOtaProgressBytes();
+
+    /**
+     * @brief This function returns the total OTA size.
+     */
+    static size_t blueCherryGetOtaSize();
 #endif
 #pragma endregion
 
@@ -4664,12 +4735,12 @@ public:
      * @param socketId The id of the socket to close or -1 to re-use the last one.
      *
      * @return True on success, false otherwise.
-     * 
+     *
      * @warning The modem internally chunks the data!
      */
     static bool socketSend(
         uint8_t *data,
-        uint16_t dataSize,
+        uint32_t dataSize,
         WalterModemRsp *rsp = NULL,
         walterModemCb cb = NULL,
         void *args = NULL,
@@ -4709,7 +4780,7 @@ public:
      * @param cb Optional callback function, if set this function will not block.
      * @param args Optional argument to pass to the callback.
      * @param socketId The id of the socket to close or -1 to re-use the last one.
-     * 
+     *
      * @warning This function must be preceded by a call to socketListen.
      */
     static bool socketAccept(
@@ -4726,6 +4797,7 @@ public:
      * @param cb Optional callback function, if set this function will not block.
      * @param args Optional argument to pass to the callback.
      * @param socketId The id of the socket to listen or -1 to re-use the last one.
+     * @param protocol The protocol of the listening socket.
      * @param listenState The state to listen on.
      * @param socketListenPort The port to listen on.
      *
@@ -4736,6 +4808,7 @@ public:
         walterModemCb cb = NULL,
         void *args = NULL,
         int socketId = -1,
+        WalterModemSocketProto protocol = WALTER_MODEM_SOCKET_PROTO_TCP,
         WalterModemSocketListenState listenState = WALTER_MODEM_SOCKET_LISTEN_STATE_IPV4,
         int socketListenPort = 0);
 
@@ -4848,20 +4921,48 @@ public:
         WalterModemRsp *rsp = NULL,
         walterModemCb cb = NULL,
         void *args = NULL);
+    /**
+     * @brief sets the UTC time for gnss usage
+     *
+     * @param epochTime (unix timestap, see getClock)
+     * @param rsp Optional modem response structure to save the result in.
+     * @param cb Optional callback function, if set this function will not block.
+     * @param args Optional argument to pass to the callback.
+     *
+     * @return True on success, false on error.
+     */
+    static bool gnssSetUTCTime(
+        uint64_t epochTime,
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL, void *args = NULL);
+
+    /**
+     * @brief gets the UTC time for gnss usage
+     *
+     * @param rsp Optional modem response structure to save the result in.
+     * @param cb Optional callback function, if set this function will not block.
+     * @param args Optional argument to pass to the callback.
+     *
+     * @return True on success, false on error.
+     * 
+     * @warning
+     * the utc time can be found in the clock portion of the rspData.
+     */
+    static bool gnssGetUTCTime(WalterModemRsp *rsp = NULL, walterModemCb cb = NULL, void *args = NULL); 
 #endif
 #pragma endregion
 #pragma endregion
 
 #pragma region MODEM_STATE
-    /**
-     * @brief Get the network registration state.
-     *
-     * This function returns the current network registration state. This is buffered by the
-     * library and thus instantly available.
-     *
-     * @return The current modem registration state.
-     */
-    static WalterModemNetworkRegState getNetworkRegState();
+        /**
+         * @brief Get the network registration state.
+         *
+         * This function returns the current network registration state. This is buffered by the
+         * library and thus instantly available.
+         *
+         * @return The current modem registration state.
+         */
+        static WalterModemNetworkRegState getNetworkRegState();
 
     /**
      * @brief Get the operational state of the modem.
@@ -5142,14 +5243,12 @@ public:
 
 #pragma region PDP_CONTEXT
     /**
-     * @brief Create a new packet data protocol (PDP) context.
+     * @brief define a new packet data protocol (PDP) context.
      *
-     * This function will create a new packet data protocol with the lowest free context id.
+     * This function will define a new packet data protocol with the the primary contextID(1).
      *
+     * @param ctxId The context id to store the defenition in.
      * @param apn The access point name.
-     * @param authProto The used authentication protocol.
-     * @param authUser Optional user to use for authentication.
-     * @param authPass Optional password to use for authentication.
      * @param rsp Optional modem response structure to save the result in.
      * @param cb Optional callback function, if set this function will not block.
      * @param args Optional argument to pass to the callback.

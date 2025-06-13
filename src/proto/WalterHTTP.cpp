@@ -68,6 +68,9 @@ bool WalterModem::httpConfigProfile(
     bool useBasicAuth,
     const char *authUser,
     const char *authPass,
+    uint16_t maxTimeout,
+    uint16_t cnxTimeout,
+    uint8_t inactivityTimeout,
     WalterModemRsp *rsp,
     walterModemCb cb,
     void *args)
@@ -92,9 +95,30 @@ bool WalterModem::httpConfigProfile(
         authPass);
 
     if (tlsProfileId) {
-        stringsBuffer->size +=
-            sprintf((char *)stringsBuffer->data + stringsBuffer->size, ",1,,,%u", tlsProfileId);
+        stringsBuffer->size += sprintf((char *)stringsBuffer->data + stringsBuffer->size, ",1");
+    } else {
+        stringsBuffer->size += sprintf((char *)stringsBuffer->data + stringsBuffer->size, ",0");
     }
+
+    /**
+     * cnxTimeout needs to be larger then maxTimout, otherwise modem will return error.
+     */
+    if (cnxTimeout > maxTimeout) {
+        _returnState(WALTER_MODEM_STATE_ERROR);
+    }
+
+    stringsBuffer->size +=
+        sprintf((char *)stringsBuffer->data + stringsBuffer->size, ",%u,,", maxTimeout);
+
+    if (tlsProfileId) {
+        stringsBuffer->size +=
+            sprintf((char *)stringsBuffer->data + stringsBuffer->size, "%u,", tlsProfileId);
+    } else {
+        stringsBuffer->size += sprintf((char *)stringsBuffer->data + stringsBuffer->size, ",");
+    }
+
+    stringsBuffer->size += sprintf(
+        (char *)stringsBuffer->data + stringsBuffer->size, "%u,%u", cnxTimeout, inactivityTimeout);
 
     _runCmd(
         arr((const char *)stringsBuffer->data),
@@ -309,13 +333,8 @@ bool WalterModem::httpDidRing(
         _returnState(WALTER_MODEM_STATE_ERROR);
     }
 
-    if (_httpContextSet[profileId].contentLength == 0) {
-        _httpContextSet[profileId].state = WALTER_MODEM_HTTP_CONTEXT_STATE_IDLE;
-        rsp->type = WALTER_MODEM_RSP_DATA_TYPE_HTTP_RESPONSE;
-        rsp->data.httpResponse.httpStatus = _httpContextSet[profileId].httpStatus;
-        rsp->data.httpResponse.contentLength = 0;
-        _returnState(WALTER_MODEM_STATE_NO_DATA);
-    }
+    /* in the case of chunked data contentLenght can be zero! */
+
 
     _httpCurrentProfile = profileId;
 
@@ -323,10 +342,10 @@ bool WalterModem::httpDidRing(
         _httpContextSet[_httpCurrentProfile].state = WALTER_MODEM_HTTP_CONTEXT_STATE_IDLE;
         _httpCurrentProfile = 0xff;
     };
-
+    _receiving = true;
     _runCmd(
         arr("AT+SQNHTTPRCV=", _atNum(profileId)),
-        "<<<",
+        "OK",
         rsp,
         cb,
         args,

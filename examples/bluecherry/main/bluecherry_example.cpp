@@ -48,8 +48,8 @@
  */
 
 #include <WalterModem.h>
-#include <Bluecherry_ZTP/BlueCherryZTP.h>
-#include <Bluecherry_ZTP/BlueCherryZTP_CBOR.h>
+#include <BlueCherryZTP.h>
+#include <BlueCherryZTP_CBOR.h>
 #include <driver/uart.h>
 #include <esp_log.h>
 #include <esp_mac.h>
@@ -210,7 +210,10 @@ void syncBlueCherry()
 
         for (uint8_t msgIdx = 0; msgIdx < rsp.data.blueCherry.messageCount; msgIdx++) {
             if (rsp.data.blueCherry.messages[msgIdx].topic == 0) {
-                ESP_LOGI(TAG, "Downloading new firmware version");
+                ESP_LOGI(
+                    TAG,
+                    "Downloading new firmware version: %d%% complete",
+                    modem.blueCherryGetOtaProgressPercentage());
                 break;
             } else {
                 ESP_LOGI(
@@ -218,10 +221,17 @@ void syncBlueCherry()
                 ESP_LOGI(TAG, "Topic: %02x\r\n", rsp.data.blueCherry.messages[msgIdx].topic);
                 ESP_LOGI(TAG, "Data size: %d\r\n", rsp.data.blueCherry.messages[msgIdx].dataSize);
 
+                /*
                 for (uint8_t byteIdx = 0; byteIdx < rsp.data.blueCherry.messages[msgIdx].dataSize;
                      byteIdx++) {
                     ESP_LOGI(TAG, "%c", rsp.data.blueCherry.messages[msgIdx].data[byteIdx]);
                 }
+                */
+                rsp.data.blueCherry.messages[msgIdx]
+                    .data[rsp.data.blueCherry.messages[msgIdx].dataSize] = '\0';
+
+                // Log the message as a string
+                ESP_LOGI(TAG, "%s", rsp.data.blueCherry.messages[msgIdx].data);
             }
         }
     } while (!rsp.data.blueCherry.syncFinished);
@@ -345,5 +355,7 @@ extern "C" void app_main(void)
 
         // Poll BlueCherry platform if an incoming message or firmware update is available
         syncBlueCherry();
+
+        vTaskDelay(pdMS_TO_TICKS(60000));
     }
 }

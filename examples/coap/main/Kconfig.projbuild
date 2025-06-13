@@ -15,6 +15,7 @@ menu "coap example"
         config MODEM_COAP_PROFILE
             int "the COAP profile id"
             default 0
+            range 0 WALTER_MODEM_MAX_HTTP_PROFILES
     endif
     
 endmenu
