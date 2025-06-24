@@ -3122,12 +3122,12 @@ bool WalterModem::_motaFormatAndMount(void)
     }
 
     /* Now do a mount with format_if_fail (which it will) */
-    esp_vfs_fat_mount_config_t conf = {
-        .format_if_mount_failed = true,
-        .max_files = 1,
-        .allocation_unit_size = CONFIG_WL_SECTOR_SIZE};
+    esp_vfs_fat_mount_config_t conf = {};
+    conf.format_if_mount_failed = true;
+    conf.max_files = 1;
+    conf.allocation_unit_size = CONFIG_WL_SECTOR_SIZE;
 
-    result = esp_vfs_fat_spiflash_mount("/ffat", "ffat", &conf, &_wl_handle);
+    result = esp_vfs_fat_spiflash_mount_rw_wl("/ffat", "ffat", &conf, &_wl_handle);
     if (result != ESP_OK) {
         ESP_LOGD("WalterModem", "Mount/format FAT partition failed!");
         _wl_handle = WL_INVALID_HANDLE;
@@ -3259,7 +3259,7 @@ void WalterModem::offlineMotaUpgrade(uint8_t *otaBuffer)
         conf.max_files = 1;
         conf.allocation_unit_size = CONFIG_WL_SECTOR_SIZE;
 
-        result = esp_vfs_fat_spiflash_mount("/ffat", "ffat", &conf, &_wl_handle);
+        result = esp_vfs_fat_spiflash_mount_rw_wl("/ffat", "ffat", &conf, &_wl_handle);
         if (result != ESP_OK) {
             ESP_LOGD("WalterModem", "Mount FAT partition failed!");
             _wl_handle = WL_INVALID_HANDLE;
