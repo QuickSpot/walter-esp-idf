@@ -376,7 +376,7 @@ bool WalterModem::socketListen(
 }
 
 bool WalterModem::socketDidRing(
-    int socketId, uint16_t *dataReceived, uint8_t targetBufSize, uint8_t *targetBuf)
+    int socketId, uint16_t *dataReceived, uint16_t targetBufSize, uint8_t *targetBuf)
 {
     WalterModemRsp *rsp = NULL;
     walterModemCb cb = NULL;
