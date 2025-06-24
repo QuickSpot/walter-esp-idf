@@ -312,7 +312,7 @@ constexpr uint16_t WALTER_MODEM_MAX_INCOMING_MESSAGE_LEN = 1220;
 /**
  * @brief The maximum size of an outgoing message payload.
  */
-constexpr uint16_t WALTER_MODEM_MAX_OUTGOING_MESSAGE_LEN = 1024
+constexpr uint16_t WALTER_MODEM_MAX_OUTGOING_MESSAGE_LEN = 1024;
 #endif
 /**
  * @brief Encrypted block size within flash.
