@@ -394,8 +394,8 @@ bool WalterModem::socketDidRing(
 
         if (targetBuf != nullptr && targetBufSize != 0) {
             memcpy(targetBuf, sock->data, targetBufSize);
-            return true;
         }
+        return true;
     }
 
     return false;
