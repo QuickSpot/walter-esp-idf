@@ -4678,7 +4678,7 @@ public:
         walterModemCb cb = NULL,
         void *args = NULL,
         int socketId = -1,
-        WalterModemSocketRingMode ringMode = WALTER_MODEM_SOCKET_RING_MODE_DATA_VIEW,
+        WalterModemSocketRingMode ringMode = WALTER_MODEM_SOCKET_RING_MODE_DATA_AMOUNT,
         WalterModemSocketRecvMode recvMode = WALTER_MODEM_SOCKET_RECV_MODE_TEXT,
         int keepAlive = 0,
         WalterModemSocketListenMode listenMode = WALTER_MODEM_SOCKET_LISTEN_MODE_DISABLED,
