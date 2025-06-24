@@ -3195,8 +3195,6 @@ bool WalterModem::_processMotaChunkEvent(uint8_t *data, uint16_t len)
 
 bool WalterModem::_processMotaFinishEvent(void)
 {
-    char *atCmd[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] = {NULL};
-
     if (!blueCherry.otaSize || blueCherry.otaProgress != blueCherry.otaSize || !_mota_file_ptr) {
         ESP_LOGD("WalterModem", "MOTA error: incomplete or missing dup file");
         return true;
@@ -3205,7 +3203,7 @@ bool WalterModem::_processMotaFinishEvent(void)
     /* prepare modem, disable rx until done so we can talk with modem directly */
     uint16_t blockSize = _modemFirmwareUpgradeStart();
     if (blockSize > SPI_FLASH_BLOCK_SIZE) {
-        blockSize = SPI_FLASH_BLOCK_SIZE;
+        blockSize = (uint16_t)SPI_FLASH_BLOCK_SIZE;
     }
 
     fseek(_mota_file_ptr, 0L, SEEK_SET);
@@ -3256,10 +3254,11 @@ void WalterModem::offlineMotaUpgrade(uint8_t *otaBuffer)
 {
     if (_wl_handle == WL_INVALID_HANDLE) {
         esp_err_t result;
-        esp_vfs_fat_mount_config_t conf = {
-            .format_if_mount_failed = false,
-            .max_files = 1,
-            .allocation_unit_size = CONFIG_WL_SECTOR_SIZE};
+        esp_vfs_fat_mount_config_t conf = {};
+        conf.format_if_mount_failed = false;
+        conf.max_files = 1;
+        conf.allocation_unit_size = CONFIG_WL_SECTOR_SIZE;
+
         result = esp_vfs_fat_spiflash_mount("/ffat", "ffat", &conf, &_wl_handle);
         if (result != ESP_OK) {
             ESP_LOGD("WalterModem", "Mount FAT partition failed!");
@@ -3510,15 +3509,17 @@ bool WalterModem::begin(uart_port_t uartNo, uint8_t watchdogTimeout)
     _uart->setRxTimeout(1);
     _uart->onReceive(_handleRxData);
 #else
-    const uart_config_t uart_config = {
-        .baud_rate = WALTER_MODEM_BAUD,
-        .data_bits = UART_DATA_8_BITS,
-        .parity = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_CTS_RTS,
-        .rx_flow_ctrl_thresh = 122,
-        .source_clk = UART_SCLK_DEFAULT,
-        .flags = 0};
+    //the initialization is done this way because otherwise we get warnings
+
+    uart_config_t uart_config = {};
+    uart_config.baud_rate = WALTER_MODEM_BAUD;
+    uart_config.data_bits = UART_DATA_8_BITS;
+    uart_config.parity = UART_PARITY_DISABLE;
+    uart_config.stop_bits = UART_STOP_BITS_1;
+    uart_config.flow_ctrl = UART_HW_FLOWCTRL_CTS_RTS;
+    uart_config.rx_flow_ctrl_thresh = 122;
+    uart_config.source_clk = UART_SCLK_DEFAULT;
+
     _uartNo = uartNo;
     uart_driver_install(uartNo, UART_BUF_SIZE * 2, 0, 0, NULL, 0);
     uart_param_config(uartNo, &uart_config);
