@@ -116,8 +116,8 @@ bool waitForNetwork()
     /* Wait for the network to become available */
     int timeout = 0;
     while (!lteConnected()) {
-        vTaskDelay(pdMS_TO_TICKS(100));
-        timeout += 100;
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        timeout += 1000;
         if (timeout > 300000)
             return false;
     }
@@ -212,7 +212,8 @@ extern "C" void app_main(void)
     }
 
     /* Connect to the demo server */
-    if (modem.socketDial(SERV_ADDR, SERV_PORT)) {
+    if (modem.socketDial(
+            SERV_ADDR, SERV_PORT, 0, NULL, NULL, NULL, WALTER_MODEM_SOCKET_PROTO_TCP)) {
         ESP_LOGI(TAG, "Connected to demo server %s:%d", SERV_ADDR, SERV_PORT);
     } else {
         ESP_LOGE(TAG, "Could not connect demo socket");
@@ -220,7 +221,7 @@ extern "C" void app_main(void)
     }
 
     for (;;) {
-        if (modem.socketSend((char*)"GET / HTTP/1.1\r\nHost: example.com\r\n\r\n")) {
+        if (modem.socketSend((char *)"GET / HTTP/1.1\r\nHost: example.com\r\n\r\n")) {
             ESP_LOGI(TAG, "Transmitted GET request");
         } else {
             ESP_LOGE(TAG, "Could not transmit GET request");
@@ -228,9 +229,13 @@ extern "C" void app_main(void)
         }
 
         vTaskDelay(pdMS_TO_TICKS(SEND_DELAY_MS));
-        uint8_t dataReceived = 0;
-        if(modem.socketDidRing(-1,&dataReceived,sizeof(dataBuf),dataBuf)) {
-            ESP_LOGE(TAG, "received ring");
+        uint16_t dataReceived = 0;
+        if (modem.socketDidRing(-1, &dataReceived)) {
+            if (modem.socketReceive(sizeof(dataBuf), dataBuf)) {
+                ESP_LOGI(TAG, "%.*s", dataReceived, dataBuf);
+            } else {
+                ESP_LOGE(TAG,"Unable to receive data");
+            }
         }
     }
 }
