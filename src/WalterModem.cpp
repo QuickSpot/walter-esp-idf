@@ -1485,21 +1485,32 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
 #pragma region GENERAL
     if (_buffStartsWith(buff, "+CEREG: ")) {
         const char *rspStr = _buffStr(buff);
-        int mode = atoi(rspStr + _strLitLen("+CEREG: "));
+        int mode = 0;
+        int ceReg = 0;
 
-        char *commaPos = strchr(rspStr, ',');
-        char *start = ++commaPos;
-
-        if(mode > 0) {
-            int ceReg = atoi(start);
-            bool attached = ceReg == 5 || ceReg == 1;
+        int parsed = sscanf(rspStr, "+CEREG: %d,%d", &mode, &ceReg);
+        if (parsed == 2) {
+            if (mode > 0) {
+                bool attached = ceReg == 5 || ceReg == 1;
+                for (size_t i = 0; i < WALTER_MODEM_MAX_PDP_CTXTS; i++) {
+                    if (_pdpCtxSet[i].state != WALTER_MODEM_PDP_CONTEXT_STATE_INACTIVE) {
+                        _pdpCtxSet[i].state = attached
+                            ? WALTER_MODEM_PDP_CONTEXT_STATE_ATTACHED
+                            : WALTER_MODEM_PDP_CONTEXT_STATE_NOT_ATTACHED;
+                    }
+                }
+                _regState = (WalterModemNetworkRegState)ceReg;
+                _dispatchEvent(_regState);
+            }
+        } else if (parsed == 1) {
+            bool attached = mode == 5 || mode == 1;
             for (size_t i = 0; i < WALTER_MODEM_MAX_PDP_CTXTS; i++) {
                 if (_pdpCtxSet[i].state != WALTER_MODEM_PDP_CONTEXT_STATE_INACTIVE) {
                     _pdpCtxSet[i].state = attached ? WALTER_MODEM_PDP_CONTEXT_STATE_ATTACHED
-                                                : WALTER_MODEM_PDP_CONTEXT_STATE_NOT_ATTACHED;
+                                                   : WALTER_MODEM_PDP_CONTEXT_STATE_NOT_ATTACHED;
                 }
             }
-            _regState = (WalterModemNetworkRegState)ceReg;
+            _regState = (WalterModemNetworkRegState)mode;
             _dispatchEvent(_regState);
         }
     } else if (_buffStartsWith(buff, "> ") || _buffStartsWith(buff, ">>>")) {
@@ -3833,19 +3844,21 @@ WalterModemNetworkRegState WalterModem::getNetworkRegState()
     walterModemCb cb = NULL;
     void *args = NULL;
 
-    _runCmd(arr("AT+CEREG?"), "OK", rsp, cb, args);
-
-    if (cmd->userCb != NULL) {
-        lock.unlock();
-        return true;
+    const char *_cmdArr[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] = arr("AT+CEREG?");
+    WalterModemCmd *cmd = _addQueueCmd(_cmdArr, "OK", rsp, cb, args);
+    if (cmd == NULL) {
+        return WalterModemNetworkRegState::WALTER_MODEM_NETWORK_REG_NOT_SEARCHING;
     }
-    cmd->cmdLock.cond.wait(
-        lock, [cmd] { return cmd->state == WALTER_MODEM_CMD_STATE_SYNC_LOCK_NOTIFIED; });
-    WalterModemState rspResult = cmd->rsp->result;
+
+    std::unique_lock<std::mutex> lock{cmd->cmdLock.mutex};
+    cmd->cmdLock.cond.wait(lock, [cmd] {
+        return cmd->state == WALTER_MODEM_CMD_STATE_SYNC_LOCK_NOTIFIED;
+        ;
+    });
     cmd->state = WALTER_MODEM_CMD_STATE_COMPLETE;
     lock.unlock();
 
-    return ceReg;
+    return _regState;
 }
 
 bool WalterModem::getOpState(WalterModemRsp *rsp, walterModemCb cb, void *args)
