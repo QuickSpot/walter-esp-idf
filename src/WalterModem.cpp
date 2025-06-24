@@ -1491,7 +1491,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         char *start = ++commaPos;
 
         if(mode > 0) {
-            int cereg = atoi(start);
+            int ceReg = atoi(start);
             bool attached = ceReg == 5 || ceReg == 1;
             for (size_t i = 0; i < WALTER_MODEM_MAX_PDP_CTXTS; i++) {
                 if (_pdpCtxSet[i].state != WALTER_MODEM_PDP_CONTEXT_STATE_INACTIVE) {
