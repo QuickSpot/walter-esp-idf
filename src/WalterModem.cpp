@@ -471,7 +471,7 @@ uint16_t WalterModem::_modemFirmwareUpgradeStart(void)
     /* reboot to recovery */
     vTaskDelay(pdMS_TO_TICKS(5000));
     tickleWatchdog();
-    atCmd[0] = "AT+SMSWBOOT=3,1";
+    atCmd[0] = (char *)"AT+SMSWBOOT=3,1";
     atCmd[1] = NULL;
     _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
     ESP_LOGD("WalterModem", "sent reboot to recovery command, waiting 10 seconds");
@@ -479,7 +479,7 @@ uint16_t WalterModem::_modemFirmwareUpgradeStart(void)
     tickleWatchdog();
 
     /* check if booted in recovery mode */
-    atCmd[0] = "AT";
+    atCmd[0] = (char *)"AT";
     atCmd[1] = NULL;
     _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
 
@@ -487,7 +487,7 @@ uint16_t WalterModem::_modemFirmwareUpgradeStart(void)
     blueCherry.otaBuffer[len] = 0;
     ESP_LOGD("WalterModem", "sent AT, got %d:%s", len, blueCherry.otaBuffer);
 
-    atCmd[0] = "AT+SMLOG?";
+    atCmd[0] = (char *)"AT+SMLOG?";
     atCmd[1] = NULL;
     _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
 
@@ -495,7 +495,7 @@ uint16_t WalterModem::_modemFirmwareUpgradeStart(void)
     blueCherry.otaBuffer[len] = 0;
     ESP_LOGD("WalterModem", "sent AT+SMLOG?, got %d:%s", len, blueCherry.otaBuffer);
 
-    atCmd[0] = "AT+SMOD?";
+    atCmd[0] = (char *)"AT+SMOD?";
     atCmd[1] = NULL;
     _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
 
@@ -504,7 +504,7 @@ uint16_t WalterModem::_modemFirmwareUpgradeStart(void)
     ESP_LOGD("WalterModem", "sent AT+SMOD?, got %d:%s", len, blueCherry.otaBuffer);
 
     /* prepare modem firmware data transfer - must wait for OK still!! */
-    atCmd[0] = "AT+SMSTPU=\"ON_THE_FLY\"";
+    atCmd[0] = (char *)"AT+SMSTPU=\"ON_THE_FLY\"";
     atCmd[1] = NULL;
     _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
 
@@ -661,7 +661,7 @@ void WalterModem::_modemFirmwareUpgradeFinish(bool success)
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(5000));
 
-        atCmd[0] = "AT";
+        atCmd[0] = (char *)"AT";
         atCmd[1] = NULL;
         _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
 
@@ -676,7 +676,7 @@ void WalterModem::_modemFirmwareUpgradeFinish(bool success)
     }
 
     /* we got OK so ready to boot into new firmware; switch back to FFF mode */
-    atCmd[0] = "AT+SMSWBOOT=1,0";
+    atCmd[0] = (char *)"AT+SMSWBOOT=1,0";
     atCmd[1] = NULL;
     _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
 
@@ -685,7 +685,7 @@ void WalterModem::_modemFirmwareUpgradeFinish(bool success)
     ESP_LOGD("WalterModem", "switched modem to FFF mode, got %d:%s", len, blueCherry.otaBuffer);
 
     /* now reboot into new firmware */
-    atCmd[0] = "AT^RESET";
+    atCmd[0] = (char *)"AT^RESET";
     atCmd[1] = NULL;
     _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
     ESP_LOGD("WalterModem", "sent reset command, waiting 10 seconds");
@@ -696,7 +696,7 @@ void WalterModem::_modemFirmwareUpgradeFinish(bool success)
     ESP_LOGD("WalterModem", "assuming modem boot complete; got %d:%s", len, blueCherry.otaBuffer);
 
     /* check if we are back in fff mode and check update status */
-    atCmd[0] = "AT+SMLOG?";
+    atCmd[0] = (char *)"AT+SMLOG?";
     atCmd[1] = NULL;
     _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
 
@@ -704,7 +704,7 @@ void WalterModem::_modemFirmwareUpgradeFinish(bool success)
     blueCherry.otaBuffer[len] = 0;
     ESP_LOGD("WalterModem", "AT+SMLOG? got %d:%s", len, blueCherry.otaBuffer);
 
-    atCmd[0] = "AT+SMOD?";
+    atCmd[0] = (char *)"AT+SMOD?";
     atCmd[1] = NULL;
     _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
 
@@ -712,7 +712,7 @@ void WalterModem::_modemFirmwareUpgradeFinish(bool success)
     blueCherry.otaBuffer[len] = 0;
     ESP_LOGD("WalterModem", "AT+SMOD? got %d:%s", len, blueCherry.otaBuffer);
 
-    atCmd[0] = "AT+SMUPGRADE?";
+    atCmd[0] = (char *)"AT+SMUPGRADE?";
     atCmd[1] = NULL;
     _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
 
@@ -1057,7 +1057,7 @@ bool WalterModem::_checkPayloadComplete()
         _parserData.buf->size -= 6;
         _queueRxBuffer();
         _resetParseRxFlags();
-        _parseRxData("\r\nOK\r\n", 6);
+        _parseRxData((char *)"\r\nOK\r\n", 6);
         return true;
     }
 #pragma endregion
@@ -1070,7 +1070,7 @@ bool WalterModem::_checkPayloadComplete()
         _parserData.buf->size -= 9;
         _resetParseRxFlags();
         _queueRxBuffer();
-        _parseRxData("\r\nERROR\r\n", 9);
+        _parseRxData((char *)"\r\nERROR\r\n", 9);
         return true;
     }
 #pragma endregion
@@ -2190,7 +2190,6 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             }
         }
     } else if (_buffStartsWith(buff, "+LPGNSSUTCTIME: ")) {
-        uint16_t dataSize = buff->size - _strLitLen("+LPGNSSUTCTIME: ");
         uint8_t *data = buff->data + _strLitLen("+LPGNSSUTCTIME: ");
 
         char *start = (char *)data;
@@ -3472,7 +3471,7 @@ bool WalterModem::begin(uart_port_t uartNo, uint8_t watchdogTimeout)
     if (_watchdogTimeout) {
         /* wdt timeout must be longer than max wait time for a modem response */
         if (_watchdogTimeout * 1000UL < WALTER_MODEM_CMD_TIMEOUT_MS + 5000UL) {
-            _watchdogTimeout = (WALTER_MODEM_CMD_TIMEOUT_MS / 1000UL) + 5;
+            _watchdogTimeout = (uint8_t)((WALTER_MODEM_CMD_TIMEOUT_MS / 1000UL) + 5);
         }
 #if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 0, 0)
         esp_task_wdt_init(_watchdogTimeout, true);
@@ -3518,7 +3517,8 @@ bool WalterModem::begin(uart_port_t uartNo, uint8_t watchdogTimeout)
         .stop_bits = UART_STOP_BITS_1,
         .flow_ctrl = UART_HW_FLOWCTRL_CTS_RTS,
         .rx_flow_ctrl_thresh = 122,
-        .source_clk = UART_SCLK_DEFAULT};
+        .source_clk = UART_SCLK_DEFAULT,
+        .flags = 0};
     _uartNo = uartNo;
     uart_driver_install(uartNo, UART_BUF_SIZE * 2, 0, 0, NULL, 0);
     uart_param_config(uartNo, &uart_config);
