@@ -3834,7 +3834,18 @@ WalterModemNetworkRegState WalterModem::getNetworkRegState()
     void *args = NULL;
 
     _runCmd(arr("AT+CEREG?"), "OK", rsp, cb, args);
-    _returnAfterReply();
+
+    if (cmd->userCb != NULL) {
+        lock.unlock();
+        return true;
+    }
+    cmd->cmdLock.cond.wait(
+        lock, [cmd] { return cmd->state == WALTER_MODEM_CMD_STATE_SYNC_LOCK_NOTIFIED; });
+    WalterModemState rspResult = cmd->rsp->result;
+    cmd->state = WALTER_MODEM_CMD_STATE_COMPLETE;
+    lock.unlock();
+
+    return ceReg;
 }
 
 bool WalterModem::getOpState(WalterModemRsp *rsp, walterModemCb cb, void *args)
