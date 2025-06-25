@@ -403,8 +403,8 @@ bool WalterModem::socketDidRing(
 
 bool WalterModem::socketReceive(
     uint16_t receiveCount,
-    uint8_t *targetBuf,
     size_t targetBufSize,
+    uint8_t *targetBuf,
     int socketId,
     WalterModemRsp *rsp)
 {
