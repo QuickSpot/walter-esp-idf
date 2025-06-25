@@ -1047,6 +1047,34 @@ size_t WalterModem::_getCRLFPosition(const char *rxData, size_t len)
     return 0;
 }
 
+size_t WalterModem::_getRingUrcSize(const char *rxData, size_t len)
+{
+    char *ptr = (char *)rxData;
+    size_t remaining = len;
+
+    for (int i = 0; i < 3; ++i) {
+        ptr = (char *)memchr(ptr, ',', remaining);
+        if (!ptr)
+            return 0;
+        remaining -= (size_t)(++ptr - rxData);
+    }
+
+    return len - remaining; // offset to third comma
+}
+
+void WalterModem::_handleRingUrc(const char *rxData, size_t len)
+{
+    if (!_receiving) {
+        int profile, dataCount;
+        const char *pos = (const char *)memmem(rxData, len, "+SQNSRING:", 10);
+        if (pos != NULL && sscanf(pos, "+SQNSRING: %d,%d,", &profile, &dataCount) == 2) {
+            _receiving = true;
+            _receiveExpected += dataCount;
+            _receiveExpected += _getRingUrcSize(rxData, len);
+        }
+    }
+}
+
 bool WalterModem::_checkPayloadComplete()
 {
 #pragma region OK
@@ -1129,6 +1157,8 @@ void WalterModem::_parseRxData(char *rxData, size_t len)
         dataStart, dataLen); /* we try and get the ending CRLF to know if we have a full message */
     bool hasTripleChevron =
         memmem(dataStart, dataLen, "<<<", 3) != nullptr; /* <<< is the start of the HTTP response */
+
+    _handleRingUrc(dataStart,dataLen);
 
     if (_foundCRLF || CRLFPos > 0 || hasTripleChevron) {
         if (!_foundCRLF && CRLFPos > 0 && _receiveExpected > 0) {
