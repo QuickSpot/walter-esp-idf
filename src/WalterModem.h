@@ -4870,7 +4870,7 @@ public:
      */
     static bool socketReceive(
         uint16_t receiveCount,
-        uint16_t targetBufSize,
+        size_t targetBufSize,
         uint8_t *targetBuf,
         int socketId = -1,
         WalterModemRsp *rsp = NULL);
