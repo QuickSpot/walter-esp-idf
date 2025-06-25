@@ -1,5 +1,5 @@
 dependencies:
   idf: ">=5.0.0"
   dptechnics/walter-modem:
-    version: "fix(modem)--compilation-warnings"
+    version: "feat(socket)--add-receive-example"
     git: "https://github.com/QuickSpot/walter-esp-idf.git"
