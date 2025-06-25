@@ -1072,6 +1072,10 @@ void WalterModem::_handleRingUrc(const char *rxData, size_t len)
             if(ringSize > 0) {
             _receiving = true;
             _receiveExpected += dataCount + ringSize;
+            ESP_LOGV(
+                "WalterParser",
+                "Receive expected: %u",
+                static_cast<unsigned int>(_receiveExpected));
             }
            
         }

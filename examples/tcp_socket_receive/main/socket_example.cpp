@@ -94,6 +94,8 @@ WalterModemRsp rsp;
  */
 uint8_t dataBuf[1500] = {0};
 
+uint16_t dataAvailable = 0;
+
 /**
  * @brief This function checks if we are connected to the lte network
  *
@@ -165,6 +167,15 @@ bool lteConnect()
     return waitForNetwork();
 }
 
+void mySocketEventHandler(
+    WalterModemSocketEvent ev, int socketId, uint16_t dataReceived, uint8_t *dataBuffer, void *args)
+{
+    if(ev == WALTER_MODEM_SOCKET_EVENT_RING) {
+        ESP_LOGI(TAG, "received ring message (%u bytes)", dataReceived);
+        dataAvailable += dataReceived;
+    }
+}
+
 extern "C" void app_main(void)
 {
     ESP_LOGI(TAG, "Walter UDP Socket example v1");
@@ -202,7 +213,6 @@ extern "C" void app_main(void)
         ESP_LOGE(TAG, "Could not create a new socket");
         return;
     }
-
     /* Construct a socket */
     if (modem.socketConfigExtended(&rsp)) {
         ESP_LOGI(TAG, "Defined socket extended config params");
@@ -210,6 +220,8 @@ extern "C" void app_main(void)
         ESP_LOGE(TAG, "Could not define socket extended config params");
         return;
     }
+
+    modem.socketSetEventHandler(mySocketEventHandler, NULL);
 
     /* Connect to the demo server */
     if (modem.socketDial(
@@ -229,12 +241,13 @@ extern "C" void app_main(void)
         }
 
         vTaskDelay(pdMS_TO_TICKS(SEND_DELAY_MS));
-        uint16_t dataReceived = 0;
-        if (modem.socketDidRing(-1, &dataReceived)) {
+        while (dataAvailable > 0) {
+            // 1500 is the max amount of bytes the modem can read at a time.
+            uint16_t dataToRead = (dataAvailable > 1500) ? 1500 : dataAvailable;
+            ESP_LOGI(TAG,"Reading: %u bytes",dataToRead);
             if (modem.socketReceive(sizeof(dataBuf), dataBuf)) {
-                ESP_LOGI(TAG, "%.*s", dataReceived, dataBuf);
-            } else {
-                ESP_LOGE(TAG,"Unable to receive data");
+                dataAvailable -= dataToRead;
+                ESP_LOGI(TAG, "Remaining: %u | Data: %.*s", dataAvailable, dataToRead, dataBuf);
             }
         }
     }
