@@ -245,7 +245,7 @@ extern "C" void app_main(void)
             // 1500 is the max amount of bytes the modem can read at a time.
             uint16_t dataToRead = (dataAvailable > 1500) ? 1500 : dataAvailable;
             ESP_LOGI(TAG,"Reading: %u bytes",dataToRead);
-            if (modem.socketReceive(sizeof(dataBuf), dataBuf)) {
+            if (modem.socketReceive(dataToRead, dataBuf,sizeof(dataBuf))) {
                 dataAvailable -= dataToRead;
                 ESP_LOGI(TAG, "Remaining: %u | Data: %.*s", dataAvailable, dataToRead, dataBuf);
             }

@@ -1089,6 +1089,8 @@ bool WalterModem::_checkPayloadComplete()
         &_parserData.buf->data[_receiveExpected], _parserData.buf->size, "\r\nOK\r\n", 6);
 
     if (resultPos && _parserData.buf->size >= _receiveExpected) {
+        ESP_LOGI("WalterParser", "payload completed (OK)");
+
         _parserData.buf->size -= 6;
         _queueRxBuffer();
         _resetParseRxFlags();
@@ -1102,6 +1104,7 @@ bool WalterModem::_checkPayloadComplete()
         &_parserData.buf->data[_receiveExpected], _parserData.buf->size, "\r\nERROR\r\n", 9);
 
     if (resultPos && _parserData.buf->size >= _receiveExpected) {
+        ESP_LOGI("WalterParser", "payload received error (ERROR)");
         _parserData.buf->size -= 9;
         _resetParseRxFlags();
         _queueRxBuffer();
@@ -1115,6 +1118,7 @@ bool WalterModem::_checkPayloadComplete()
         &_parserData.buf->data[_receiveExpected], _parserData.buf->size, "\r\n+CME ERROR:", 13);
 
     if (resultPos && _parserData.buf->size >= _receiveExpected) {
+        ESP_LOGI("WalterParser", "payload CME error (OK)");
         uint16_t size = (uint16_t)((uint8_t *)resultPos - _parserData.buf->data);
         _parserData.buf->size -= size;
         _queueRxBuffer();

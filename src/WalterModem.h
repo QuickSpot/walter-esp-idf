@@ -4858,15 +4858,22 @@ public:
     /**
      * @brief Receive data from an incomming socket connection
      *
+     * @param receiveCount the amount of bytes to receive.
      * @param targetBufSize The size of the target buffer.
      * @param targetBuf The target buffer to write the data to
      * @param socketId The socket id to receive from.
      * @param rsp Optional modem response structure to save the result in.
      *
      * @return True on success, false otherwise.
+     * 
+     * @warning the receiveCount cannot be larger then the amount of bytes left to receive (use event handler to keep track of the available bytes)
      */
     static bool socketReceive(
-        uint16_t targetBufSize, uint8_t *targetBuf, int socketId = -1, WalterModemRsp *rsp = NULL);
+        uint16_t receiveCount,
+        uint16_t targetBufSize,
+        uint8_t *targetBuf,
+        int socketId = -1,
+        WalterModemRsp *rsp = NULL);
 #endif
 #pragma endregion
 
