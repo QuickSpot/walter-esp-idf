@@ -1068,9 +1068,12 @@ void WalterModem::_handleRingUrc(const char *rxData, size_t len)
         int profile, dataCount;
         const char *pos = (const char *)memmem(rxData, len, "+SQNSRING:", 10);
         if (pos != NULL && sscanf(pos, "+SQNSRING: %d,%d,", &profile, &dataCount) == 2) {
+            uint16_t ringSize = _getRingUrcSize(rxData, len);
+            if(ringSize > 0) {
             _receiving = true;
-            _receiveExpected += dataCount;
-            _receiveExpected += _getRingUrcSize(rxData, len);
+            _receiveExpected += dataCount + ringSize;
+            }
+           
         }
     }
 }
