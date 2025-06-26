@@ -1,0 +1,40 @@
+name: Label by System
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+
+jobs:
+  add-label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apply label based on system selection
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const systemLabels = [
+              'socket',
+              'mqtt',
+              'coap',
+              'bluecherry',
+              'http',
+              'parser',
+              'modem',
+              'other'
+            ];
+
+            const body = context.payload.issue.body.toLowerCase();
+
+            for (const label of systemLabels) {
+              if (body.includes(label)) {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  labels: [label]
+                });
+                break;
+              }
+            }
