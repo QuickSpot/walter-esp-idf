@@ -1020,7 +1020,7 @@ void WalterModem::_queueRxBuffer()
         if (_parserData.buf->size > 0) {
             WalterModemTaskQueueItem qItem = {};
             qItem.rsp = _parserData.buf;
-            ESP_LOGV("WalterParser", "Queued the buffer (size: %u bytes)", _parserData.buf->size);
+            //ESP_LOGV("WalterParser", "Queued the buffer (size: %u bytes)", _parserData.buf->size);
             if (xQueueSend(_taskQueue.handle, &qItem, 0) != pdTRUE) {
                 /*
                  * When we can not send the buffer to the queue we release it immediately and thus
@@ -1028,7 +1028,7 @@ void WalterModem::_queueRxBuffer()
                  * consumer.
                  */
                 _parserData.buf->free = true;
-                ESP_LOGW("WalterParser", "unable to queue the buffer");
+                //ESP_LOGW("WalterParser", "unable to queue the buffer");
             }
         }
 
