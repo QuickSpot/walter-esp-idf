@@ -1077,8 +1077,8 @@ void WalterModem::_handleRingUrc(const char *rxData, size_t len)
                 "WalterParser",
                 "Receive expected: %u",
                 static_cast<unsigned int>(_receiveExpected));
-            }
             */
+            }
         }
     }
 }
