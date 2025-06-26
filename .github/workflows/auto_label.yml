@@ -26,24 +26,17 @@ jobs:
             ];
 
             const body = context.payload.issue.body;
-            const lines = body.split('\n');
 
-            let system = 'other';
-            let description = 'unspecified';
-
-            for (let i = 0; i < lines.length; i++) {
-              const line = lines[i].toLowerCase();
-
-              if (line.includes('system or component')) {
-                system = lines[i + 1].trim().toLowerCase();
-              }
-
-              if (line.includes('short description')) {
-                description = lines[i + 1].trim();
-              }
+            function extractSection(title) {
+              const regex = new RegExp(`###\\s+${title}\\s+\\n+([^#]+)`, 'i');
+              const match = body.match(regex);
+              return match ? match[1].trim().toLowerCase() : null;
             }
 
-            // ✅ Add label if it's a known system label
+            const system = extractSection("System or Component") || "other";
+            const shortDesc = extractSection("Short Description") || "unspecified";
+
+            // ✅ Add label based on system
             if (systemLabels.includes(system)) {
               await github.rest.issues.addLabels({
                 owner: context.repo.owner,
@@ -53,8 +46,8 @@ jobs:
               });
             }
 
-            // ✅ Update issue title
-            const newTitle = `bug(${system}): ${description}`;
+            // ✅ Set formatted title
+            const newTitle = `bug(${system}): ${shortDesc}`;
             await github.rest.issues.update({
               owner: context.repo.owner,
               repo: context.repo.repo,
