@@ -3651,7 +3651,7 @@ bool WalterModem::softReset(WalterModemRsp *rsp, walterModemCb cb, void *args)
         _parserData.buf->free = true;
         _parserData.buf = NULL;
     }
-    
+
     _runCmd({"AT^RESET"}, "+SYSSTART", rsp, cb, args);
 
     /* Also (re)initialize internal modem related library state */
@@ -3699,19 +3699,19 @@ bool WalterModem::softReset(WalterModemRsp *rsp, walterModemCb cb, void *args)
 bool WalterModem::reset(WalterModemRsp *rsp, walterModemCb cb, void *args)
 {
     _hardwareReset = true;
-    _runCmd({}, "+SYSSTART", rsp, cb, args, NULL, NULL, WALTER_MODEM_CMD_TYPE_WAIT);
-
     gpio_hold_dis((gpio_num_t)WALTER_MODEM_PIN_RESET);
     gpio_set_level((gpio_num_t)WALTER_MODEM_PIN_RESET, 0);
     vTaskDelay(pdMS_TO_TICKS(10));
     gpio_set_level((gpio_num_t)WALTER_MODEM_PIN_RESET, 1);
     gpio_hold_en((gpio_num_t)WALTER_MODEM_PIN_RESET);
+    vTaskDelay(pdMS_TO_TICKS(1000));
 
     if (_parserData.buf != NULL) {
         _parserData.buf->free = true;
         _parserData.buf = NULL;
     }
 
+    _runCmd({}, "+SYSSTART", rsp, cb, args, NULL, NULL, WALTER_MODEM_CMD_TYPE_TX_WAIT);
     _hardwareReset = false;
 
     /* Also (re)initialize internal modem related library state */
