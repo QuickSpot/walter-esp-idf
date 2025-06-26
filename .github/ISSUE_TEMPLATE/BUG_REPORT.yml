@@ -10,6 +10,11 @@ body:
   - type: markdown
     attributes:
       value: |
+        do not change the title field as it will be automatically formatted!.
+
+  - type: markdown
+    attributes:
+      value: |
         Please fill out all required fields. Issues with insufficient detail may be closed.
 
   - type: dropdown
@@ -32,7 +37,7 @@ body:
   - type: textarea
     id: short-description
     attributes:
-      label: "Description"
+      label: "Short Description"
       description: Please enter an explicit short description of your issue
       placeholder: Short and explicit description of your incident...
   
@@ -42,12 +47,12 @@ body:
       label: Version
       description: Select the version library version you are using.
       options:
-        - 1.1.2
-        - 1.1.3
-        - 1.2.0
-        - 1.2.1
-        - 1.3.0
         - 1.3.1
+        - 1.3.0
+        - 1.2.1
+        - 1.2.0
+        - 1.1.3
+        - 1.1.2
         - dev / main
         - other
     validations:
