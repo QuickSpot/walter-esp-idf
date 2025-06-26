@@ -1072,12 +1072,13 @@ void WalterModem::_handleRingUrc(const char *rxData, size_t len)
             if(ringSize > 0) {
             _receiving = true;
             _receiveExpected += dataCount + ringSize;
+            /*
             ESP_LOGV(
                 "WalterParser",
                 "Receive expected: %u",
                 static_cast<unsigned int>(_receiveExpected));
             }
-           
+            */
         }
     }
 }
@@ -1089,7 +1090,7 @@ bool WalterModem::_checkPayloadComplete()
         &_parserData.buf->data[_receiveExpected], _parserData.buf->size, "\r\nOK\r\n", 6);
 
     if (resultPos && _parserData.buf->size >= _receiveExpected) {
-        ESP_LOGI("WalterParser", "payload completed (OK)");
+        //ESP_LOGI("WalterParser", "payload completed (OK)");
 
         _parserData.buf->size -= 6;
         _queueRxBuffer();
@@ -1104,7 +1105,7 @@ bool WalterModem::_checkPayloadComplete()
         &_parserData.buf->data[_receiveExpected], _parserData.buf->size, "\r\nERROR\r\n", 9);
 
     if (resultPos && _parserData.buf->size >= _receiveExpected) {
-        ESP_LOGI("WalterParser", "payload received error (ERROR)");
+        //ESP_LOGI("WalterParser", "payload received error (ERROR)");
         _parserData.buf->size -= 9;
         _resetParseRxFlags();
         _queueRxBuffer();
@@ -1118,7 +1119,7 @@ bool WalterModem::_checkPayloadComplete()
         &_parserData.buf->data[_receiveExpected], _parserData.buf->size, "\r\n+CME ERROR:", 13);
 
     if (resultPos && _parserData.buf->size >= _receiveExpected) {
-        ESP_LOGI("WalterParser", "payload CME error (OK)");
+        //ESP_LOGI("WalterParser", "payload CME error (OK)");
         uint16_t size = (uint16_t)((uint8_t *)resultPos - _parserData.buf->data);
         _parserData.buf->size -= size;
         _queueRxBuffer();
@@ -1162,7 +1163,7 @@ void WalterModem::_parseRxData(char *rxData, size_t len)
     if (dataLen <= 0 || dataLen > UART_BUF_SIZE)
         return;
 
-    ESP_LOGV("WalterParser", "rxData (%u bytes): \r\n '%.*s'", dataLen, dataLen, dataStart);
+    //ESP_LOGV("WalterParser", "rxData (%u bytes): \r\n '%.*s'", dataLen, dataLen, dataStart);
 
     size_t CRLFPos = _getCRLFPosition(
         dataStart, dataLen); /* we try and get the ending CRLF to know if we have a full message */
