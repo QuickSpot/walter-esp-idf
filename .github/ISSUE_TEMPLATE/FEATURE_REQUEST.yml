@@ -1,0 +1,42 @@
+name: "💡 Feature Request"
+description: Create a new ticket for a new feature request
+title: "💡 feat(<system>): <short-description>"
+labels: [
+  "feature-request",
+  "waiting-for-triage"
+]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        do not change the title field as it will be automatically formatted!.
+
+  - type: markdown
+    attributes:
+      value: |
+        Please fill out all required fields. Issues with insufficient detail may be closed.
+
+  - type: dropdown
+    id: system
+    attributes:
+      label: System or Component
+      description: What part of the system does this feature request affect?
+      options:
+        - socket
+        - mqtt
+        - coap
+        - bluecherry
+        - http
+        - parser
+        - modem
+        - other
+    validations:
+      required: true
+
+  - type: textarea
+    id: short-description
+    attributes:
+      label: "Short Description"
+      description: Please enter an explicit short description of the new feature
+      placeholder: Short and explicit description of your feature request...
