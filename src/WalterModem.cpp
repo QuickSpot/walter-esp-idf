@@ -1146,8 +1146,6 @@ void WalterModem::_parseRxData(char *rxData, size_t len)
     bool hasTripleChevron =
         memmem(dataStart, dataLen, "<<<", 3) != nullptr; /* <<< is the start of the HTTP response */
 
-    _handleRingUrc(dataStart,dataLen);
-
     if (_foundCRLF || CRLFPos > 0 || hasTripleChevron) {
         if (!_foundCRLF && CRLFPos > 0 && _receiveExpected > 0) {
             _receiveExpected += CRLFPos;
@@ -2658,7 +2656,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
                     WALTER_MODEM_SOCKET_EVENT_RING, sock->id, sock->currentReceiving, sock->data);
             };
 
-            socketReceive(sock->currentReceiving, sock->data, sockId, NULL, cb, sock);
+            socketReceive(sock->currentReceiving, sizeof(sock->data), sock->data, sockId, NULL, cb, sock);
         } else {
             sock->dataAvailable += sock->currentReceiving;
         }
