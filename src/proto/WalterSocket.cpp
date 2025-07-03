@@ -375,32 +375,6 @@ bool WalterModem::socketListen(
     }
 }
 
-bool WalterModem::socketDidRing(
-    int socketId, uint16_t *dataReceived, uint16_t targetBufSize, uint8_t *targetBuf)
-{
-    WalterModemRsp *rsp = NULL;
-    walterModemCb cb = NULL;
-    void *args = NULL;
-
-    WalterModemSocket *sock = _socketGet(socketId);
-    if (sock == NULL) {
-        _returnState(WALTER_MODEM_STATE_NO_SUCH_SOCKET);
-    }
-
-    if (sock->didRing) {
-        if (dataReceived != nullptr) {
-            *dataReceived = sock->dataReceived;
-        }
-
-        if (targetBuf != nullptr && targetBufSize != 0) {
-            memcpy(targetBuf, sock->data, targetBufSize);
-        }
-        return true;
-    }
-
-    return false;
-}
-
 uint16_t WalterModem::socketAvailable(int socketId)
 {
     WalterModemSocket *sock = _socketGet(socketId);
