@@ -3066,7 +3066,7 @@ private:
     /**
      * @brief The Socket ring URC queue.
      */
-    static inline WalterModemRingQueue _ringQueue = {};
+    static inline WalterModemSocketRingQueue _ringQueue = {};
 #endif
 
 #if CONFIG_WALTER_MODEM_ENABLE_GNSS
