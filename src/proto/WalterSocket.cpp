@@ -92,6 +92,15 @@ void WalterModem::_socketRelease(WalterModemSocket *sock)
     sock->state = WALTER_MODEM_SOCKET_STATE_FREE;
 }
 
+void WalterModem::_ringQueueProcessingTask(void *args)
+{
+    WalterModemSocketRing ring{};
+    TickType_t blockTime = WALTER_MODEM_CMD_TIMEOUT_TICKS;
+    if (xQueueReceive(_ringQueue.taskHandle, &ring, blockTime) == pdTRUE) {
+        ESP_LOGI("WalterModem", "Received Ring");
+    }
+}
+
 void WalterModem::_dispatchEvent(
     WalterModemSocketEvent event, int socketId, uint16_t dataReceived, uint8_t *dataBuffer)
 {
@@ -389,14 +398,14 @@ bool WalterModem::socketReceive(
     size_t targetBufSize,
     uint8_t *targetBuf,
     int socketId,
-    WalterModemRsp *rsp,
-    walterModemCb cb,
-    void *args)
+    WalterModemRsp *rsp)
 {
     /* this is by definition a blocking call without callback.
      * it is only used when the arduino user is not taking advantage of
      * the (TBI) ring notification events.
      */
+    walterModemCb cb = NULL;
+    void *args = NULL;
 
     WalterModemSocket *sock = _socketGet(socketId);
     if (sock == NULL) {
@@ -428,5 +437,6 @@ void WalterModem::socketSetEventHandler(walterModemSocketEventHandler handler, v
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_SOCKET].socketHandler = handler;
     _eventHandlers[WALTER_MODEM_EVENT_TYPE_SOCKET].args = args;
 }
+
     #pragma endregion
 #endif

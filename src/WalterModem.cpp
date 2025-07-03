@@ -2640,25 +2640,24 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         int sockId = atoi(start);
 
         WalterModemSocket *sock = _socketGet(sockId);
+        uint16_t dataReceived = 0;
        //TODO store ring
 
         char *commaPos = strchr(start, ',');
         if (commaPos) {
             *commaPos = '\0';
             start = ++commaPos;
-            sock->currentReceiving = atoi(commaPos);
+            dataReceived = atoi(commaPos);
         }
         WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_SOCKET;
         if (handler->socketHandler != nullptr) {
-            walterModemCb cb = [](const WalterModemRsp *rsp, void *args) {
-                WalterModemSocket *sock = (WalterModemSocket*) args;
-                _dispatchEvent(
-                    WALTER_MODEM_SOCKET_EVENT_RING, sock->id, sock->currentReceiving, sock->data);
-            };
+            WalterModemSocketRing ring{};
+            if (xQueueSend(_ringQueue.taskHandle,&ring,0))
+            {
 
-            socketReceive(sock->currentReceiving, sizeof(sock->data), sock->data, sockId, NULL, cb, sock);
+            }
         } else {
-            sock->dataAvailable += sock->currentReceiving;
+            sock->dataAvailable += dataReceived;
         }
     }
 
@@ -2683,6 +2682,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             start = ++commaPos;
             dataReceived = atoi(start);
         }
+
         WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_SOCKET;
         if (handler->socketHandler != nullptr) {
             sock->dataAvailable -= dataReceived;
@@ -3514,6 +3514,12 @@ bool WalterModem::begin(uart_port_t uartNo, uint8_t watchdogTimeout)
         sizeof(WalterModemTaskQueueItem),
         _taskQueue.mem,
         &(_taskQueue.memHandle));
+    
+    _ringQueue.handle = xQueueCreateStatic(
+        WALTER_MODEM_MAX_SOCKET_RINGS,
+        sizeof(WalterModemSocketRing),
+        _ringQueue.mem,
+        &(_ringQueue.memHandle));
 
     gpio_set_direction((gpio_num_t)WALTER_MODEM_PIN_RESET, GPIO_MODE_OUTPUT);
     gpio_set_pull_mode((gpio_num_t)WALTER_MODEM_PIN_RESET, GPIO_FLOATING);
@@ -3584,7 +3590,17 @@ bool WalterModem::begin(uart_port_t uartNo, uint8_t watchdogTimeout)
         &_queueTaskBuf,
         0);
 #endif
-
+    #if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+    _queueTask = xTaskCreateStaticPinnedToCore(
+        _ringQueueProcessingTask,
+        "ringQueueProcessingTask",
+        WALTER_MODEM_TASK_STACK_SIZE,
+        NULL,
+        2,
+        _queueTaskStack,
+        &_queueTaskBuf,
+        0);
+    #endif
     esp_sleep_wakeup_cause_t wakeupReason;
     wakeupReason = esp_sleep_get_wakeup_cause();
 

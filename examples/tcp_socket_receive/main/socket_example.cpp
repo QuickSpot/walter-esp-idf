@@ -221,7 +221,7 @@ extern "C" void app_main(void)
         return;
     }
 
-    modem.socketSetEventHandler(mySocketEventHandler, NULL);
+    //modem.socketSetEventHandler(mySocketEventHandler, NULL);
 
     /* Connect to the demo server */
     if (modem.socketDial(

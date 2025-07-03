@@ -244,6 +244,12 @@ CONFIG_UINT8(WALTER_MODEM_MAX_SOCKETS, 6)
  * @brief The maximum number of rings a socket profile will store.
  */
 CONFIG_UINT8(WALTER_MODEM_MAX_SOCKET_RINGS, 8)
+
+/**
+ * @brief The size in bytes of the task queue.
+ */
+    #define WALTER_MODEM_SOCKET_RING_QUEUE_SIZE \
+        WALTER_MODEM_MAX_SOCKET_RINGS * sizeof(WalterModemSocketRing)
 #endif
 
 #if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
@@ -2234,14 +2240,14 @@ typedef struct {
  */
 typedef struct {
     /**
-     * @brief is the ring message free
+     * @brief profile id of the ring
      */
-    bool free = false;
+    uint8_t profileId = 0;
 
     /**
      * @brief size of the ring message (data amount)
      */
-    uint16_t ringSize;
+    uint16_t ringSize = 0;
 } WalterModemSocketRing;
 
 /**
@@ -2320,21 +2326,6 @@ typedef struct {
      * @brief amount of data available from the modem.
      */
     uint16_t dataAvailable = 0;
-
-    /**
-     * @brief amount of data currently receiving from the modem.
-     */
-    uint16_t currentReceiving = 0;
-
-    /**
-     * @brief Data received (0-1500)
-     */
-    uint8_t data[1500];
-
-    /**
-     * @brief ring messages available.
-     */
-    WalterModemSocketRing rings[WALTER_MODEM_MAX_SOCKET_RINGS];
 } WalterModemSocket;
 #endif
 #pragma endregion
@@ -2792,7 +2783,24 @@ typedef struct {
      * @brief The statically allocated queue memory.
      */
     uint8_t mem[WALTER_MODEM_TASK_QUEUE_SIZE] = {0};
-} WalterModemTaskQueue;
+} WalterModemRingQueue;
+
+typedef struct {
+    /**
+     * @brief The queue handle.
+     */
+    QueueHandle_t handle;
+
+    /**
+     * @brief The memory handle.
+     */
+    StaticQueue_t memHandle;
+
+    /**
+     * @brief The statically allocated queue memory.
+     */
+    uint8_t mem[WALTER_MODEM_TASK_QUEUE_SIZE] = {0};
+} WalterModemSocketRingQueue;
 
 /**
  * @brief This structure represents the command queue. This queue is used inside the libraries
@@ -3049,6 +3057,16 @@ private:
      * use.
      */
     static inline WalterModemSocket *_socket = NULL;
+
+    /**
+     * @brief The statically allocated queue processing task stack memory.
+     */
+    static inline StackType_t _queueTaskStack[WALTER_MODEM_TASK_STACK_SIZE];
+
+    /**
+     * @brief The Socket ring URC queue.
+     */
+    static inline WalterModemRingQueue _ringQueue = {};
 #endif
 
 #if CONFIG_WALTER_MODEM_ENABLE_GNSS
@@ -3260,6 +3278,17 @@ private:
      * @return None.
      */
     static void _socketRelease(WalterModemSocket *sock);
+
+    /**
+     * @brief This is the entrypoint of the ring queue processing task.
+     *
+     * The WalterModem library relies on a seperate task for handeling ring messages from the modem
+     *
+     * @param args A NULL pointer.
+     *
+     * @return None.
+     */
+    static void _ringQueueProcessingTask(void *args);
 #endif
 #pragma endregion
 
@@ -4874,8 +4903,7 @@ public:
         uint8_t *targetBuf,
         int socketId = -1,
         WalterModemRsp *rsp = NULL,
-        walterModemCb cb = NULL,
-        void *args = NULL);
+    );
 #endif
 #pragma endregion
 
