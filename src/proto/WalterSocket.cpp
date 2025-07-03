@@ -419,6 +419,10 @@ bool WalterModem::socketReceive(
         _returnState(WALTER_MODEM_STATE_NO_MEMORY);
     }
 
+    if(receiveCount == 0) {
+        return true;
+    }
+
     _receiving = true;
     _receiveExpected = receiveCount;
     _runCmd(

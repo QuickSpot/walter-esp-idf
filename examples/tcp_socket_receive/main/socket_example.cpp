@@ -243,7 +243,7 @@ extern "C" void app_main(void)
         vTaskDelay(pdMS_TO_TICKS(SEND_DELAY_MS));
         while (modem.socketAvailable() > 0) {
             // 1500 is the max amount of bytes the modem can read at a time.
-            uint16_t dataToRead = (dataAvailable > 1500) ? 1500 : dataAvailable;
+            uint16_t dataToRead = (modem.socketAvailable() > 1500) ? 1500 : modem.socketAvailable();
             ESP_LOGI(TAG,"Reading: %u bytes",dataToRead);
             if (modem.socketReceive(dataToRead, sizeof(dataBuf), dataBuf)) {
                 dataAvailable -= dataToRead;
