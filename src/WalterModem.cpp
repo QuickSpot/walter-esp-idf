@@ -3566,6 +3566,8 @@ bool WalterModem::begin(uart_port_t uartNo, uint8_t watchdogTimeout)
         _rxTaskStack,
         &_rxTaskBuf,
         0);
+
+    
 #endif
 /* the queueProcessingTask cannot be on the same level as the UART task otherwise a modem freeze can
  * occur */
@@ -3597,8 +3599,8 @@ bool WalterModem::begin(uart_port_t uartNo, uint8_t watchdogTimeout)
         WALTER_MODEM_TASK_STACK_SIZE,
         NULL,
         2,
-        _queueTaskStack,
-        &_queueTaskBuf,
+        _ringQueueTaskStack,
+        &_ringQueueTaskBuf,
         0);
     #endif
     esp_sleep_wakeup_cause_t wakeupReason;

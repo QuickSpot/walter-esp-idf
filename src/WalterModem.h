@@ -3059,9 +3059,19 @@ private:
     static inline WalterModemSocket *_socket = NULL;
 
     /**
+     * @brief The task in which AT commands and responses are handled.
+     */
+    static inline TaskHandle_t _ringQueueTask;
+
+    /**
+     * @brief Handle used to manage the queue processing task stack.
+     */
+    static inline StaticTask_t _ringQueueTaskBuf;
+
+    /**
      * @brief The statically allocated queue processing task stack memory.
      */
-    static inline StackType_t _queueTaskStack[WALTER_MODEM_TASK_STACK_SIZE];
+    static inline StackType_t _ringQueueTaskStack[WALTER_MODEM_TASK_STACK_SIZE];
 
     /**
      * @brief The Socket ring URC queue.
