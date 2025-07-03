@@ -4912,7 +4912,7 @@ public:
         size_t targetBufSize,
         uint8_t *targetBuf,
         int socketId = -1,
-        WalterModemRsp *rsp = NULL,
+        WalterModemRsp *rsp = NULL
     );
 #endif
 #pragma endregion

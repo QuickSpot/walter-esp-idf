@@ -2652,7 +2652,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_SOCKET;
         if (handler->socketHandler != nullptr) {
             WalterModemSocketRing ring{};
-            if (xQueueSend(_ringQueue.taskHandle,&ring,0))
+            if (xQueueSend(_ringQueue.handle,&ring,0))
             {
 
             }
@@ -3598,7 +3598,7 @@ bool WalterModem::begin(uart_port_t uartNo, uint8_t watchdogTimeout)
         "ringQueueProcessingTask",
         WALTER_MODEM_TASK_STACK_SIZE,
         NULL,
-        2,
+        4,
         _ringQueueTaskStack,
         &_ringQueueTaskBuf,
         0);
