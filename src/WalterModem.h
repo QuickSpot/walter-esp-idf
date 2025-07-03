@@ -248,8 +248,8 @@ CONFIG_UINT8(WALTER_MODEM_MAX_SOCKET_RINGS, 8)
 /**
  * @brief The size in bytes of the task queue.
  */
-    #define WALTER_MODEM_SOCKET_RING_QUEUE_SIZE \
-        WALTER_MODEM_MAX_SOCKET_RINGS * sizeof(WalterModemSocketRing)
+#define WALTER_MODEM_SOCKET_RING_QUEUE_SIZE \
+    WALTER_MODEM_MAX_SOCKET_RINGS * sizeof(WalterModemSocketRing)
 #endif
 
 #if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
@@ -2783,7 +2783,7 @@ typedef struct {
      * @brief The statically allocated queue memory.
      */
     uint8_t mem[WALTER_MODEM_TASK_QUEUE_SIZE] = {0};
-} WalterModemRingQueue;
+} WalterModemTaskQueue;
 
 typedef struct {
     /**
@@ -2799,7 +2799,7 @@ typedef struct {
     /**
      * @brief The statically allocated queue memory.
      */
-    uint8_t mem[WALTER_MODEM_TASK_QUEUE_SIZE] = {0};
+    uint8_t mem[WALTER_MODEM_SOCKET_RING_QUEUE_SIZE] = {0};
 } WalterModemSocketRingQueue;
 
 /**
