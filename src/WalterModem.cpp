@@ -1113,7 +1113,6 @@ void WalterModem::_resetParseRxFlags()
     _receiving = false;
     _foundCRLF = false;
     _receiveExpected = 0;
-    _receivingSocketRing = false;
 }
 
 void WalterModem::_parseRxData(char *rxData, size_t len)
@@ -2644,9 +2643,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         uint16_t dataAvailable = 0;
 
         WalterModemSocket *sock = _socketGet(sockId);
-        if (sock) {
-            sock->didRing = true;
-        }
+       //TODO store ring
 
         char *commaPos = strchr(start, ',');
         if (commaPos) {
@@ -2681,9 +2678,6 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         uint16_t dataReceived = 0;
 
         WalterModemSocket *sock = _socketGet(sockId);
-        if (sock) {
-            sock->didRing = false;
-        }
 
         char *commaPos = strchr(start, ',');
         if (commaPos) {

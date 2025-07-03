@@ -4864,22 +4864,6 @@ public:
         WalterModemSocketListenState listenState = WALTER_MODEM_SOCKET_LISTEN_STATE_IPV4,
         int socketListenPort = 0);
 
-    /**
-     * @brief check if the Socket received a Ring URC.
-     *
-     * @param socketId  The id of the socket to wait for the ring or -1 to re-use the last one.
-     * @param targetBufSize The size of the targetBuffer.
-     * @param targetBuf The targetBuffer to store the received data in.abort
-     *
-     * @return True on success, false otherwise.
-     *
-     * @warning The target buffer will only be filled when ringMode is set to
-     * WALTER_MODEM_SOCKET_RING_MODE_DATA_VIEW in socketConfigExtended.
-     * @warning deprecated use socketReceive and socketAvailable
-     */
-    static bool socketDidRing(
-        int socketId = -1, uint16_t* dataReceived = nullptr,uint16_t targetBUfSize = 0, uint8_t *targetBuf = nullptr);
-
     static uint16_t socketAvailable(int socketId = -1);
 
     /**
