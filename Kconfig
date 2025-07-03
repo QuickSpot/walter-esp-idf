@@ -23,7 +23,7 @@ menu "walter-modem"
                             The maximum number of sockets.
                     config WALTER_MODEM_MAX_SOCKET_RINGS 
                         int "Max ring URC the library will store"
-                        range 1-20
+                        range 1 20
                         default 8
                         help
                             the maximum number of ring messages.
