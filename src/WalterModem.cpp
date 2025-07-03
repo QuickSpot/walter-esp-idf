@@ -2640,7 +2640,6 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         const char *rspStr = _buffStr(buff);
         char *start = (char *)rspStr + _strLitLen("+SQNSRING: ");
         int sockId = atoi(start);
-        uint16_t dataAvailable = 0;
 
         WalterModemSocket *sock = _socketGet(sockId);
        //TODO store ring
@@ -2649,18 +2648,19 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         if (commaPos) {
             *commaPos = '\0';
             start = ++commaPos;
-            dataAvailable = atoi(commaPos);
+            sock->currentReceiving = atoi(commaPos);
         }
         WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_SOCKET;
         if (handler->socketHandler != nullptr) {
-            
-            walterModemCb cb = [&](const WalterModemRsp *rsp, void *args) {
-                _dispatchEvent(WALTER_MODEM_SOCKET_EVENT_RING, sock->id, dataAvailable, cmd->data);
+            walterModemCb cb = [](const WalterModemRsp *rsp, void *args) {
+                WalterModemSocket *sock = (WalterModemSocket*) args;
+                _dispatchEvent(
+                    WALTER_MODEM_SOCKET_EVENT_RING, sock->id, sock->currentReceiving, sock->data);
             };
 
-            socketReceive(dataAvailable, sock->data, sockId,NULL,cb,NULL);
+            socketReceive(sock->currentReceiving, sock->data, sockId, NULL, cb, sock);
         } else {
-            sock->dataAvailable += dataAvailable;
+            sock->dataAvailable += sock->currentReceiving;
         }
     }
 

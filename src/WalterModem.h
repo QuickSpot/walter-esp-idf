@@ -2322,6 +2322,11 @@ typedef struct {
     uint16_t dataAvailable = 0;
 
     /**
+     * @brief amount of data currently receiving from the modem.
+     */
+    uint16_t currentReceiving = 0;
+
+    /**
      * @brief Data received (0-1500)
      */
     uint8_t data[1500];
