@@ -2641,6 +2641,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         const char *rspStr = _buffStr(buff);
         char *start = (char *)rspStr + _strLitLen("+SQNSRING: ");
         int sockId = atoi(start);
+        uint16_t dataAvailable = 0;
 
         WalterModemSocket *sock = _socketGet(sockId);
         if (sock) {
@@ -2651,15 +2652,19 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         if (commaPos) {
             *commaPos = '\0';
             start = ++commaPos;
-            sock->dataReceived = atoi(commaPos);
-            commaPos = strchr(commaPos, ',');
+            dataAvailable = atoi(commaPos);
         }
+        WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_SOCKET;
+        if (handler->socketHandler != nullptr) {
+            
+            walterModemCb cb = [&](const WalterModemRsp *rsp, void *args) {
+                _dispatchEvent(WALTER_MODEM_SOCKET_EVENT_RING, sock->id, dataAvailable, cmd->data);
+            };
 
-        if (commaPos) {
-            memcpy(sock->data, ++commaPos, sock->dataReceived);
+            socketReceive(dataAvailable, sock->data, sockId,NULL,cb,NULL);
+        } else {
+            sock->dataAvailable += dataAvailable;
         }
-
-        _dispatchEvent(WALTER_MODEM_SOCKET_EVENT_RING, sock->id, sock->dataReceived, sock->data);
     }
 
     if (_buffStartsWith(buff, "+SQNSRECV: ")) {
@@ -2673,6 +2678,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         char *start = (char *)rspStr + _strLitLen("+SQNSRECV: ");
 
         int sockId = atoi(start);
+        uint16_t dataReceived = 0;
 
         WalterModemSocket *sock = _socketGet(sockId);
         if (sock) {
@@ -2683,15 +2689,18 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         if (commaPos) {
             *commaPos = '\0';
             start = ++commaPos;
-            sock->dataReceived = atoi(start);
+            dataReceived = atoi(start);
         }
-
+        WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_SOCKET;
+        if (handler->socketHandler != nullptr) {
+            sock->dataAvailable -= dataReceived;
+        }
         /*
          * If data and dataSize are null, we cannot store the result. We can only hope the user
          * is using a callback which has access to the raw buffer.
          */
         if (cmd->data != nullptr) {
-            memcpy(cmd->data, payload, sock->dataReceived);
+            memcpy(cmd->data, payload, dataReceived);
         }
     }
 #endif

@@ -401,26 +401,35 @@ bool WalterModem::socketDidRing(
     return false;
 }
 
+uint16_t WalterModem::socketAvailable(int socketId)
+{
+    WalterModemSocket *sock = _socketGet(socketId);
+    if (sock == NULL) {
+        return 0;
+    }
+    return  sock->dataAvailable;
+}
+
 bool WalterModem::socketReceive(
     uint16_t receiveCount,
     size_t targetBufSize,
     uint8_t *targetBuf,
     int socketId,
-    WalterModemRsp *rsp)
+    WalterModemRsp *rsp,
+    walterModemCb cb,
+    void *args)
 {
     /* this is by definition a blocking call without callback.
      * it is only used when the arduino user is not taking advantage of
      * the (TBI) ring notification events.
      */
-    walterModemCb cb = NULL;
-    void *args = NULL;
 
     WalterModemSocket *sock = _socketGet(socketId);
     if (sock == NULL) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_SOCKET);
     }
 
-    if (targetBufSize > 1500) {
+    if (targetBufSize < receiveCount || receiveCount > 1500) {
         _returnState(WALTER_MODEM_STATE_NO_MEMORY);
     }
 

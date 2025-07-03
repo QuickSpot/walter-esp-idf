@@ -239,6 +239,11 @@ CONFIG_UINT8(WALTER_MODEM_MAX_TLS_PROFILES, 6)
  * @brief The maximum number of sockets.
  */
 CONFIG_UINT8(WALTER_MODEM_MAX_SOCKETS, 6)
+
+/**
+ * @brief The maximum number of rings a socket profile will store.
+ */
+CONFIG_UINT8(WALTER_MODEM_MAX_SOCKET_RINGS, 8)
 #endif
 
 #if CONFIG_WALTER_MODEM_ENABLE_BLUE_CHERRY
@@ -2225,6 +2230,21 @@ typedef struct {
 #pragma region SOCKETS
 #if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
 /**
+ * @brief this structure represents a modem socket ring URC
+ */
+typedef struct {
+    /**
+     * @brief is the ring message free
+     */
+    bool free = false;
+
+    /**
+     * @brief size of the ring message (data amount)
+     */
+    uint16_t ringSize;
+} WalterModemSocketRing;
+
+/**
  * @brief This structure represents a socket.
  */
 typedef struct {
@@ -2297,19 +2317,19 @@ typedef struct {
     uint16_t localPort = 0;
 
     /**
-     * @brief Has the listening socket received a ring URC.
+     * @brief amount of data available from the modem.
      */
-    bool didRing = false;
-
-    /**
-     * @brief Data amount received (0-1500)
-     */
-    uint16_t dataReceived;
+    uint16_t dataAvailable = 0;
 
     /**
      * @brief Data received (0-1500)
      */
     uint8_t data[1500];
+
+    /**
+     * @brief ring messages available.
+     */
+    WalterModemSocketRing rings[WALTER_MODEM_MAX_SOCKET_RINGS];
 } WalterModemSocket;
 #endif
 #pragma endregion
@@ -4855,9 +4875,12 @@ public:
      *
      * @warning The target buffer will only be filled when ringMode is set to
      * WALTER_MODEM_SOCKET_RING_MODE_DATA_VIEW in socketConfigExtended.
+     * @warning deprecated use socketReceive and socketAvailable
      */
     static bool socketDidRing(
         int socketId = -1, uint16_t* dataReceived = nullptr,uint16_t targetBUfSize = 0, uint8_t *targetBuf = nullptr);
+
+    static uint16_t socketAvailable(int socketId = -1);
 
     /**
      * @brief Receive data from an incomming socket connection
@@ -4877,7 +4900,9 @@ public:
         size_t targetBufSize,
         uint8_t *targetBuf,
         int socketId = -1,
-        WalterModemRsp *rsp = NULL);
+        WalterModemRsp *rsp = NULL,
+        walterModemCb cb = NULL,
+        void *args = NULL);
 #endif
 #pragma endregion
 
