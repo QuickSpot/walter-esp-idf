@@ -95,8 +95,8 @@ void WalterModem::_socketRelease(WalterModemSocket *sock)
 void WalterModem::_ringQueueProcessingTask(void *args)
 {
     WalterModemSocketRing ring{};
-    TickType_t blockTime = WALTER_MODEM_CMD_TIMEOUT_TICKS;
-    if (xQueueReceive(_ringQueue.taskHandle, &ring, blockTime) == pdTRUE) {
+    TickType_t blockTime = pdMS_TO_TICKS(1000);
+    if (xQueueReceive(_ringQueue.handle, &ring, blockTime) == pdTRUE) {
         ESP_LOGI("WalterModem", "Received Ring");
     }
 }
