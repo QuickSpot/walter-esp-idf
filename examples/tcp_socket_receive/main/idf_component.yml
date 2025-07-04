@@ -1,5 +1,4 @@
 dependencies:
   idf: ">=5.0.0"
   dptechnics/walter-modem:
-    version: "feat(socket)--auto-socket-receive-"
-    git: "https://github.com/QuickSpot/walter-esp-idf.git"
+    version: ">=1.3.2"
