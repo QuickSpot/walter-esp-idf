@@ -2652,6 +2652,8 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
         WalterModemEventHandler *handler = _eventHandlers + WALTER_MODEM_EVENT_TYPE_SOCKET;
         if (handler->socketHandler != nullptr) {
             WalterModemSocketRing ring{};
+            ring.profileId = sockId;
+            ring.ringSize = dataReceived;
             if (xQueueSend(_ringQueue.handle,&ring,0))
             {
 
