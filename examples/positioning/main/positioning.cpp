@@ -75,7 +75,7 @@ CONFIG_INT(SERV_PORT, 1999)
 /**
  * @brief The size in bytes of a minimal sensor + GNSS packet.
  */
-static constexpr uint8_t PACKET_SIZE = 18;
+static constexpr uint8_t PACKET_SIZE = 29;
 
 /**
  * @brief All fixes with a confidence below this number are considered ok.
@@ -566,6 +566,41 @@ extern "C" void app_main(void)
             ESP_LOGI(TAG, "Could not connect to the LTE network");
             return;
         }
+
+        if (!modem.getCellInformation(WALTER_MODEM_SQNMONI_REPORTS_SERVING_CELL, &rsp)) {
+            ESP_LOGE(TAG,"Could not request cell information");
+        } else {
+            ESP_LOGI(
+                "WalterModem",
+                "Connected on band %u using operator %s (%u%02u)",
+                static_cast<unsigned int>(rsp.data.cellInformation.band),
+                rsp.data.cellInformation.netName,
+                static_cast<unsigned int>(rsp.data.cellInformation.cc),
+                static_cast<unsigned int>(rsp.data.cellInformation.nc));
+
+            ESP_LOGI(
+                "WalterModem",
+                "and cell ID %u.",
+                static_cast<unsigned int>(rsp.data.cellInformation.cid));
+
+            ESP_LOGI(
+                "WalterModem",
+                "Signal strength: RSRP: %.2f, RSRQ: %.2f.",
+                rsp.data.cellInformation.rsrp,
+                rsp.data.cellInformation.rsrq);
+        }
+
+        dataBuf[18] = rsp.data.cellInformation.cc >> 8;
+        dataBuf[19] = rsp.data.cellInformation.cc & 0xFF;
+        dataBuf[20] = rsp.data.cellInformation.nc >> 8;
+        dataBuf[21] = rsp.data.cellInformation.nc & 0xFF;
+        dataBuf[22] = rsp.data.cellInformation.tac >> 8;
+        dataBuf[23] = rsp.data.cellInformation.tac & 0xFF;
+        dataBuf[24] = (rsp.data.cellInformation.cid >> 24) & 0xFF;
+        dataBuf[25] = (rsp.data.cellInformation.cid >> 16) & 0xFF;
+        dataBuf[26] = (rsp.data.cellInformation.cid >> 8) & 0xFF;
+        dataBuf[27] = rsp.data.cellInformation.cid & 0xFF;
+        dataBuf[28] = (uint8_t)(rsp.data.cellInformation.rsrp * -1);
 
         if (!socketConnect(SERV_ADDR, SERV_PORT)) {
             ESP_LOGI(TAG, "Could not connect to UDP server socket");
