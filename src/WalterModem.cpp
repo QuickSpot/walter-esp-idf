@@ -1167,16 +1167,22 @@ void WalterModem::_parseRxData(char *rxData, size_t len)
             _parseRxData(dataStart + CRLFPos + 1, dataLen - CRLFPos - 1);
         }
     } else if (dataLen > 0) {
-        /* We are receiving a partial message or a data PROMPT*/
-        bool dataPrompt = dataStart[0] == '>';
-        bool httpPrompt = dataLen >= 3
-            ? dataStart[0] == '>' && dataStart[1] == '>' && dataStart[2] == '>'
-            : false;
 
         _addATBytesToBuffer(dataStart, dataLen);
 
+        /* We are receiving a partial message or a data PROMPT*/
+        bool dataPrompt = (_parserData.buf->size >= 2)
+            ? (_parserData.buf->data[0] == '>' && _parserData.buf->data[1] == ' ')
+            : false;
+
+        bool httpPrompt = (_parserData.buf->size >= 3)
+            ? (_parserData.buf->data[0] == '>' && _parserData.buf->data[1] == '>' &&
+               _parserData.buf->data[2] == '>')
+            : false;
+
         if (dataPrompt || httpPrompt) {
             _queueRxBuffer();
+            _resetParseRxFlags();
         }
     }
 }
@@ -2654,6 +2660,7 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             WalterModemSocketRing ring{};
             ring.profileId = sockId;
             ring.ringSize = dataReceived;
+            sock->dataAvailable += dataReceived;
             if (xQueueSend(_ringQueue.handle,&ring,0))
             {
 
