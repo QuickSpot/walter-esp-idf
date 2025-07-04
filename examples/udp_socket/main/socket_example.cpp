@@ -121,8 +121,8 @@ bool waitForNetwork()
     /* Wait for the network to become available */
     int timeout = 0;
     while (!lteConnected()) {
-        vTaskDelay(pdMS_TO_TICKS(100));
-        timeout += 100;
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        timeout += 1000;
         if (timeout > 300000)
             return false;
     }
@@ -135,6 +135,7 @@ void mySocketEventHandler(
 {
     if (ev == WALTER_MODEM_SOCKET_EVENT_RING) {
         ESP_LOGI(TAG, "received ring message (%u bytes)", dataReceived);
+        ESP_LOGI(TAG, "Data: %.*s", dataReceived, dataBuffer); // error in C++
     }
 }
 
@@ -208,7 +209,7 @@ extern "C" void app_main(void)
         return;
     }
 
-    modem.socketSetEventHandler(mySocketEventHandler);
+    modem.socketSetEventHandler(mySocketEventHandler,NULL);
 
     /* Construct a socket */
     if (modem.socketConfig(&rsp)) {
