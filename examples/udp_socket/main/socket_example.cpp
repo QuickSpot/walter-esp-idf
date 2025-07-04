@@ -130,6 +130,14 @@ bool waitForNetwork()
     return true;
 }
 
+void mySocketEventHandler(
+    WalterModemSocketEvent ev, int socketId, uint16_t dataReceived, uint8_t *dataBuffer, void *args)
+{
+    if (ev == WALTER_MODEM_SOCKET_EVENT_RING) {
+        ESP_LOGI(TAG, "received ring message (%u bytes)", dataReceived);
+    }
+}
+
 /**
  * @brief This function tries to connect the modem to the cellular network.
  * @return true if the connection attempt is successful, else false.
@@ -199,6 +207,8 @@ extern "C" void app_main(void)
         ESP_LOGE(TAG, "Could Not Connect to LTE");
         return;
     }
+
+    modem.socketSetEventHandler(mySocketEventHandler);
 
     /* Construct a socket */
     if (modem.socketConfig(&rsp)) {

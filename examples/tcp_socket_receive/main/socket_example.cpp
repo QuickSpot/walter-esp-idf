@@ -140,6 +140,13 @@ bool lteConnect()
         return false;
     }
 
+    if (modem.setRadioBands(WalterModemRAT::WALTER_MODEM_RAT_LTEM, WALTER_MODEM_BAND_B20)) {
+        ESP_LOGI(TAG, "Succesfully set the radio band");
+    } else {
+        ESP_LOGI(TAG, "Could not set operational state to NO RF");
+        return false;
+    }
+
     /* Create PDP context */
     if (modem.definePDPContext(1, CELLULAR_APN)) {
         ESP_LOGI(TAG, "Created PDP context");
@@ -165,15 +172,6 @@ bool lteConnect()
     }
 
     return waitForNetwork();
-}
-
-void mySocketEventHandler(
-    WalterModemSocketEvent ev, int socketId, uint16_t dataReceived, uint8_t *dataBuffer, void *args)
-{
-    if(ev == WALTER_MODEM_SOCKET_EVENT_RING) {
-        ESP_LOGI(TAG, "received ring message (%u bytes)", dataReceived);
-        dataAvailable += dataReceived;
-    }
 }
 
 extern "C" void app_main(void)
@@ -221,8 +219,6 @@ extern "C" void app_main(void)
         return;
     }
 
-    //modem.socketSetEventHandler(mySocketEventHandler, NULL);
-
     /* Connect to the demo server */
     if (modem.socketDial(
             SERV_ADDR, SERV_PORT, 0, NULL, NULL, NULL, WALTER_MODEM_SOCKET_PROTO_TCP)) {
@@ -246,8 +242,7 @@ extern "C" void app_main(void)
             uint16_t dataToRead = (modem.socketAvailable() > 1500) ? 1500 : modem.socketAvailable();
             ESP_LOGI(TAG,"Reading: %u bytes",dataToRead);
             if (modem.socketReceive(dataToRead, sizeof(dataBuf), dataBuf)) {
-                dataAvailable -= dataToRead;
-                ESP_LOGI(TAG, "Remaining: %u | Data: %.*s", dataAvailable, dataToRead, dataBuf);
+                ESP_LOGI(TAG, "Remaining: %u | Data: %.*s", modem.socketAvailable(), dataToRead, dataBuf);
             }
         }
     }

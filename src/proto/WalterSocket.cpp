@@ -96,10 +96,12 @@ void WalterModem::_ringQueueProcessingTask(void *args)
 {
     WalterModemSocketRing ring{};
     TickType_t blockTime = pdMS_TO_TICKS(1000);
+    uint8_t data[1500];
     while(true) 
     {
         if (xQueueReceive(_ringQueue.handle, &ring, blockTime) == pdTRUE) {
-            ESP_LOGI("WalterModem", "Received Ring");
+            socketReceive(ring.ringSize, sizeof(data), data, ring.profileId);
+            _dispatchEvent(WALTER_MODEM_SOCKET_EVENT_RING, ring.profileId,ring.ringSize, data);
         }
     }
 }
@@ -409,7 +411,7 @@ bool WalterModem::socketReceive(
      */
     walterModemCb cb = NULL;
     void *args = NULL;
-
+    uint16_t dataToRead;
     WalterModemSocket *sock = _socketGet(socketId);
     if (sock == NULL) {
         _returnState(WALTER_MODEM_STATE_NO_SUCH_SOCKET);
@@ -419,12 +421,15 @@ bool WalterModem::socketReceive(
         _returnState(WALTER_MODEM_STATE_NO_MEMORY);
     }
 
-    if(receiveCount == 0) {
+    dataToRead = (receiveCount > sock->dataAvailable) ? sock->dataAvailable : receiveCount;
+
+    if (dataToRead == 0) {
         return true;
     }
 
     _receiving = true;
-    _receiveExpected = receiveCount;
+    _receiveExpected = dataToRead;
+    sock->dataAvailable -= dataToRead;
     _runCmd(
         arr("AT+SQNSRECV=", _digitStr(sock->id), ",", _atNum(receiveCount)),
         "OK",
