@@ -16,7 +16,7 @@ and 16MB of flash memory.
 This is the easiest way to use Walter Modem component.
 
 ```bash
-idf.py add-dependency "dptechnics/walter-modem^1.3.2" 
+idf.py add-dependency "dptechnics/walter-modem^1.3.3" 
 ```
 
 To use this component inside your project you must add `dptechnics/walter-modem` to the `idf_components.yml`
