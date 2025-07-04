@@ -1,4 +1,4 @@
-version: "1.3.2"
+version: "1.3.3"
 
 description: "Walter Modem Driver"
 url: "https://github.com/QuickSpot/walter-esp-idf"
