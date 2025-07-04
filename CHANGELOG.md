@@ -133,9 +133,9 @@ This is the Changelog for WalterModem
 
 ### Bug Fixes
 
-fix(nvm): _tlsIsCredentialPresent ([#99](https://github.com/QuickSpot/walter-esp-idf/pull/99))
-fix(modem): socket receive + general bug fixes ([#102](https://github.com/QuickSpot/walter-esp-idf/pull/102))
-fix(socket): example updated begin function ([#58](https://github.com/QuickSpot/walter-arduino/pull/58))
-fix(walterfeels): updated walterfeels example ([#52](https://github.com/QuickSpot/walter-arduino/pull/52))
-fix(http): wrong int type in httpring handler ([#54](https://github.com/QuickSpot/walter-arduino/pull/54))
-fix(parser): dataPrompt bug where modem could hang
+- fix(nvm): _tlsIsCredentialPresent ([#99](https://github.com/QuickSpot/walter-esp-idf/pull/99))
+- fix(modem): socket receive + general bug fixes ([#102](https://github.com/QuickSpot/walter-esp-idf/pull/102))
+- fix(socket): example updated begin function ([#58](https://github.com/QuickSpot/walter-arduino/pull/58))
+- fix(walterfeels): updated walterfeels example ([#52](https://github.com/QuickSpot/walter-arduino/pull/52))
+- fix(http): wrong int type in httpring handler ([#54](https://github.com/QuickSpot/walter-arduino/pull/54))
+- fix(parser): dataPrompt bug where modem could hang
