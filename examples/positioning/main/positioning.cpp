@@ -391,6 +391,14 @@ bool socketConnect(const char *ip, uint16_t port)
         return false;
     }
 
+    /* disable socket tls as the demo server does not use it */
+    if (modem.socketConfigTLS(rsp.data.socketId, 1, false)) {
+        ESP_LOGI(TAG, "Created a new socket");
+    } else {
+        ESP_LOGE(TAG, "Could not create a new socket");
+        return;
+    }
+
     /* Connect to the UDP test server */
     if (modem.socketDial(ip, port, port)) {
         ESP_LOGI(TAG, "Connected to UDP server %s:%d", ip, port);

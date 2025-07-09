@@ -211,6 +211,15 @@ extern "C" void app_main(void)
         ESP_LOGE(TAG, "Could not create a new socket");
         return;
     }
+
+    /* disable socket tls as the demo server does not use it */
+    if (modem.socketConfigTLS(rsp.data.socketId, 1, false)) {
+        ESP_LOGI(TAG, "Created a new socket");
+    } else {
+        ESP_LOGE(TAG, "Could not create a new socket");
+        return;
+    }
+
     /* Construct a socket */
     if (modem.socketConfigExtended(&rsp)) {
         ESP_LOGI(TAG, "Defined socket extended config params");
