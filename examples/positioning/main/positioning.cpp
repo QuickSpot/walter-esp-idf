@@ -393,9 +393,9 @@ bool socketConnect(const char *ip, uint16_t port)
 
     /* disable socket tls as the demo server does not use it */
     if (modem.socketConfigTLS(rsp.data.socketId, 1, false)) {
-        ESP_LOGI(TAG, "Created a new socket");
+        ESP_LOGI(TAG, "Succesfuly disabled socket TLS");
     } else {
-        ESP_LOGE(TAG, "Could not create a new socket");
+        ESP_LOGE(TAG, "Could not disable socket TLS");
         return false;
     }
 
