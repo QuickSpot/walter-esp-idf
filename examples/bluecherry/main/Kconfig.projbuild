@@ -16,5 +16,16 @@ menu "Walter BlueCherry example"
             help
                 Specify what TLS profile ID the modem will use to configure TLS communication with BlueCherry.
                 It is recommended to not re-use this profile for other TLS-enabled communication.
+        config PSM_ACTIVE
+            string "PSM active time"
+            default "00000001"
+            help
+                Specify the PSM active time.
+        
+        config PSM_TAU
+            string "PSM TAU time"
+            default "00000110"
+            help
+                Specify the PSM tau time.
     endif
 endmenu
