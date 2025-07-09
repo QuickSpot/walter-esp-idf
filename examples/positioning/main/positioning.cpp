@@ -396,7 +396,7 @@ bool socketConnect(const char *ip, uint16_t port)
         ESP_LOGI(TAG, "Created a new socket");
     } else {
         ESP_LOGE(TAG, "Could not create a new socket");
-        return;
+        return false;
     }
 
     /* Connect to the UDP test server */
