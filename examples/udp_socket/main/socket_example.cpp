@@ -219,6 +219,14 @@ extern "C" void app_main(void)
         return;
     }
 
+    /* disable socket tls as the demo server does not use it */
+    if (modem.socketConfigTLS(rsp.data.socketId, 1, false)) {
+        ESP_LOGI(TAG, "Created a new socket");
+    } else {
+        ESP_LOGE(TAG, "Could not create a new socket");
+        return;
+    }
+
     /* Connect to the demo server */
     if (modem.socketDial(SERV_ADDR, SERV_PORT)) {
         ESP_LOGI(TAG, "Connected to demo server %s:%d", SERV_ADDR, SERV_PORT);
