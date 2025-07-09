@@ -382,9 +382,6 @@ extern "C" void app_main(void)
         /* Poll BlueCherry platform if an incoming message or firmware update is available */
         syncBlueCherry();
 
-        /* Wait for PSM to become active */
-        vTaskDelay(pdMS_TO_TICKS(20000));
-
         /* Go sleep for a minute */
         modem.sleep(60);
     }
