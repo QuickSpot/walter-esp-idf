@@ -47,12 +47,13 @@
  * It also supports OTA updates which are scheduled through the BlueCherry web interface.
  */
 
-#include <WalterModem.h>
 #include <BlueCherryZTP.h>
 #include <BlueCherryZTP_CBOR.h>
+#include <WalterModem.h>
 #include <driver/uart.h>
 #include <esp_log.h>
 #include <esp_mac.h>
+#include <esp_sleep.h>
 
 WalterModem modem;
 
@@ -70,6 +71,15 @@ CONFIG(BC_DEVICE_TYPE, const char *, "walter01")
  * @brief Define modem TLS profile used for BlueCherry cloud platform
  */
 CONFIG_UINT8(BC_TLS_PROFILE, 1)
+
+/**
+ * @brief The binary configuration settings for PSM.
+ * These can be calculated using e.g.
+ * https://www.soracom.io/psm-calculation-tool/
+ */
+CONFIG(PSM_ACTIVE, const char *, "00000001");
+
+CONFIG(PSM_TAU, const char *, "00000110");
 
 /**
  * @brief ESP-IDF log prefix.
@@ -205,6 +215,7 @@ void syncBlueCherry()
                 rsp.data.blueCherry.state);
             modem.softReset();
             lteConnect();
+            modem.blueCherryInit(BC_TLS_PROFILE, otaBuffer);
             return;
         }
 
@@ -315,7 +326,7 @@ void configureBluecherry()
 
 extern "C" void app_main(void)
 {
-    ESP_LOGI(TAG, "Walter modem bluecherry example v1.0.0");
+    ESP_LOGI(TAG, "Walter BlueCherry ZTP + OTA + PSM example. v1.1.0");
 
     /* Get the MAC address for board validation */
     esp_read_mac(dataBuf, ESP_MAC_WIFI_STA);
@@ -334,18 +345,33 @@ extern "C" void app_main(void)
         ESP_LOGI(TAG, "Modem initialization OK");
     } else {
         ESP_LOGE(TAG, "Modem initialization ERROR");
-        return;
+        vTaskDelay(pdMS_TO_TICKS(10000));
+        esp_restart();
     }
 
-    /* Connect the modem to the lte network */
-    if (!lteConnect()) {
-        ESP_LOGE(TAG, "Could Not Connect to LTE");
-        return;
+    modem.configPSM(WALTER_MODEM_PSM_ENABLE,PSM_TAU,PSM_ACTIVE);
+
+    /* Connect to cellular network */
+    if (!lteConnected() && !lteConnect()) {
+        ESP_LOGE(TAG,"Unable to connect to cellular network, restarting Walter "
+                    "in 10 seconds");
+        vTaskDelay(pdMS_TO_TICKS(10000));
+        esp_restart();
     }
-    
-    configureBluecherry();
+
+    if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_UNDEFINED) {
+        configureBluecherry();
+    }
 
     for (;;) {
+        /* Connect to cellular network */
+        if (!lteConnected() && !lteConnect()) {
+            ESP_LOGE(TAG,"Unable to connect to cellular network, restarting Walter "
+                        "in 10 seconds");
+            vTaskDelay(pdMS_TO_TICKS(10000));
+            esp_restart();
+        }
+
         WalterModemRsp rsp = {};
         if (modem.getCellInformation(WALTER_MODEM_SQNMONI_REPORTS_SERVING_CELL, &rsp)) {
             char msg[18];
@@ -353,9 +379,13 @@ extern "C" void app_main(void)
             modem.blueCherryPublish(0x84, sizeof(msg) - 1, (uint8_t *)msg);
         }
 
-        // Poll BlueCherry platform if an incoming message or firmware update is available
+        /* Poll BlueCherry platform if an incoming message or firmware update is available */
         syncBlueCherry();
 
-        vTaskDelay(pdMS_TO_TICKS(60000));
+        /* Wait for PSM to become active */
+        vTaskDelay(pdMS_TO_TICKS(20000));
+
+        /* Go sleep for a minute */
+        modem.sleep(60);
     }
 }
