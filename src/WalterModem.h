@@ -258,6 +258,8 @@ CONFIG_UINT8(WALTER_MODEM_MAX_SOCKET_RINGS, 8)
  * @brief The default hostname for Bluecherry.
  */
 CONFIG(WALTER_MODEM_BLUE_CHERRY_HOSTNAME, const char *, "coap.bluecherry.io")
+
+CONFIG(WALTER_MODEM_BLUE_CHERRY_PORT, uint16_t, 5684)
 #endif
 
 /**
@@ -3117,7 +3119,7 @@ private:
     /*
      * @brief The current BlueCherry state.
      */
-    static inline WalterModemBlueCherryState _blueCherry;
+    static inline WalterModemBlueCherryState _blueCherry = {};
 #endif
 
 #pragma region MOTA
@@ -4829,10 +4831,10 @@ public:
      * 
      * @return True on success, false otherwise.
      */
-    static bool socketConfigTLS(
-        int socketId,
-        int profileId,
+    static bool socketConfigSecure(
         bool enableTLS,
+        int profileId = 1,
+        int socketId = -1,
         WalterModemRsp *rsp = NULL,
         walterModemCb cb = NULL,
         void *args = NULL);
