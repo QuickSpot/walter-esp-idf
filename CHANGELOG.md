@@ -155,3 +155,4 @@ feat(bluecherry-coap-restructure): bluecherry coap messages via udp modem socket
 - fix(modem): fixed NO CARRIER bug _finishQueueCMd ([#110](https://github.com/QuickSpot/walter-esp-idf/pull/110))
 - fix(examples): add socket config tls ([#111](https://github.com/QuickSpot/walter-esp-idf/pull/111))
 - fix(socket-tls-examples): updated examples to disable tls by default ([#63](https://github.com/QuickSpot/walter-arduino/pull/63))
+- fix(bluecherry): bluecherry port was not properly set (replaced by CONFIG macro)
