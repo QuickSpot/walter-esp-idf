@@ -396,7 +396,7 @@ bool socketConnect(const char *ip, uint16_t port)
         ESP_LOGI(TAG, "Successfully disabled socket TLS");
     } else {
         ESP_LOGE(TAG, "Could not disable socket TLS");
-        return;
+        return false;
     }
 
     /* Connect to the UDP test server */
