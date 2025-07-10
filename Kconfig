@@ -119,25 +119,25 @@ menu "walter-modem"
                             The maximum number of rings that can be pending for the CoAP protocol.
                 endmenu
 
-                config WALTER_MODEM_ENABLE_BLUE_CHERRY
+                config WALTER_MODEM_ENABLE_BLUECHERRY
                     bool "Enable BlueCherry IoT functionality"
                     default y
                     select WALTER_MODEM_ENABLE_MOTA
                     help
                         Enable BlueCherry IoT functionality
                 
-                if WALTER_MODEM_ENABLE_BLUE_CHERRY
+                if WALTER_MODEM_ENABLE_BLUECHERRY
                     menu "Bluecherry"
                         comment "Mota and OTA functions are forced on when BlueCherry is enabled!"
                         
-                        config WALTER_MODEM_BLUE_CHERRY_HOSTNAME
-                            string "blue cherry server hostname"
+                        config WALTER_MODEM_BLUECHERRY_HOSTNAME
+                            string "bluecherry server hostname"
                             default coap.bluecherry.io
                             help
                                 The hostname to use for Bluecherry.
 
-                        config WALTER_MODEM_BLUE_CHERRY_PORT
-                            int "blue cherry server port"
+                        config WALTER_MODEM_BLUECHERRY_PORT
+                            int "bluecherry server port"
                             default 5684
                             help
                                 The port to use for Bluecherry
@@ -314,7 +314,7 @@ menu "walter-modem"
         endmenu
    
         menu "Firmware upgrade"
-        if WALTER_MODEM_ENABLE_BLUE_CHERRY
+        if WALTER_MODEM_ENABLE_BLUECHERRY
             comment "BlueCherry has been enabled MOTA & OTA have been forced on!"
         endif
         config WALTER_MODEM_ENABLE_MOTA
