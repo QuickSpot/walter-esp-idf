@@ -135,6 +135,12 @@ menu "walter-modem"
                             default coap.bluecherry.io
                             help
                                 The hostname to use for Bluecherry.
+
+                        config WALTER_MODEM_BLUE_CHERRY_PORT
+                            int "blue cherry server port"
+                            default 5684
+                            help
+                                The port to use for Bluecherry
                     endmenu
                 endif
             endif
