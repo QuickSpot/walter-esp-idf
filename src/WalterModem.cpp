@@ -2652,10 +2652,10 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
             WalterModemSocketState state;
 
             char *commaPos = strchr(start, ',');
-            if (commaPos) {
+            if (sock && commaPos) {
                 *commaPos = '\0';
                 start = ++commaPos;
-                state = atoi(start) + 3;
+                state = (WalterModemSocketState)(atoi(start) + 3);
             }
         }
     }
