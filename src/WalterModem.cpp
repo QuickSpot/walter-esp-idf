@@ -2583,7 +2583,6 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
 
         WalterModemSocket *sock = _socketGet(sockId);
         uint16_t dataReceived = 0;
-       //TODO store ring
 
         char *commaPos = strchr(start, ',');
         if (commaPos) {
@@ -2642,6 +2641,22 @@ void WalterModem::_processQueueRsp(WalterModemCmd *cmd, WalterModemBuffer *buff)
          */
         if (cmd->data != nullptr) {
             memcpy(cmd->data, payload, dataReceived);
+        }
+    } else if (_buffStartsWith(buff, "+SQNSS: ")) {
+        const char *rspStr = _buffStr(buff);
+        char *start = (char *)rspStr + _strLitLen("+SQNSS: ");
+        int sockId = atoi(start);
+        if(sockId < (WALTER_MODEM_MAX_SOCKETS -1)) {
+            WalterModemSocket *sock = _socketGet(sockId);
+            
+            WalterModemSocketState state;
+
+            char *commaPos = strchr(start, ',');
+            if (commaPos) {
+                *commaPos = '\0';
+                start = ++commaPos;
+                state = atoi(start) + 3;
+            }
         }
     }
 #endif
