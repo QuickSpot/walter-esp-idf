@@ -45,6 +45,7 @@
 
 #include <WalterDefines.h>
 #include <WalterModem.h>
+#include <esp_log.h>
 
 #if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
     #pragma region PRIVATE_METHODS
