@@ -219,7 +219,6 @@ extern "C" void app_main(void)
         return;
     }
 
-    ESP_LOGI(TAG,"the current socket state: %u",modem.socketGetState());
     /* disable socket tls as the demo server does not use it */
     if (modem.socketConfigSecure(false)) {
         ESP_LOGI(TAG, "Successfully disabled socket TLS");
@@ -235,7 +234,6 @@ extern "C" void app_main(void)
         ESP_LOGE(TAG, "Could not connect demo socket");
         return;
     }
-    ESP_LOGI(TAG, "the current socket state: %u", modem.socketGetState());
 
     for (;;) {
         dataBuf[6] = counter >> 8;
@@ -248,7 +246,6 @@ extern "C" void app_main(void)
             ESP_LOGE(TAG, "Could not transmit data");
             esp_restart();
         }
-        ESP_LOGI(TAG, "the current socket state: %u", modem.socketGetState());
 
         vTaskDelay(pdMS_TO_TICKS(SEND_DELAY_MS));
     }
