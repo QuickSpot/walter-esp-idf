@@ -3321,8 +3321,10 @@ private:
      */
     static void _socketRelease(WalterModemSocket *sock);
 
-    /** 
+    /**
      * @brief this function retrieves and updates all the socketStates
+     *
+     * @return True on success, false on error.
      */
     static bool _socketUpdateStates();
 
