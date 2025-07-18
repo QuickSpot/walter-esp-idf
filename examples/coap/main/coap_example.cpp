@@ -59,7 +59,7 @@ CONFIG(CELLULAR_APN, const char *, "")
 /**
  * @brief COAP profile used for COAP tests
  */
-CONFIG_UINT8(MODEM_COAP_PROFILE, 0)
+CONFIG_UINT8(MODEM_COAP_PROFILE, 1)
 
 /**
  * @brief Time delay in ms of data sent to the coap demo server.
@@ -118,7 +118,7 @@ bool waitForNetwork()
     /* Wait for the network to become available */
     int timeout = 0;
     while (!lteConnected()) {
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(1000));
         timeout += 100;
         if (timeout > 300000)
             return false;
