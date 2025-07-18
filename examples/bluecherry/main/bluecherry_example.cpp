@@ -215,7 +215,6 @@ void syncBlueCherry()
                 rsp.data.blueCherry.state);
             modem.softReset();
             lteConnect();
-            modem.blueCherryInit(BC_TLS_PROFILE, otaBuffer);
             return;
         }
 
