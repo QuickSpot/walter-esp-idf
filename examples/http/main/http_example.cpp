@@ -128,9 +128,9 @@ bool waitForNetwork()
     /* Wait for the network to become available */
     int timeout = 0;
     while (!lteConnected()) {
-        vTaskDelay(pdMS_TO_TICKS(100));
-        timeout += 100;
-        if (timeout > 300000)
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        timeout += 1;
+        if (timeout > 300)
             return false;
     }
     ESP_LOGI(TAG, "Connected to the network");

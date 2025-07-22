@@ -107,8 +107,8 @@ bool waitForNetwork()
     int timeout = 0;
     while (!lteConnected()) {
         vTaskDelay(pdMS_TO_TICKS(1000));
-        timeout += 100;
-        if (timeout > 300000)
+        timeout += 1;
+        if (timeout > 300)
             return false;
     }
     ESP_LOGI(TAG, "Connected to the network");
@@ -195,7 +195,7 @@ extern "C" void app_main(void)
     }
 
     /* Connect the client to the broker */
-    if (modem.mqttConnect("test.mosquitto.org", 1883)) {
+    if (modem.mqttConnect("broker.hivemq.com", 1883)) {
         ESP_LOGI(TAG, "MQTT connection succeeded");
     } else {
         ESP_LOGE(TAG, "MQTT connection failed");
