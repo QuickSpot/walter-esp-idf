@@ -15,4 +15,4 @@ dependencies:
   #   # All dependencies of `main` are public by default.
   #   public: true
   dptechnics/walter-modem:
-    version: ">=2"
+    version: ">=1.4.2"
