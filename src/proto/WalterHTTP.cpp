@@ -197,7 +197,8 @@ bool WalterModem::httpQuery(uint8_t profileId, const char* uri,
 bool WalterModem::httpSend(uint8_t profileId, const char* uri, uint8_t* data, uint16_t dataSize,
                            WalterModemHttpSendCmd httpSendCmd,
                            WalterModemHttpPostParam httpPostParam, char* contentTypeBuf,
-                           uint16_t contentTypeBufSize, WalterModemRsp* rsp, walterModemCb cb,
+                           uint16_t contentTypeBufSize, const char* extraHeaderLine,
+                           WalterModemRsp* rsp, walterModemCb cb,
                            void* args)
 {
   if(profileId >= WALTER_MODEM_MAX_HTTP_PROFILES) {
@@ -227,6 +228,9 @@ bool WalterModem::httpSend(uint8_t profileId, const char* uri, uint8_t* data, ui
     stringsBuffer->size +=
         sprintf((char*) stringsBuffer->data, "AT+SQNHTTPSND=%d,%d,\"%s\",%d,\"%d\"", profileId,
                 httpSendCmd, uri, dataSize, httpPostParam);
+    if(extraHeaderLine != NULL && strlen(extraHeaderLine) > 0) {
+        stringsBuffer->size += sprintf((char *)stringsBuffer->data + stringsBuffer->size, ",\"%s\"", extraHeaderLine);
+    }
   }
 
   _runCmd(arr((const char*) stringsBuffer->data), "OK", rsp, cb, args, completeHandler,
