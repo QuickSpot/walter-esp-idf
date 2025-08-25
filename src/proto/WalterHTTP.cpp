@@ -242,6 +242,7 @@ bool WalterModem::httpSend(
     WalterModemHttpPostParam httpPostParam,
     char *contentTypeBuf,
     uint16_t contentTypeBufSize,
+    const char* extraHeaderLine,
     WalterModemRsp *rsp,
     walterModemCb cb,
     void *args)
@@ -283,6 +284,10 @@ bool WalterModem::httpSend(
             uri,
             dataSize,
             httpPostParam);
+    }
+
+    if(extraHeaderLine != NULL && strlen(extraHeaderLine) > 0) {
+        stringsBuffer->size += sprintf((char *)stringsBuffer->data + stringsBuffer->size, ",\"%s\"", extraHeaderLine);
     }
 
     _runCmd(
