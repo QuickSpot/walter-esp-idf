@@ -1,2 +1,2 @@
-idf_component_register(SRCS "http_example.cpp"
+idf_component_register(SRCS "http.cpp"
                     INCLUDE_DIRS ".")

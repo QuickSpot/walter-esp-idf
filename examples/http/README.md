@@ -1,28 +1,44 @@
-# Walter http example
+# Walter HTTP example
 
 ## Purpose
 
-This example will make walter querry the [example.com](https://example.com) website.
+This example demonstrates how Walter can send and receive requests using **HTTP**.
+Walter will make a HTTP GET and POST request to a remote webserver.
 
-## Required hardware
+## Required Hardware
 
 To run this example you will need the following items:
 
-- Walter
-- An LTE antenna
-- A SIM card
-- USB-C cable to flash Walter
+* Walter
+* An LTE antenna
+* A SIM card with data plan
+* USB-C cable to flash Walter
 
 ## Required software
 
-Please follow the instructions from the [Documentation](https://www.quickspot.io/documentation.html#/) to
+1. Please follow the instructions in the [documentation](https://www.quickspot.io/documentation.html#/) to:
 [setup](https://www.quickspot.io/documentation.html#/developer-toolchains/esp-idf) ESP-IDF.
-No other libraries are required for this example to run.
 
-## Run the example
+## Configuration
 
-Make sure to connect the LTE antenna to Walter. Running the example without the
-antenna connected could damage the radio frontend of the modem. Also insert the
-SIM card before starting the sketch.
+Before flashing the example, configure the routes and credentials:
 
-You should now be able to see the raw html content of [example.com](https://example.com)
+* In the example sketch, update the following:
+
+  ```cpp
+  #define HTTP_PORT 80
+  #define HTTP_HOST "quickspot.io"
+  #define HTTP_GET_ENDPOINT "/hello/get"
+  #define HTTP_POST_ENDPOINT "/hello/post"
+  ```
+
+## Running the example
+
+1. Connect the LTE antenna to Walter.
+   **Warning:** Running without the antenna connected may damage the radio frontend.
+
+2. Insert the SIM card.
+
+3. Flash the example sketch to Walter.
+
+4. You should see requests being performed, and the responses being logged.
