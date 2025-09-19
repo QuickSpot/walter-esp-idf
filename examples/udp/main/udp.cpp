@@ -1,0 +1,374 @@
+/**
+ * @file udp.cpp
+ * @author Daan Pape <daan@dptechnics.com>
+ * @date 28 Apr 2025
+ * @copyright DPTechnics bv
+ * @brief Walter Modem library examples
+ *
+ * @section LICENSE
+ *
+ * Copyright (C) 2025, DPTechnics bv
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ *   1. Redistributions of source code must retain the above copyright notice,
+ *      this list of conditions and the following disclaimer.
+ *
+ *   2. Redistributions in binary form must reproduce the above copyright
+ *      notice, this list of conditions and the following disclaimer in the
+ *      documentation and/or other materials provided with the distribution.
+ *
+ *   3. Neither the name of DPTechnics bv nor the names of its contributors may
+ *      be used to endorse or promote products derived from this software
+ *      without specific prior written permission.
+ *
+ *   4. This software, with or without modification, must only be used with a
+ *      Walter board from DPTechnics bv.
+ *
+ *   5. Any software provided in binary form under this license must not be
+ *      reverse engineered, decompiled, modified and/or disassembled.
+ *
+ * THIS SOFTWARE IS PROVIDED BY DPTECHNICS BV “AS IS” AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL DPTECHNICS BV OR CONTRIBUTORS BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file contains a sketch which uses the modem in Walter to make a
+ * connection to a network and upload data packets to the Walter demo server.
+ */
+
+#include <driver/temperature_sensor.h>
+#include <WalterModem.h>
+#include <driver/uart.h>
+#include <esp_timer.h>
+#include <esp_log.h>
+#include <esp_mac.h>
+
+#define UDP_PORT 1999
+#define UDP_HOST "walterdemo.quickspot.io"
+
+#define BASIC_INFO_PACKET_SIZE 24
+#define COUNTER_PACKET_SIZE 8
+
+/**
+ * @brief The modem instance.
+ */
+WalterModem modem;
+
+/**
+ * @brief Response object containing command response information.
+ */
+WalterModemRsp rsp = {};
+
+/**
+ * @brief The socket identifier (1-6)
+ *
+ * @note At least one socket should be available/reserved for BlueCherry.
+ */
+uint8_t socketId = -1;
+
+/**
+ * @brief The buffer to transmit to the UDP server. The first 6 bytes will be
+ * the MAC address of the Walter this code is running on.
+ */
+uint8_t dataBuf[8] = { 0 };
+
+/**
+ * @brief The counter used in the ping packets.
+ */
+uint16_t counter = 0;
+
+/**
+ * @brief ESP-IDF log prefix.
+ */
+static constexpr const char* TAG = "[EXAMPLE]";
+
+/**
+ * @brief This function checks if we are connected to the LTE network
+ *
+ * @return true when connected, false otherwise
+ */
+bool lteConnected()
+{
+  WalterModemNetworkRegState regState = modem.getNetworkRegState();
+  return (regState == WALTER_MODEM_NETWORK_REG_REGISTERED_HOME ||
+          regState == WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING);
+}
+
+/**
+ * @brief This function waits for the modem to be connected to the LTE network.
+ *
+ * @param timeout_sec The amount of seconds to wait before returning a time-out.
+ *
+ * @return true if connected, false on time-out.
+ */
+bool waitForNetwork(int timeout_sec = 300)
+{
+  ESP_LOGI(TAG, "Connecting to the network...");
+  int time = 0;
+  while(!lteConnected()) {
+    printf(".");
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    time++;
+    if(time > timeout_sec)
+      return false;
+  }
+  printf("\r\n");
+  ESP_LOGI(TAG, "Connected to the network");
+  return true;
+}
+
+/**
+ * @brief Disconnect from the LTE network.
+ *
+ * This function will disconnect the modem from the LTE network and block until
+ * the network is actually disconnected. After the network is disconnected the
+ * GNSS subsystem can be used.
+ *
+ * @return true on success, false on error.
+ */
+bool lteDisconnect()
+{
+  /* Set the operational state to minimum */
+  if(modem.setOpState(WALTER_MODEM_OPSTATE_MINIMUM)) {
+    ESP_LOGI(TAG, "Successfully set operational state to MINIMUM");
+  } else {
+    ESP_LOGE(TAG, "Could not set operational state to MINIMUM");
+    return false;
+  }
+
+  /* Wait for the network to become available */
+  WalterModemNetworkRegState regState = modem.getNetworkRegState();
+  while(regState != WALTER_MODEM_NETWORK_REG_NOT_SEARCHING) {
+    vTaskDelay(pdMS_TO_TICKS(100));
+    regState = modem.getNetworkRegState();
+  }
+
+  ESP_LOGI(TAG, "Disconnected from the network");
+  return true;
+}
+
+/**
+ * @brief This function tries to connect the modem to the cellular network.
+ *
+ * @return true on success, false on error.
+ */
+bool lteConnect()
+{
+  /* Set the operational state to NO RF */
+  if(modem.setOpState(WALTER_MODEM_OPSTATE_NO_RF)) {
+    ESP_LOGI(TAG, "Successfully set operational state to NO RF");
+  } else {
+    ESP_LOGE(TAG, "Could not set operational state to NO RF");
+    return false;
+  }
+
+  /* Create PDP context */
+  if(modem.definePDPContext()) {
+    ESP_LOGI(TAG, "Created PDP context");
+  } else {
+    ESP_LOGE(TAG, "Could not create PDP context");
+    return false;
+  }
+
+  /* Set the operational state to full */
+  if(modem.setOpState(WALTER_MODEM_OPSTATE_FULL)) {
+    ESP_LOGI(TAG, "Successfully set operational state to FULL");
+  } else {
+    ESP_LOGE(TAG, "Could not set operational state to FULL");
+    return false;
+  }
+
+  /* Set the network operator selection to automatic */
+  if(modem.setNetworkSelectionMode(WALTER_MODEM_NETWORK_SEL_MODE_AUTOMATIC)) {
+    ESP_LOGI(TAG, "Network selection mode was set to automatic");
+  } else {
+    ESP_LOGE(TAG, "Could not set the network selection mode to automatic");
+    return false;
+  }
+
+  return waitForNetwork();
+}
+
+/**
+ * @brief Socket event handler
+ *
+ * Handles status changes and incoming UDP messages.
+ * @note This callback is invoked from the modem driver’s event context.
+ *       It must never block or call modem methods directly.
+ *       Use it only to set flags or copy data for later processing.
+ *
+ * @param ev          Event type (e.g. WALTER_MODEM_SOCKET_EVENT_RING for incoming messages)
+ * @param socketId    ID of the socket that triggered the event
+ * @param dataReceived Number of bytes received
+ * @param dataBuffer  Pointer to received data
+ * @param args        User argument pointer passed to socketSetEventHandler
+ */
+void udpSocketEventHandler(WalterModemSocketEvent ev, int socketId, uint16_t dataReceived,
+                           uint8_t* dataBuffer, void* args)
+{
+  if(ev == WALTER_MODEM_SOCKET_EVENT_RING) {
+    ESP_LOGI(TAG, "Received UDP message (%u bytes) on socket %d\r\n", dataReceived, socketId);
+    ESP_LOGI(TAG, "Payload:\r\n%.*s\r\n", dataReceived, reinterpret_cast<const char*>(dataBuffer));
+  }
+}
+
+float temperatureRead(void)
+{
+  float result = -9999.0f;
+
+  temperature_sensor_config_t temp_sensor_config = TEMPERATURE_SENSOR_CONFIG_DEFAULT(10, 50);
+  temperature_sensor_handle_t temp_sensor = NULL;
+  temperature_sensor_install(&temp_sensor_config, &temp_sensor);
+  temperature_sensor_enable(temp_sensor);
+  temperature_sensor_get_celsius(temp_sensor, &result);
+  temperature_sensor_disable(temp_sensor);
+  temperature_sensor_uninstall(temp_sensor);
+
+  return result;
+}
+
+/**
+ * @brief Send a basic info packet to walterdemo
+ */
+bool udpSendBasicInfoPacket()
+{
+  uint16_t packet_size = COUNTER_PACKET_SIZE;
+
+  dataBuf[6] = counter >> 8;
+  dataBuf[7] = counter & 0xFF;
+
+  /* Only send the full packet if cellinfo is valid */
+  if(rsp.data.cellInformation.cc != 0 || rsp.data.cellInformation.nc != 0 ||
+     rsp.data.cellInformation.tac != 0 || rsp.data.cellInformation.cid != 0) {
+    packet_size = BASIC_INFO_PACKET_SIZE;
+
+    /* Read the temperature of Walter */
+    float temp = temperatureRead();
+    uint16_t rawTemp = (temp + 50) * 100;
+
+    uint8_t rat = -1;
+    if(modem.getRAT(&rsp)) {
+      rat = (uint8_t) rsp.data.rat;
+    }
+
+    /* Construct the basic info packet */
+    dataBuf[8] = rawTemp >> 8;
+    dataBuf[9] = rawTemp & 0xFF;
+    dataBuf[10] = rsp.data.cellInformation.cc >> 8;
+    dataBuf[11] = rsp.data.cellInformation.cc & 0xFF;
+    dataBuf[12] = rsp.data.cellInformation.nc >> 8;
+    dataBuf[13] = rsp.data.cellInformation.nc & 0xFF;
+    dataBuf[14] = rsp.data.cellInformation.tac >> 8;
+    dataBuf[15] = rsp.data.cellInformation.tac & 0xFF;
+    dataBuf[16] = (rsp.data.cellInformation.cid >> 24) & 0xFF;
+    dataBuf[17] = (rsp.data.cellInformation.cid >> 16) & 0xFF;
+    dataBuf[18] = (rsp.data.cellInformation.cid >> 8) & 0xFF;
+    dataBuf[19] = rsp.data.cellInformation.cid & 0xFF;
+    dataBuf[20] = (uint8_t) (rsp.data.cellInformation.rsrp * -1);
+    dataBuf[21] = (uint8_t) (rsp.data.cellInformation.rsrq * -1);
+    dataBuf[22] = rat;
+    dataBuf[23] = 0xFF;
+  }
+
+  ESP_LOGI(TAG, "Sending packet...");
+
+  if(!modem.socketSend(dataBuf, packet_size)) {
+    ESP_LOGE(TAG, "UDP send packet failed");
+    return false;
+  }
+
+  vTaskDelay(pdMS_TO_TICKS(2000));
+
+  /* Attempt to get the latest cell information (for next packet) */
+  modem.getCellInformation(WALTER_MODEM_SQNMONI_REPORTS_SERVING_CELL, &rsp);
+
+  ESP_LOGI(TAG, "UDP send basic packet succeeded");
+  return true;
+}
+
+/**
+ * @brief The main application start method.
+ */
+extern "C" void app_main()
+{
+  ESP_LOGI(TAG, "=== WalterModem UDP example ===");
+
+  /* Start the modem */
+  if(WalterModem::begin(UART_NUM_1)) {
+    ESP_LOGI(TAG, "Successfully initialized the modem");
+  } else {
+    ESP_LOGE(TAG, "Could not initialize the modem");
+    return;
+  }
+
+  /* Connect the modem to the LTE network */
+  if(!lteConnect()) {
+    ESP_LOGE(TAG, "Could not connect to LTE");
+    return;
+  }
+
+  /* Retrieve and print the board MAC address */
+  esp_read_mac(dataBuf, ESP_MAC_WIFI_STA);
+  ESP_LOGI(TAG, "Board MAC: %02X:%02X:%02X:%02X:%02X:%02X\r\n", dataBuf[0], dataBuf[1], dataBuf[2],
+           dataBuf[3], dataBuf[4], dataBuf[5]);
+
+  /* Set the UDP socket event handler */
+  modem.socketSetEventHandler(udpSocketEventHandler, NULL);
+
+  /* Configure a new socket */
+  if(modem.socketConfig(&rsp)) {
+    ESP_LOGI(TAG, "Successfully configured a new socket");
+
+    /* Utilize the socket id if you have more then one socket */
+    /* If not specified in the methods, the modem will use the previous socket id */
+    socketId = rsp.data.socketId;
+  } else {
+    ESP_LOGE(TAG, "Could not configure a new socket");
+    return;
+  }
+
+  /* Disable TLS (the demo UDP server does not use it) */
+  if(modem.socketConfigSecure(false)) {
+    ESP_LOGI(TAG, "Successfully set socket to insecure mode");
+  } else {
+    ESP_LOGE(TAG, "Could not disable socket TLS");
+    return;
+  }
+
+  /* Connect (dial) to the UDP test server */
+  if(modem.socketDial(UDP_HOST, UDP_PORT, 0, NULL, NULL, NULL, WALTER_MODEM_SOCKET_PROTO_UDP)) {
+    ESP_LOGI(TAG, "Successfully dialed UDP server %s:%d\r\n", UDP_HOST, UDP_PORT);
+  } else {
+    ESP_LOGE(TAG, "Could not dial UDP server");
+    return;
+  }
+
+  while(true) {
+    static int64_t lastSend = 0;
+    const int64_t sendInterval = 30000 * 1000; // 30 s in µs
+
+    int64_t now = esp_timer_get_time();
+    if((now - lastSend) >= sendInterval) {
+      lastSend = now;
+
+      if(!udpSendBasicInfoPacket()) {
+        ESP_LOGE(TAG, "UDP send failed, restarting...");
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        esp_restart();
+      }
+      counter++;
+    }
+    vTaskDelay(pdMS_TO_TICKS(10));
+  }
+}
