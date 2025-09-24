@@ -1,5 +1,5 @@
 /**
- * @file mqtt.cpp
+ * @file mqtts.cpp
  * @author Arnoud Devoogdt <arnoud@dptechnics.com>
  * @date 24 Sept 2025
  * @copyright DPTechnics bv
@@ -44,7 +44,7 @@
  * @section DESCRIPTION
  *
  * This file contains a sketch which uses the modem in Walter to subscribe and
- * publish data to an MQTT broker.
+ * publish data to an MQTTS broker.
  */
 
 #include <driver/temperature_sensor.h>
@@ -54,10 +54,49 @@
 #include <esp_log.h>
 #include <esp_mac.h>
 
-#define MQTT_PORT 1883
-#define MQTT_HOST "broker.emqx.io"
-#define MQTT_TOPIC "walter-test-topic"
-#define MQTT_CLIENT_ID "walter-client"
+#define MQTTS_PORT 8883
+#define MQTTS_HOST "broker.emqx.io"
+#define MQTTS_TOPIC "walter-tls-test-topic"
+#define MQTTS_CLIENT_ID "walter-client"
+#define MQTTS_USERNAME ""
+#define MQTTS_PASSWORD ""
+
+/**
+ * @brief Root CA certificate in PEM format.
+ *
+ * @note Example: https://www.emqx.com/en/mqtt/public-mqtt5-broker
+ *
+ * Used to validate the server's TLS certificate.
+ */
+static const char ca_cert[] = R"EOF(
+-----BEGIN CERTIFICATE-----
+MIIDrzCCApegAwIBAgIQCDvgVpBCRrGhdWrJWZHHSjANBgkqhkiG9w0BAQUFADBh
+MQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMRkwFwYDVQQLExB3
+d3cuZGlnaWNlcnQuY29tMSAwHgYDVQQDExdEaWdpQ2VydCBHbG9iYWwgUm9vdCBD
+QTAeFw0wNjExMTAwMDAwMDBaFw0zMTExMTAwMDAwMDBaMGExCzAJBgNVBAYTAlVT
+MRUwEwYDVQQKEwxEaWdpQ2VydCBJbmMxGTAXBgNVBAsTEHd3dy5kaWdpY2VydC5j
+b20xIDAeBgNVBAMTF0RpZ2lDZXJ0IEdsb2JhbCBSb290IENBMIIBIjANBgkqhkiG
+9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4jvhEXLeqKTTo1eqUKKPC3eQyaKl7hLOllsB
+CSDMAZOnTjC3U/dDxGkAV53ijSLdhwZAAIEJzs4bg7/fzTtxRuLWZscFs3YnFo97
+nh6Vfe63SKMI2tavegw5BmV/Sl0fvBf4q77uKNd0f3p4mVmFaG5cIzJLv07A6Fpt
+43C/dxC//AH2hdmoRBBYMql1GNXRor5H4idq9Joz+EkIYIvUX7Q6hL+hqkpMfT7P
+T19sdl6gSzeRntwi5m3OFBqOasv+zbMUZBfHWymeMr/y7vrTC0LUq7dBMtoM1O/4
+gdW7jVg/tRvoSSiicNoxBN33shbyTApOB6jtSj1etX+jkMOvJwIDAQABo2MwYTAO
+BgNVHQ8BAf8EBAMCAYYwDwYDVR0TAQH/BAUwAwEB/zAdBgNVHQ4EFgQUA95QNVbR
+TLtm8KPiGxvDl7I90VUwHwYDVR0jBBgwFoAUA95QNVbRTLtm8KPiGxvDl7I90VUw
+DQYJKoZIhvcNAQEFBQADggEBAMucN6pIExIK+t1EnE9SsPTfrgT1eXkIoyQY/Esr
+hMAtudXH/vTBH1jLuG2cenTnmCmrEbXjcKChzUyImZOMkXDiqw8cvpOp/2PV5Adg
+06O/nVsJ8dWO41P0jmP6P6fbtGbfYmbW0W5BjfIttep3Sp+dWOIrWcBAI+0tKIJF
+PnlUkiaY4IBIqDfv8NZ5YBberOgOzW6sRBc4L0na4UU+Krk2U886UAb3LujEV0ls
+YSEY1QSteDwsOoBrp+uvFRTp2InBuThs4pFsiv9kuXclVzDAGySj4dzp30d8tbQk
+CAUw7C29C79Fv1C5qfPrmAESrciIxpg0X40KPMbp1ZWVbd4=
+-----END CERTIFICATE-----
+)EOF";
+
+/**
+ * The TLS profile to use for the application (1 is reserved for BlueCherry)
+ */
+#define MQTTS_TLS_PROFILE 2
 
 /**
  * @brief The modem instance.
@@ -75,7 +114,7 @@ WalterModemRsp rsp = {};
 uint8_t incomingBuf[256] = { 0 };
 
 /**
- * @brief MQTT client and message prefix based on mac address
+ * @brief MQTTS client and message prefix based on mac address
  */
 char macString[32];
 
@@ -192,26 +231,61 @@ bool lteConnect()
 }
 
 /**
- * @brief Common routine to publish a message to an MQTT topic.
+ * @brief Writes TLS credentials to the modem's NVS and configures the TLS profile.
+ *
+ * This function stores the provided TLS certificates and private keys into the modem's
+ * non-volatile storage (NVS), and then sets up a TLS profile for secure communication.
+ * These configuration changes are persistent across reboots.
+ *
+ * @note
+ * - Certificate indexes 0–10 are reserved for Sequans and BlueCherry internal usage.
+ * - Private key index 1 is reserved for BlueCherry internal usage.
+ * - Do not attempt to override or use these reserved indexes.
+ *
+ * @return
+ * - true if the credentials were successfully written and the profile configured.
+ * - false otherwise.
+ */
+bool setupTLSProfile(void)
+{
+
+  if(!modem.tlsWriteCredential(false, 12, ca_cert)) {
+    ESP_LOGE(TAG, "CA cert upload failed");
+    return false;
+  }
+
+  if(modem.tlsConfigProfile(MQTTS_TLS_PROFILE, WALTER_MODEM_TLS_VALIDATION_CA,
+                            WALTER_MODEM_TLS_VERSION_12, 12)) {
+    ESP_LOGI(TAG, "TLS profile configured");
+  } else {
+    ESP_LOGE(TAG, "TLS profile configuration failed");
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * @brief Common routine to publish a message to an MQTTS topic.
  */
 static bool mqttPublishMessage(const char* topic, const char* message)
 {
   ESP_LOGI(TAG, "Publishing to topic '%s': %s\r\n", topic, message);
   if(modem.mqttPublish(topic, (uint8_t*) message, strlen(message))) {
-    ESP_LOGI(TAG, "MQTT publish succeeded");
+    ESP_LOGI(TAG, "MQTTS publish succeeded");
     return true;
   }
-  ESP_LOGE(TAG, "MQTT publish failed");
+  ESP_LOGE(TAG, "MQTTS publish failed");
   return false;
 }
 
 /**
- * @brief Common routine to check for and print incoming MQTT messages.
+ * @brief Common routine to check for and print incoming MQTTS messages.
  */
 static void mqttCheckIncoming(const char* topic)
 {
   while(modem.mqttDidRing(topic, incomingBuf, sizeof(incomingBuf), &rsp)) {
-    ESP_LOGI(TAG, "Incoming MQTT message on '%s'\r\n", topic);
+    ESP_LOGI(TAG, "Incoming MQTTS message on '%s'\r\n", topic);
     ESP_LOGI(TAG, "  QoS: %d, Message ID: %d, Length: %d\r\n", rsp.data.mqttResponse.qos,
              rsp.data.mqttResponse.messageId, rsp.data.mqttResponse.length);
     ESP_LOGI(TAG, "  Payload:");
@@ -226,7 +300,7 @@ static void mqttCheckIncoming(const char* topic)
  */
 extern "C" void app_main()
 {
-  ESP_LOGI(TAG, "=== WalterModem MQTT example ===");
+  ESP_LOGI(TAG, "=== WalterModem MQTTS example ===");
 
   /* Build a unique client ID from the ESP MAC address */
   esp_read_mac(incomingBuf, ESP_MAC_WIFI_STA);
@@ -247,27 +321,35 @@ extern "C" void app_main()
     return;
   }
 
-  /* Configure the MQTT client */
-  if(modem.mqttConfig(MQTT_CLIENT_ID)) {
-    ESP_LOGI(TAG, "Successfully configured the MQTT client");
+  /* Set up the TLS profile */
+  if(setupTLSProfile()) {
+    ESP_LOGI(TAG, "TLS Profile setup succeeded");
   } else {
-    ESP_LOGE(TAG, "Failed to configure MQTT client");
+    ESP_LOGE(TAG, "TLS Profile setup failed");
     return;
   }
 
-  /* Connect to a public MQTT broker */
-  if(modem.mqttConnect(MQTT_HOST, MQTT_PORT)) {
-    ESP_LOGI(TAG, "Successfully connected to MQTT broker");
+  /* Configure the MQTTS client */
+  if(modem.mqttConfig(MQTTS_CLIENT_ID, MQTTS_USERNAME, MQTTS_PASSWORD, MQTTS_TLS_PROFILE)) {
+    ESP_LOGI(TAG, "Successfully configured the MQTTS client");
   } else {
-    ESP_LOGE(TAG, "Failed to connect to MQTT broker");
+    ESP_LOGE(TAG, "Failed to configure MQTTS client");
+    return;
+  }
+
+  /* Connect to a public MQTTS broker */
+  if(modem.mqttConnect(MQTTS_HOST, MQTTS_PORT)) {
+    ESP_LOGI(TAG, "Successfully connected to MQTTS broker");
+  } else {
+    ESP_LOGE(TAG, "Failed to connect to MQTTS broker");
     return;
   }
 
   /* Subscribe to the test topic */
-  if(modem.mqttSubscribe(MQTT_TOPIC)) {
-    ESP_LOGI(TAG, "Successfully subscribed to '%s'", MQTT_TOPIC);
+  if(modem.mqttSubscribe(MQTTS_TOPIC)) {
+    ESP_LOGI(TAG, "Successfully subscribed to '%s'", MQTTS_TOPIC);
   } else {
-    ESP_LOGE(TAG, "MQTT subscribe failed");
+    ESP_LOGE(TAG, "MQTTS subscribe failed");
   }
 
   while(true) {
@@ -284,8 +366,8 @@ extern "C" void app_main()
 
       if(seq % 3 == 0) {
         sprintf(outgoingMsg, "%s-%d", macString, seq);
-        if(!mqttPublishMessage(MQTT_TOPIC, outgoingMsg)) {
-          ESP_LOGE(TAG, "MQTT publish failed, restarting...");
+        if(!mqttPublishMessage(MQTTS_TOPIC, outgoingMsg)) {
+          ESP_LOGE(TAG, "MQTTS publish failed, restarting...");
           vTaskDelay(pdMS_TO_TICKS(1000));
           esp_restart();
         }
@@ -293,7 +375,7 @@ extern "C" void app_main()
       }
 
       /* Check for incoming messages */
-      mqttCheckIncoming(MQTT_TOPIC);
+      mqttCheckIncoming(MQTTS_TOPIC);
     }
     vTaskDelay(pdMS_TO_TICKS(10));
   }
