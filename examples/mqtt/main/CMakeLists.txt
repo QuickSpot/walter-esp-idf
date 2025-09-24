@@ -1,2 +1,2 @@
-idf_component_register(SRCS "mqtt_example.cpp"
+idf_component_register(SRCS "mqtt.cpp"
                     INCLUDE_DIRS ".")
