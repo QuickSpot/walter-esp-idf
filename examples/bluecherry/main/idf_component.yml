@@ -1,4 +1,8 @@
 dependencies:
   idf: ">=5.0.0"
   dptechnics/walter-modem:
-    version: ">=1.4.2"
+    version: ">=1.4.3"
+
+  # For local development:
+  # walter-esp-idf:
+  #   path: ../../../

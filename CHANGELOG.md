@@ -201,12 +201,6 @@ This is the Changelog for WalterModem
 - fix(WalterModem): runCmd ([#100](https://github.com/QuickSpot/walter-arduino/pull/100))
 - fix: missing include esp_log.h ([#131](https://github.com/QuickSpot/walter-esp-idf/pull/131))
 - fix(WalterModem): Parser refactor ([#104](https://github.com/QuickSpot/walter-arduino/pull/104))
-- added mqtts base example ([#88](https://github.com/QuickSpot/walter-arduino/pull/88))
-- added mqtts base example ([#88](https://github.com/QuickSpot/walter-arduino/pull/88))
-- added mqtts base example ([#88](https://github.com/QuickSpot/walter-arduino/pull/88))
-- added mqtts base example ([#88](https://github.com/QuickSpot/walter-arduino/pull/88))
-
-
 
 ### Examples
 
