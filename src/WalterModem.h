@@ -4404,6 +4404,7 @@ public:
    * @param httpQueryCmd GET, DELETE or HEAD
    * @param contentTypeBuf Optional user buffer to store content type header in.
    * @param contentTypeBufSize Size of the user buffer, including terminating null byte.
+   * @param extraHeaderLine Optional header line string with terminating null byte.
    * @param rsp Optional modem response structure to save the result in.
    * @param cb Optional callback function, if set this function will not block.
    * @param args Optional argument to pass to the callback.
@@ -4430,6 +4431,7 @@ public:
    * @param httpPostParam content type (enum value)
    * @param contentTypeBuf Optional user buffer to store content type header in.
    * @param contentTypeBufSize Size of the user buffer, including terminating null byte.
+   * @param extraHeaderLine Optional header line string with terminating null byte.
    * @param rsp Optional modem response structure to save the result in.
    * @param cb Optional callback function, if set this function will not block.
    * @param args Optional argument to pass to the callback.
@@ -4438,10 +4440,11 @@ public:
    */
   static bool
   httpSend(uint8_t profileId, const char* uri, uint8_t* data, uint16_t dataSize,
-           WalterModemHttpSendCmd httpSendCmd = WALTER_MODEM_HTTP_SEND_CMD_POST,
-           WalterModemHttpPostParam httpPostParam = WALTER_MODEM_HTTP_POST_PARAM_UNSPECIFIED,
-           char* contentTypeBuf = NULL, uint16_t contentTypeBufSize = 0, WalterModemRsp* rsp = NULL,
-           walterModemCb cb = NULL, void* args = NULL);
+      WalterModemHttpSendCmd httpSendCmd = WALTER_MODEM_HTTP_SEND_CMD_POST,
+      WalterModemHttpPostParam httpPostParam = WALTER_MODEM_HTTP_POST_PARAM_UNSPECIFIED,
+      char* contentTypeBuf = NULL, uint16_t contentTypeBufSize = 0,
+      const char* extraHeaderLine = NULL, WalterModemRsp* rsp = NULL,
+      walterModemCb cb = NULL, void* args = NULL);
 
   /**
    * @brief Retrieve the response on an earlier HTTP request.
