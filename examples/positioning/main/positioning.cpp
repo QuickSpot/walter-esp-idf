@@ -1,13 +1,15 @@
 /**
  * @file positioning.cpp
- * @author Daan Pape <daan@dptechnics.com> Arnoud Devoogdt <arnoud@dptechnics.com>
- * @date 25 Sep 2025
- * @copyright DPTechnics bv
+ * @author Daan Pape <daan@dptechnics.com>
+ * @author Arnoud Devoogdt <arnoud@dptechnics.com>
+ * @date 16 January 2026
+ * @version 1.5.0
+ * @copyright DPTechnics bv <info@dptechnics.com>
  * @brief Walter Modem library examples
  *
  * @section LICENSE
  *
- * Copyright (C) 2025, DPTechnics bv
+ * Copyright (C) 2026, DPTechnics bv
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -92,32 +94,44 @@
 #define RADIO_TECHNOLOGY WALTER_MODEM_RAT_LTEM
 
 /**
+ * @brief The Socket profile to use (1..6)
+ *
+ * @note At least one socket should be available/reserved for BlueCherry.
+ */
+#define MODEM_SOCKET_ID 1
+
+/**
  * @brief The modem instance.
  */
 WalterModem modem;
 
 /**
- * @brief The socket identifier (1-6)
- *
- * @note At least one socket should be available/reserved for BlueCherry.
- */
-uint8_t socketId = -1;
-
-/**
  * @brief Flag used to signal when a fix is received.
  */
-volatile bool gnssFixRcvd = false;
+volatile bool gnss_fix_received = false;
+
+/**
+ * @brief Flag used to signal when an assistance update event is received.
+ */
+bool assistance_update_received = false;
 
 /**
  * @brief The last received GNSS fix.
  */
-WalterModemGNSSFix latestGnssFix = {};
+WMGNSSFixEvent latestGnssFix = {};
 
 /**
  * @brief The buffer to transmit to the UDP server. The first 6 bytes will be
  * the MAC address of the Walter this code is running on.
  */
-uint8_t dataBuf[PACKET_SIZE] = { 0 };
+uint8_t out_buf[PACKET_SIZE] = { 0 };
+
+/**
+ * @brief The buffer to receive from the UDP server.
+ * @note Make sure this is sufficiently large enough for incoming data. (Up to 1500 bytes supported
+ * by Sequans)
+ */
+uint8_t in_buf[1500] = { 0 };
 
 /**
  * @brief ESP-IDF log prefix.
@@ -232,6 +246,144 @@ bool lteConnect()
 }
 
 /**
+ * @brief The network registration event handler.
+ *
+ * You can use this handler to get notified of network registration state changes. For this example,
+ * we use polling to get the network registration state. You can use this to implement your own
+ * reconnection logic.
+ *
+ * @note Make sure to keep this handler as lightweight as possible to avoid blocking the event
+ * processing task.
+ *
+ * @param[out] state The network registration state.
+ * @param[out] args User arguments.
+ *
+ * @return void
+ */
+static void myNetworkEventHandler(WalterModemNetworkRegState state, void* args)
+{
+  switch(state) {
+  case WALTER_MODEM_NETWORK_REG_REGISTERED_HOME:
+    ESP_LOGI(TAG, "Network registration: Registered (home)");
+    break;
+
+  case WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING:
+    ESP_LOGI(TAG, "Network registration: Registered (roaming)");
+    break;
+
+  case WALTER_MODEM_NETWORK_REG_NOT_SEARCHING:
+    ESP_LOGI(TAG, "Network registration: Not searching");
+    break;
+
+  case WALTER_MODEM_NETWORK_REG_SEARCHING:
+    ESP_LOGI(TAG, "Network registration: Searching");
+    break;
+
+  case WALTER_MODEM_NETWORK_REG_DENIED:
+    ESP_LOGI(TAG, "Network registration: Denied");
+    break;
+
+  case WALTER_MODEM_NETWORK_REG_UNKNOWN:
+    ESP_LOGI(TAG, "Network registration: Unknown");
+    break;
+
+  default:
+    break;
+  }
+}
+
+/**
+ * @brief Socket event handler
+ *
+ * Handles status changes and incoming UDP messages.
+ * @note This callback is invoked from the modem driver’s event context.
+ *       It must never block or call modem methods directly.
+ *       Use it only to set flags or copy data for later processing.
+ *
+ * @param ev          Event type (e.g. WALTER_MODEM_SOCKET_EVENT_RING for incoming messages)
+ * @param socketId    ID of the socket that triggered the event
+ * @param dataReceived Number of bytes received
+ * @param dataBuffer  Pointer to received data
+ * @param args        User argument pointer passed to socketSetEventHandler
+ */
+static void mySocketEventHandler(WMSocketEventType event, WMSocketEventData data, void* args)
+{
+  switch(event) {
+  case WALTER_MODEM_SOCKET_EVENT_DISCONNECTED:
+    ESP_LOGI(TAG, "SOCKET: Disconnected (id %d)", data.conn_id);
+    break;
+
+  case WALTER_MODEM_SOCKET_EVENT_RING:
+    ESP_LOGI(TAG, "SOCKET: Message received on socket %d (size: %u)", data.conn_id, data.data_len);
+
+    /* Receive the message from the modem buffer */
+    memset(in_buf, 0, sizeof(in_buf));
+    if(modem.socketReceive(data.conn_id, in_buf, data.data_len)) {
+      ESP_LOGI(TAG, "Received message on socket %d: %s", data.conn_id, in_buf);
+    } else {
+      ESP_LOGE(TAG, "Could not receive message for socket %d", data.conn_id);
+    }
+    break;
+
+  default:
+    break;
+  }
+}
+
+/**
+ * @brief GNSS event handler
+ *
+ * Handles GNSS fix events.
+ * @note This callback is invoked from the modem driver’s event context.
+ *       It must never block or call modem methods directly.
+ *       Use it only to set flags or copy data for later processing.
+ *
+ * @param fix The fix data.
+ * @param args User argument pointer passed to gnssSetEventHandler
+ *
+ * @return None.
+ */
+void myGNSSEventHandler(WMGNSSEventType type, WMGNSSEventData data, void* args)
+{
+  uint8_t goodSatCount = 0;
+
+  switch(type) {
+  case WALTER_MODEM_GNSS_EVENT_FIX:
+    memcpy(&latestGnssFix, &data.gnssfix, sizeof(WMGNSSFixEvent));
+
+    /* Count satellites with good signal strength */
+    for(int i = 0; i < latestGnssFix.satCount; ++i) {
+      if(latestGnssFix.sats[i].signalStrength >= 30) {
+        ++goodSatCount;
+      }
+    }
+    ESP_LOGI(TAG,
+             "GNSS fix received: Confidence: %.02f Latitude: %.06f Longitude: %.06f Satcount: %u "
+             "Good sats: %u",
+             latestGnssFix.estimatedConfidence, latestGnssFix.latitude, latestGnssFix.longitude,
+             latestGnssFix.satCount, goodSatCount);
+
+    gnss_fix_received = true;
+    break;
+
+  case WALTER_MODEM_GNSS_EVENT_ASSISTANCE:
+    if(data.assistance == WALTER_MODEM_GNSS_ASSISTANCE_TYPE_ALMANAC) {
+      ESP_LOGI(TAG, "GNSS Assistance: Almanac updated");
+    } else if(data.assistance == WALTER_MODEM_GNSS_ASSISTANCE_TYPE_REALTIME_EPHEMERIS) {
+      ESP_LOGI(TAG, "GNSS Assistance: Real-time ephemeris updated");
+    } else if(data.assistance == WALTER_MODEM_GNSS_ASSISTANCE_TYPE_PREDICTED_EPHEMERIS) {
+      ESP_LOGI(TAG, "GNSS Assistance: Predicted ephemeris updated");
+    }
+
+    assistance_update_received = true;
+    break;
+
+  default:
+    break;
+  }
+}
+
+/**
  * @brief Inspect GNSS assistance status and optionally set update flags.
  *
  * Prints the availability and recommended update timing for the
@@ -250,38 +402,41 @@ bool lteConnect()
 bool checkAssistanceStatus(WalterModemRsp* rsp, bool* updateAlmanac = nullptr,
                            bool* updateEphemeris = nullptr)
 {
-  /* Check assistance data status */
+  /* Request assistance status */
   if(!modem.gnssGetAssistanceStatus(rsp) ||
      rsp->type != WALTER_MODEM_RSP_DATA_TYPE_GNSS_ASSISTANCE_DATA) {
-    ESP_LOGW(TAG, "Could not request GNSS assistance status");
+    ESP_LOGE(TAG, "Could not request GNSS assistance status");
     return false;
   }
 
-  /* Default output flags to false if provided */
+  /* Default output flags */
   if(updateAlmanac)
     *updateAlmanac = false;
   if(updateEphemeris)
     *updateEphemeris = false;
 
-  /* Lambda to reduce repetition for each data type */
-  auto report = [](const char* name, const auto& data, bool* updateFlag) {
+  /* Helper lambda */
+  auto report = [](const char* name, const WMGNSSAssistance& data, bool* updateFlag) {
     printf("%s data is ", name);
+
     if(data.available) {
       printf("available and should be updated within %lds\r\n", data.timeToUpdate);
+
       if(updateFlag)
         *updateFlag = (data.timeToUpdate <= 0);
     } else {
-      printf("not available.\r\n");
+      ESP_LOGI(TAG, "%s data is not available.", name);
       if(updateFlag)
         *updateFlag = true;
     }
   };
 
-  /* Check both data sets */
-  report("Almanac", rsp->data.gnssAssistance.almanac, updateAlmanac);
-  report("Real-time ephemeris", rsp->data.gnssAssistance.realtimeEphemeris, updateEphemeris);
+  const auto& almanac = rsp->data.gnssAssistance[WALTER_MODEM_GNSS_ASSISTANCE_TYPE_ALMANAC];
+  const auto& rtEph =
+      rsp->data.gnssAssistance[WALTER_MODEM_GNSS_ASSISTANCE_TYPE_REALTIME_EPHEMERIS];
 
-  ESP_LOGI(TAG, "GNSS assistance data is up to date");
+  report("Almanac", almanac, updateAlmanac);
+  report("Real-time ephemeris", rtEph, updateEphemeris);
   return true;
 }
 
@@ -365,16 +520,28 @@ bool updateGNSSAssistance(WalterModemRsp* rsp)
   }
 
   /* Update almanac data if needed */
+  assistance_update_received = false;
   if(updateAlmanac && !modem.gnssUpdateAssistance(WALTER_MODEM_GNSS_ASSISTANCE_TYPE_ALMANAC)) {
     ESP_LOGE(TAG, "Could not update almanac data");
     return false;
   }
 
+  /* Wait for assistance update event */
+  while(updateAlmanac && !assistance_update_received) {
+    vTaskDelay(pdMS_TO_TICKS(100));
+  }
+
   /* Update real-time ephemeris data if needed */
+  assistance_update_received = false;
   if(updateEphemeris &&
      !modem.gnssUpdateAssistance(WALTER_MODEM_GNSS_ASSISTANCE_TYPE_REALTIME_EPHEMERIS)) {
     ESP_LOGE(TAG, "Could not update real-time ephemeris data");
     return false;
+  }
+
+  /* Wait for assistance update event */
+  while(updateEphemeris && !assistance_update_received) {
+    vTaskDelay(pdMS_TO_TICKS(100));
   }
 
   /* Recheck assistance data to ensure its valid */
@@ -384,66 +551,6 @@ bool updateGNSSAssistance(WalterModemRsp* rsp)
   }
 
   return true;
-}
-
-/**
- * @brief GNSS event handler
- *
- * Handles GNSS fix events.
- * @note This callback is invoked from the modem driver’s event context.
- *       It must never block or call modem methods directly.
- *       Use it only to set flags or copy data for later processing.
- *
- * @param fix The fix data.
- * @param args User argument pointer passed to gnssSetEventHandler
- *
- * @return None.
- */
-void gnssEventHandler(const WalterModemGNSSFix* fix, void* args)
-{
-  memcpy(&latestGnssFix, fix, sizeof(WalterModemGNSSFix));
-
-  /* Count satellites with good signal strength */
-  uint8_t goodSatCount = 0;
-  for(int i = 0; i < latestGnssFix.satCount; ++i) {
-    if(latestGnssFix.sats[i].signalStrength >= 30) {
-      ++goodSatCount;
-    }
-  }
-  ESP_LOGI(TAG,
-           "GNSS fix received:"
-           "  Confidence: %.02f"
-           "  Latitude: %.06f"
-           "  Longitude: %.06f"
-           "  Satcount: %d"
-           "  Good sats: %d\r\n",
-           latestGnssFix.estimatedConfidence, latestGnssFix.latitude, latestGnssFix.longitude,
-           latestGnssFix.satCount, goodSatCount);
-
-  gnssFixRcvd = true;
-}
-
-/**
- * @brief Socket event handler
- *
- * Handles status changes and incoming UDP messages.
- * @note This callback is invoked from the modem driver’s event context.
- *       It must never block or call modem methods directly.
- *       Use it only to set flags or copy data for later processing.
- *
- * @param ev          Event type (e.g. WALTER_MODEM_SOCKET_EVENT_RING for incoming messages)
- * @param socketId    ID of the socket that triggered the event
- * @param dataReceived Number of bytes received
- * @param dataBuffer  Pointer to received data
- * @param args        User argument pointer passed to socketSetEventHandler
- */
-void socketEventHandler(WalterModemSocketEvent ev, int socketId, uint16_t dataReceived,
-                        uint8_t* dataBuffer, void* args)
-{
-  if(ev == WALTER_MODEM_SOCKET_EVENT_RING) {
-    ESP_LOGI(TAG, "Received message (%u bytes) on socket %d\r\n", dataReceived, socketId);
-    ESP_LOGI(TAG, "Payload:\r\n%.*s\r\n", dataReceived, reinterpret_cast<const char*>(dataBuffer));
-  }
 }
 
 /**
@@ -492,7 +599,7 @@ bool attemptGNSSFix()
   /* Attempt up to 5 GNSS fixes */
   const int maxAttempts = 5;
   for(int attempt = 0; attempt < maxAttempts; ++attempt) {
-    gnssFixRcvd = false;
+    gnss_fix_received = false;
 
     /* Request a GNSS fix */
     if(!modem.gnssPerformAction()) {
@@ -504,11 +611,10 @@ bool attemptGNSSFix()
 
     /* For this example, we block here until the GNSS event handler sets the flag */
     /* Feel free to build your application code asynchronously */
-    while(!gnssFixRcvd) {
+    while(!gnss_fix_received) {
       printf(".");
       vTaskDelay(pdMS_TO_TICKS(500));
     }
-    printf("\n");
 
     /* If confidence is acceptable, stop trying. Otherwise, try again */
     if(latestGnssFix.estimatedConfidence <= MAX_GNSS_CONFIDENCE) {
@@ -539,20 +645,31 @@ float temperatureRead(void)
 
 extern "C" void app_main(void)
 {
-  ESP_LOGI(TAG, "=== WalterModem Positioning example ===");
+  vTaskDelay(pdMS_TO_TICKS(2000));
+
+  ESP_LOGI(TAG, "\r\n\r\n=== WalterModem Positioning example (IDF v1.5.0) ===\r\n");
 
   /* Get the MAC address for board validation */
-  esp_read_mac(dataBuf, ESP_MAC_WIFI_STA);
-  ESP_LOGI(TAG, "Walter's MAC is: %02X:%02X:%02X:%02X:%02X:%02X", dataBuf[0], dataBuf[1],
-           dataBuf[2], dataBuf[3], dataBuf[4], dataBuf[5]);
+  esp_read_mac(out_buf, ESP_MAC_WIFI_STA);
+  ESP_LOGI(TAG, "Walter's MAC is: %02X:%02X:%02X:%02X:%02X:%02X", out_buf[0], out_buf[1],
+           out_buf[2], out_buf[3], out_buf[4], out_buf[5]);
 
   /* Start the modem */
-  if(WalterModem::begin(UART_NUM_1)) {
+  if(modem.begin(UART_NUM_1)) {
     ESP_LOGI(TAG, "Successfully initialized the modem");
   } else {
     ESP_LOGE(TAG, "Could not initialize the modem");
     return;
   }
+
+  /* Set the network registration event handler (optional) */
+  modem.setRegistrationEventHandler(myNetworkEventHandler, NULL);
+
+  /* Set the Socket event handler */
+  modem.setSocketEventHandler(mySocketEventHandler, NULL);
+
+  /* Set the GNSS event handler */
+  modem.setGNSSEventHandler(myGNSSEventHandler, NULL);
 
   WalterModemRsp rsp = {};
 
@@ -596,29 +713,20 @@ extern "C" void app_main(void)
   }
 
   /* Configure a new socket */
-  if(modem.socketConfig(&rsp)) {
+  if(modem.socketConfig(MODEM_SOCKET_ID)) {
     ESP_LOGI(TAG, "Successfully configured a new socket");
-
-    /* Utilize the socket id if you have more then one socket */
-    /* If not specified in the methods, the modem will use the previous socket id */
-    socketId = rsp.data.socketId;
   } else {
     ESP_LOGE(TAG, "Could not configure a new socket");
     return;
   }
 
   /* Disable TLS (the demo server does not use it) */
-  if(modem.socketConfigSecure(false)) {
+  if(modem.socketConfigSecure(MODEM_SOCKET_ID, false)) {
     ESP_LOGI(TAG, "Successfully set socket to insecure mode");
   } else {
     ESP_LOGE(TAG, "Could not disable socket TLS");
     return;
   }
-
-  /* Set the GNSS fix event handler */
-  modem.gnssSetEventHandler(gnssEventHandler, NULL);
-  /* Set the TCP socket event handler */
-  modem.socketSetEventHandler(socketEventHandler, NULL);
 
   while(true) {
     WalterModemRsp rsp = {};
@@ -659,27 +767,27 @@ extern "C" void app_main(void)
 
     /* Construct the minimal sensor + GNSS + Cellinfo */
     uint16_t rawTemp = (temp + 50) * 100;
-    dataBuf[6] = 0x02;
-    dataBuf[7] = rawTemp >> 8;
-    dataBuf[8] = rawTemp & 0xFF;
-    dataBuf[9] = latestGnssFix.satCount;
-    memcpy(dataBuf + 10, &lat32, 4);
-    memcpy(dataBuf + 14, &lon32, 4);
-    dataBuf[18] = rsp.data.cellInformation.cc >> 8;
-    dataBuf[19] = rsp.data.cellInformation.cc & 0xFF;
-    dataBuf[20] = rsp.data.cellInformation.nc >> 8;
-    dataBuf[21] = rsp.data.cellInformation.nc & 0xFF;
-    dataBuf[22] = rsp.data.cellInformation.tac >> 8;
-    dataBuf[23] = rsp.data.cellInformation.tac & 0xFF;
-    dataBuf[24] = (rsp.data.cellInformation.cid >> 24) & 0xFF;
-    dataBuf[25] = (rsp.data.cellInformation.cid >> 16) & 0xFF;
-    dataBuf[26] = (rsp.data.cellInformation.cid >> 8) & 0xFF;
-    dataBuf[27] = rsp.data.cellInformation.cid & 0xFF;
-    dataBuf[28] = (uint8_t) (rsp.data.cellInformation.rsrp * -1);
-    dataBuf[29] = rat;
+    out_buf[6] = 0x02;
+    out_buf[7] = rawTemp >> 8;
+    out_buf[8] = rawTemp & 0xFF;
+    out_buf[9] = latestGnssFix.satCount;
+    memcpy(out_buf + 10, &lat32, 4);
+    memcpy(out_buf + 14, &lon32, 4);
+    out_buf[18] = rsp.data.cellInformation.cc >> 8;
+    out_buf[19] = rsp.data.cellInformation.cc & 0xFF;
+    out_buf[20] = rsp.data.cellInformation.nc >> 8;
+    out_buf[21] = rsp.data.cellInformation.nc & 0xFF;
+    out_buf[22] = rsp.data.cellInformation.tac >> 8;
+    out_buf[23] = rsp.data.cellInformation.tac & 0xFF;
+    out_buf[24] = (rsp.data.cellInformation.cid >> 24) & 0xFF;
+    out_buf[25] = (rsp.data.cellInformation.cid >> 16) & 0xFF;
+    out_buf[26] = (rsp.data.cellInformation.cid >> 8) & 0xFF;
+    out_buf[27] = rsp.data.cellInformation.cid & 0xFF;
+    out_buf[28] = (uint8_t) (rsp.data.cellInformation.rsrp * -1);
+    out_buf[29] = rat;
 
     /* Connect (dial) to the demo test server */
-    if(modem.socketDial(SERV_ADDR, SERV_PORT)) {
+    if(modem.socketDial(MODEM_SOCKET_ID, WALTER_MODEM_SOCKET_PROTO_UDP, SERV_PORT, SERV_ADDR)) {
       ESP_LOGI(TAG, "Successfully dialed demo server %s:%d", SERV_ADDR, SERV_PORT);
     } else {
       ESP_LOGE(TAG, "Could not dial demo server");
@@ -689,7 +797,7 @@ extern "C" void app_main(void)
     }
 
     /* Transmit the packet */
-    if(!modem.socketSend(dataBuf, PACKET_SIZE)) {
+    if(!modem.socketSend(MODEM_SOCKET_ID, out_buf, PACKET_SIZE)) {
       ESP_LOGE(TAG, "Could not transmit data");
       vTaskDelay(pdMS_TO_TICKS(1000));
       esp_restart();
@@ -699,7 +807,7 @@ extern "C" void app_main(void)
     vTaskDelay(pdMS_TO_TICKS(2000));
 
     /* Close the socket */
-    if(!modem.socketClose()) {
+    if(!modem.socketClose(MODEM_SOCKET_ID)) {
       ESP_LOGE(TAG, "Could not close the socket");
       vTaskDelay(pdMS_TO_TICKS(1000));
       esp_restart();
