@@ -263,12 +263,12 @@ static void myNetworkEventHandler(WalterModemNetworkRegState state, void* args)
  *
  * @return void
  */
-static void myMQTTEventHandler(WMMQTTEventType event, WMMQTTEventData data, void* args)
+static void myMQTTEventHandler(WMMQTTEventType event, const WMMQTTEventData* data, void* args)
 {
   switch(event) {
   case WALTER_MODEM_MQTT_EVENT_CONNECTED:
-    if(data.rc != 0) {
-      ESP_LOGI(TAG, "MQTT: Connection could not be established. (code: %d)", data.rc);
+    if(data->rc != 0) {
+      ESP_LOGI(TAG, "MQTT: Connection could not be established. (code: %d)", data->rc);
     } else {
       ESP_LOGI(TAG, "MQTT: Connected successfully");
 
@@ -282,8 +282,8 @@ static void myMQTTEventHandler(WMMQTTEventType event, WMMQTTEventData data, void
     break;
 
   case WALTER_MODEM_MQTT_EVENT_DISCONNECTED:
-    if(data.rc != 0) {
-      ESP_LOGI(TAG, "MQTT: Connection was interrupted (code: %d)", data.rc);
+    if(data->rc != 0) {
+      ESP_LOGI(TAG, "MQTT: Connection was interrupted (code: %d)", data->rc);
     } else {
       ESP_LOGI(TAG, "MQTT: Disconnected");
     }
@@ -291,30 +291,30 @@ static void myMQTTEventHandler(WMMQTTEventType event, WMMQTTEventData data, void
     break;
 
   case WALTER_MODEM_MQTT_EVENT_SUBSCRIBED:
-    if(data.rc != 0) {
-      ESP_LOGI(TAG, "MQTT: Could not subscribe to topic. (code: %d)", data.rc);
+    if(data->rc != 0) {
+      ESP_LOGI(TAG, "MQTT: Could not subscribe to topic. (code: %d)", data->rc);
     } else {
-      ESP_LOGI(TAG, "MQTT: Successfully subscribed to topic '%s'", data.topic);
+      ESP_LOGI(TAG, "MQTT: Successfully subscribed to topic '%s'", data->topic);
       mqtt_connected = true;
     }
     break;
 
   case WALTER_MODEM_MQTT_EVENT_PUBLISHED:
-    if(data.rc != 0) {
-      ESP_LOGI(TAG, "MQTT: Could not publish message (id: %d) to topic. (code: %d)", data.mid,
-               data.rc);
+    if(data->rc != 0) {
+      ESP_LOGI(TAG, "MQTT: Could not publish message (id: %d) to topic. (code: %d)", data->mid,
+               data->rc);
     } else {
-      ESP_LOGI(TAG, "MQTT: Successfully published message (id: %d)", data.mid);
+      ESP_LOGI(TAG, "MQTT: Successfully published message (id: %d)", data->mid);
     }
     break;
 
   case WALTER_MODEM_MQTT_EVENT_MESSAGE:
-    ESP_LOGI(TAG, "MQTT: Message (id: %d) received on topic '%s' (size: %u bytes)", data.mid,
-             data.topic, data.msg_length);
+    ESP_LOGI(TAG, "MQTT: Message (id: %d) received on topic '%s' (size: %u bytes)", data->mid,
+             data->topic, data->msg_length);
 
     /* Receive the MQTT message from the modem buffer */
     memset(in_buf, 0, sizeof(in_buf));
-    if(modem.mqttReceive(data.topic, data.mid, in_buf, data.msg_length)) {
+    if(modem.mqttReceive(data->topic, data->mid, in_buf, data->msg_length)) {
       ESP_LOGI(TAG, "Received message: %s", in_buf);
     } else {
       ESP_LOGI(TAG, "Could not receive MQTT message");
@@ -394,7 +394,6 @@ extern "C" void app_main()
         ESP_LOGI(TAG, "Connecting to MQTT broker...");
       } else {
         ESP_LOGE(TAG, "Failed to connect to MQTT broker");
-        return;
       }
       vTaskDelay(pdMS_TO_TICKS(5000));
       continue;

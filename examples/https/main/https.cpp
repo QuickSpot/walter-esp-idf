@@ -336,38 +336,38 @@ static void myNetworkEventHandler(WalterModemNetworkRegState state, void* args)
  *
  * @return void
  */
-static void myHTTPEventHandler(WMHTTPEventType event, WMHTTPEventData data, void* args)
+static void myHTTPEventHandler(WMHTTPEventType event, const WMHTTPEventData* data, void* args)
 {
   switch(event) {
   case WALTER_MODEM_HTTP_EVENT_CONNECTED:
-    if(data.rc != 0) {
+    if(data->rc != 0) {
       ESP_LOGI(TAG, "HTTP: Connection (profile %d) could not be established. (CURL: %d)",
-               data.profile_id, data.rc);
+               data->profile_id, data->rc);
     } else {
-      ESP_LOGI(TAG, "HTTP: Connected successfully (profile %d)", data.profile_id);
+      ESP_LOGI(TAG, "HTTP: Connected successfully (profile %d)", data->profile_id);
     }
     break;
 
   case WALTER_MODEM_HTTP_EVENT_DISCONNECTED:
-    ESP_LOGI(TAG, "HTTP: Disconnected successfully (profile %d)", data.profile_id);
+    ESP_LOGI(TAG, "HTTP: Disconnected successfully (profile %d)", data->profile_id);
     break;
 
   case WALTER_MODEM_HTTP_EVENT_CONNECTION_CLOSED:
-    ESP_LOGI(TAG, "HTTP: Connection (profile %d) was interrupted (CURL: %d)", data.profile_id,
-             data.rc);
+    ESP_LOGI(TAG, "HTTP: Connection (profile %d) was interrupted (CURL: %d)", data->profile_id,
+             data->rc);
     break;
 
   case WALTER_MODEM_HTTP_EVENT_RING:
     ESP_LOGI(TAG,
              "HTTP: Message received on profile %d. (status: %d | content-type: %s | size: %u)",
-             data.profile_id, data.status, data.content_type, data.data_len);
+             data->profile_id, data->status, data->content_type, data->data_len);
 
     /* Receive the HTTP message from the modem buffer */
     memset(in_buf, 0, sizeof(in_buf));
-    if(modem.httpReceive(data.profile_id, in_buf, data.data_len)) {
-      ESP_LOGI(TAG, "Received message for profile %d: %s", data.profile_id, in_buf);
+    if(modem.httpReceive(data->profile_id, in_buf, data->data_len)) {
+      ESP_LOGI(TAG, "Received message for profile %d: %s", data->profile_id, in_buf);
     } else {
-      ESP_LOGI(TAG, "Could not receive HTTP message for profile %d", data.profile_id);
+      ESP_LOGI(TAG, "Could not receive HTTP message for profile %d", data->profile_id);
     }
     break;
   }
