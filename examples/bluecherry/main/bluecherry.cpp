@@ -1,13 +1,15 @@
 /**
- * @file bluecherry_example.cpp
+ * @file bluecherry.cpp
  * @author Jonas Maes <jonas@dptechnics.com>
- * @date 24 Apr 2025
- * @copyright DPTechnics bv
+ * @author Arnoud Devoogdt <arnoud@dptechnics.com>
+ * @date 16 January 2026
+ * @version 1.5.0
+ * @copyright DPTechnics bv <info@dptechnics.com>
  * @brief Walter Modem library examples
  *
  * @section LICENSE
  *
- * Copyright (C) 2025, DPTechnics bv
+ * Copyright (C) 2026, DPTechnics bv
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -43,8 +45,8 @@
  *
  * @section DESCRIPTION
  *
- * This program sends and receives mqtt data using the DPTechnics BlueCherry cloud platform.
- * It also supports OTA updates which are scheduled through the BlueCherry web interface.
+ * This sketch sends and receives mqtt data using the DPTechnics BlueCherry cloud
+ * platform. It also supports OTA updates which are scheduled through the BlueCherry web interface.
  */
 
 #include <BlueCherryZTP_CBOR.h>
@@ -66,7 +68,7 @@
 #define BC_TLS_PROFILE 1
 
 // Buffer to store OTA firmware messages in
-uint8_t otaBuffer[SPI_FLASH_BLOCK_SIZE] = { 0 };
+uint8_t ota_buffer[SPI_FLASH_BLOCK_SIZE] = { 0 };
 
 /**
  * @brief The modem instance.
@@ -261,15 +263,12 @@ bool configureBluecherry()
 {
   WalterModemRsp rsp = {};
   unsigned short attempt = 0;
-  while(!modem.blueCherryInit(BC_TLS_PROFILE, otaBuffer, &rsp)) {
+  while(!modem.blueCherryInit(BC_TLS_PROFILE, ota_buffer, &rsp)) {
     if(rsp.data.blueCherry.state == WALTER_MODEM_BLUECHERRY_STATUS_NOT_PROVISIONED &&
        attempt <= 2) {
-      ESP_LOGW(TAG, "Device is not provisioned for BlueCherry \n communication, starting Zero "
-                    "Touch Provisioning");
+      ESP_LOGW(TAG, "Device is not provisioned for BlueCherry communication, starting ZTP...");
 
       if(attempt == 0) {
-        // Device is not provisioned yet, initialize BlueCherry zero touch
-        // provisioning
         if(!BlueCherryZTP::begin(BC_DEVICE_TYPE, BC_TLS_PROFILE, bc_ca_cert, &modem)) {
           ESP_LOGE(TAG, "Failed to initialize ZTP");
           continue;
@@ -327,16 +326,17 @@ bool configureBluecherry()
 
 extern "C" void app_main(void)
 {
-  ESP_LOGI(TAG, "=== Walter BlueCherry example ===");
+  ESP_LOGI(TAG, "\r\n\r\n=== Walter BlueCherry example (IDF v1.5.0) ===\r\n\r\n");
 
   /* Start the modem */
-  if(WalterModem::begin(UART_NUM_1)) {
+  if(modem.begin(UART_NUM_1)) {
     ESP_LOGI(TAG, "Successfully initialized the modem");
   } else {
     ESP_LOGE(TAG, "Could not initialize the modem");
     return;
   }
 
+  /* Configure power saving mode */
   modem.configPSM(WALTER_MODEM_PSM_ENABLE, psmTAU, psmActive);
 
   /* Connect to cellular network */
@@ -347,23 +347,22 @@ extern "C" void app_main(void)
     esp_restart();
   }
 
-  /* Configure BlueCherry */
-  if(configureBluecherry()) {
-    ESP_LOGI(TAG, "Successfully initialized BlueCherry");
-  } else {
-    ESP_LOGE(TAG, "Could not initialize BlueCherry");
+  /* Configure BlueCherry on first boot */
+  if(esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_UNDEFINED) {
+    if(configureBluecherry()) {
+      ESP_LOGI(TAG, "Successfully initialized BlueCherry");
+    } else {
+      ESP_LOGE(TAG, "Could not initialize BlueCherry");
+    }
   }
 
-  WalterModemRsp rsp = {};
-  if(modem.getCellInformation(WALTER_MODEM_SQNMONI_REPORTS_SERVING_CELL, &rsp)) {
-    char msg[18];
-    snprintf(msg, sizeof(msg), "{\"RSRP\": %7.2f}", rsp.data.cellInformation.rsrp);
-    modem.blueCherryPublish(0x84, sizeof(msg) - 1, (uint8_t*) msg);
-  }
+  /* Send a test message to BlueCherry */
+  const char* msg = "Hello from Walter Modem via BlueCherry!";
+  modem.blueCherryPublish(0x84, strlen(msg), (uint8_t*) msg);
 
   /* Poll BlueCherry platform if an incoming message or firmware update is available */
   syncBlueCherry();
 
-  /* Go sleep for 5 minutes */
+  ESP_LOGI(TAG, "I'm tired, I'm going to deep sleep now for 5 minutes...");
   modem.sleep(60 * 5);
 }

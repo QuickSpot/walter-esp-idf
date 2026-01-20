@@ -1,6 +1,6 @@
 /**
- * @file udp.cpp
- * @author Daan Pape <daan@dptechnics.com>
+ * @file coap.cpp
+ * @author Dries Vandenbussche <dries@dptechnics.com>
  * @author Arnoud Devoogdt <arnoud@dptechnics.com>
  * @date 16 January 2026
  * @version 1.5.0
@@ -45,29 +45,23 @@
  *
  * @section DESCRIPTION
  *
- * This file contains a sketch which uses the modem in Walter to make a
- * connection to a network and upload data packets to the Walter demo server.
+ * This file contains a sketch which communicates with the coap.me
+ * CoAP test server.
  */
 
-#include <driver/temperature_sensor.h>
 #include <WalterModem.h>
-#include <driver/uart.h>
-#include <esp_timer.h>
 #include <esp_log.h>
 #include <esp_mac.h>
 
-#define UDP_PORT 1999
-#define UDP_HOST "walterdemo.quickspot.io"
-
-#define BASIC_INFO_PACKET_SIZE 24
-#define COUNTER_PACKET_SIZE 8
+/**
+ * @brief The CoAP profile identifier.
+ */
+#define MODEM_COAP_PROFILE 1
 
 /**
- * @brief The Socket profile to use (1..6)
- *
- * @note At least one socket should be available/reserved for BlueCherry.
+ * @brief ESP-IDF log prefix.
  */
-#define MODEM_SOCKET_ID 1
+static constexpr const char* TAG = "[EXAMPLE]";
 
 /**
  * @brief The modem instance.
@@ -80,27 +74,21 @@ WalterModem modem;
 WalterModemRsp rsp = {};
 
 /**
- * @brief The buffer to transmit to the UDP server. The first 6 bytes will be
- * the MAC address of the Walter this code is running on.
+ * @brief The buffer to transmit to the CoAP server.
  */
 uint8_t out_buf[8] = { 0 };
 
 /**
- * @brief The buffer to receive from the UDP server.
- * @note Make sure this is sufficiently large enough for incoming data. (Up to 1500 bytes supported
+ * @brief The buffer to receive from the CoAP server.
+ * @note Make sure this is sufficiently large enough for incoming data. (Up to 1024 bytes supported
  * by Sequans)
  */
-uint8_t in_buf[1500] = { 0 };
+uint8_t in_buf[1024] = { 0 };
 
 /**
  * @brief The counter used in the ping packets.
  */
 uint16_t counter = 0;
-
-/**
- * @brief ESP-IDF log prefix.
- */
-static constexpr const char* TAG = "[EXAMPLE]";
 
 /**
  * @brief This function checks if we are connected to the LTE network
@@ -126,13 +114,11 @@ bool waitForNetwork(int timeout_sec = 300)
   ESP_LOGI(TAG, "Connecting to the network...");
   int time = 0;
   while(!lteConnected()) {
-    printf(".");
     vTaskDelay(pdMS_TO_TICKS(1000));
     time++;
     if(time > timeout_sec)
       return false;
   }
-  printf("\r\n");
   ESP_LOGI(TAG, "Connected to the network");
   return true;
 }
@@ -257,186 +243,109 @@ static void myNetworkEventHandler(WalterModemNetworkRegState state, void* args)
 }
 
 /**
- * @brief The Socket event handler.
- *
- * This function will be called on various Socket events such as connection, disconnection,
- * ring, etc. You can modify this handler to implement your own logic based on the events received.
+ * @brief The CoAP event handler.
  *
  * @note Make sure to keep this handler as lightweight as possible to avoid blocking the event
  * processing task.
  *
- * @param[out] event The type of Socket event.
+ * @param[out] event The type of CoAP event.
  * @param[out] data The data associated with the event.
  * @param[out] args User arguments.
  *
  * @return void
  */
-static void mySocketEventHandler(WMSocketEventType event, WMSocketEventData data, void* args)
+static void myCoAPEventHandler(WMCoAPEventType event, WMCoAPEventData data, void* args)
 {
   switch(event) {
-  case WALTER_MODEM_SOCKET_EVENT_DISCONNECTED:
-    ESP_LOGI(TAG, "SOCKET: Disconnected (id %d)", data.conn_id);
+  case WALTER_MODEM_COAP_EVENT_CONNECTED:
+    ESP_LOGI(TAG, "CoAP: Connected successfully (profile %d)", data.profile_id);
     break;
 
-  case WALTER_MODEM_SOCKET_EVENT_RING:
-    ESP_LOGI(TAG, "SOCKET: Message received on socket %d (size: %u)", data.conn_id, data.data_len);
+  case WALTER_MODEM_COAP_EVENT_CLOSED:
+    ESP_LOGI(TAG, "CoAP: Disconnected (profile %d) reason: %s", data.profile_id, data.reason);
+    break;
 
-    /* Receive the HTTP message from the modem buffer */
+  case WALTER_MODEM_COAP_EVENT_RING:
+    ESP_LOGI(TAG,
+             "CoAP: Message received on profile %d. (id: %d | %s | type: %d | code: %u | "
+             "size: %u)",
+             data.profile_id, data.msg_id, data.req_rsp ? "response" : "request", data.type,
+             data.rsp_code, data.data_len);
+
+    /* Receive the CoAP message from the modem buffer */
     memset(in_buf, 0, sizeof(in_buf));
-    if(modem.socketReceive(data.conn_id, in_buf, data.data_len)) {
-      ESP_LOGI(TAG, "Received message on socket %d: %s", data.conn_id, in_buf);
+    if(modem.coapReceive(data.profile_id, data.msg_id, in_buf, data.data_len)) {
+      if(data.data_len > 0) {
+        ESP_LOGI(TAG, "Received message for profile %d: %s", data.profile_id, in_buf);
+      } else {
+        ESP_LOGI(TAG, "Received empty message for profile %d", data.profile_id);
+      }
     } else {
-      ESP_LOGE(TAG, "Could not receive message for socket %d", data.conn_id);
+      ESP_LOGE(TAG, "Could not receive CoAP message for profile %d", data.profile_id);
     }
     break;
-
-  default:
-    break;
   }
 }
 
-float temperatureRead(void)
+extern "C" void app_main(void)
 {
-  float result = -9999.0f;
+  ESP_LOGI(TAG, "\r\n\r\n=== WalterModem CoAP example (IDF v1.5.0) ===\r\n\r\n");
 
-  temperature_sensor_config_t temp_sensor_config = TEMPERATURE_SENSOR_CONFIG_DEFAULT(10, 50);
-  temperature_sensor_handle_t temp_sensor = NULL;
-  temperature_sensor_install(&temp_sensor_config, &temp_sensor);
-  temperature_sensor_enable(temp_sensor);
-  temperature_sensor_get_celsius(temp_sensor, &result);
-  temperature_sensor_disable(temp_sensor);
-  temperature_sensor_uninstall(temp_sensor);
+  /* Get the MAC address for board validation */
+  esp_read_mac(out_buf, ESP_MAC_WIFI_STA);
+  ESP_LOGI(TAG, "Walter's MAC is: %02X:%02X:%02X:%02X:%02X:%02X", out_buf[0], out_buf[1],
+           out_buf[2], out_buf[3], out_buf[4], out_buf[5]);
 
-  return result;
-}
-
-/**
- * @brief Send a basic info packet to walterdemo
- */
-bool udpSendBasicInfoPacket()
-{
-  uint16_t packet_size = COUNTER_PACKET_SIZE;
-
-  out_buf[6] = counter >> 8;
-  out_buf[7] = counter & 0xFF;
-
-  /* Only send the full packet if cellinfo is valid */
-  if(rsp.data.cellInformation.cc != 0 || rsp.data.cellInformation.nc != 0 ||
-     rsp.data.cellInformation.tac != 0 || rsp.data.cellInformation.cid != 0) {
-    packet_size = BASIC_INFO_PACKET_SIZE;
-
-    /* Read the temperature of Walter */
-    float temp = temperatureRead();
-    uint16_t rawTemp = (temp + 50) * 100;
-
-    uint8_t rat = -1;
-    if(modem.getRAT(&rsp)) {
-      rat = (uint8_t) rsp.data.rat;
-    }
-
-    /* Construct the basic info packet */
-    out_buf[8] = rawTemp >> 8;
-    out_buf[9] = rawTemp & 0xFF;
-    out_buf[10] = rsp.data.cellInformation.cc >> 8;
-    out_buf[11] = rsp.data.cellInformation.cc & 0xFF;
-    out_buf[12] = rsp.data.cellInformation.nc >> 8;
-    out_buf[13] = rsp.data.cellInformation.nc & 0xFF;
-    out_buf[14] = rsp.data.cellInformation.tac >> 8;
-    out_buf[15] = rsp.data.cellInformation.tac & 0xFF;
-    out_buf[16] = (rsp.data.cellInformation.cid >> 24) & 0xFF;
-    out_buf[17] = (rsp.data.cellInformation.cid >> 16) & 0xFF;
-    out_buf[18] = (rsp.data.cellInformation.cid >> 8) & 0xFF;
-    out_buf[19] = rsp.data.cellInformation.cid & 0xFF;
-    out_buf[20] = (uint8_t) (rsp.data.cellInformation.rsrp * -1);
-    out_buf[21] = (uint8_t) (rsp.data.cellInformation.rsrq * -1);
-    out_buf[22] = rat;
-    out_buf[23] = 0xFF;
-  }
-
-  ESP_LOGI(TAG, "Sending packet...");
-
-  if(!modem.socketSend(MODEM_SOCKET_ID, out_buf, packet_size)) {
-    ESP_LOGE(TAG, "UDP send packet failed");
-    return false;
-  }
-
-  vTaskDelay(pdMS_TO_TICKS(2000));
-
-  /* Attempt to get the latest cell information (for next packet) */
-  modem.getCellInformation(WALTER_MODEM_SQNMONI_REPORTS_SERVING_CELL, &rsp);
-
-  ESP_LOGI(TAG, "UDP send basic packet succeeded");
-  return true;
-}
-
-/**
- * @brief The main application start method.
- */
-extern "C" void app_main()
-{
-  ESP_LOGI(TAG, "\r\n\r\n=== WalterModem UDP example (IDF v1.5.0) ===\r\n\r\n");
-
-  /* Start the modem */
+  /* Initialize the modem */
   if(modem.begin(UART_NUM_1)) {
-    ESP_LOGI(TAG, "Successfully initialized the modem");
+    ESP_LOGI(TAG, "Modem initialization OK");
   } else {
-    ESP_LOGE(TAG, "Could not initialize the modem");
+    ESP_LOGE(TAG, "Modem initialization ERROR");
     return;
   }
 
   /* Set the network registration event handler (optional) */
   modem.setRegistrationEventHandler(myNetworkEventHandler, NULL);
 
-  /* Set the Socket event handler */
-  modem.setSocketEventHandler(mySocketEventHandler, NULL);
+  /* Set the CoAP event handler */
+  modem.setCoAPEventHandler(myCoAPEventHandler, NULL);
 
-  /* Retrieve and print the board MAC address */
-  esp_read_mac(out_buf, ESP_MAC_WIFI_STA);
-  ESP_LOGI(TAG, "Board MAC: %02X:%02X:%02X:%02X:%02X:%02X", out_buf[0], out_buf[1], out_buf[2],
-           out_buf[3], out_buf[4], out_buf[5]);
+  for(;;) {
+    out_buf[6] = counter >> 8;
+    out_buf[7] = counter & 0xFF;
+    counter++;
 
-  /* Configure a new socket */
-  if(modem.socketConfig(MODEM_SOCKET_ID)) {
-    ESP_LOGI(TAG, "Successfully configured a new socket");
-  } else {
-    ESP_LOGE(TAG, "Could not configure a new socket");
-    return;
-  }
-
-  /* Disable TLS (the demo UDP server does not use it) */
-  if(modem.socketConfigSecure(MODEM_SOCKET_ID, false)) {
-    ESP_LOGI(TAG, "Successfully set socket to insecure mode");
-  } else {
-    ESP_LOGE(TAG, "Could not disable socket TLS");
-    return;
-  }
-
-  while(true) {
-    if(!lteConnected()) {
-      if(!lteConnect()) {
-        ESP_LOGE(TAG, "Failed to connect to network");
-        vTaskDelay(pdMS_TO_TICKS(1000));
-        esp_restart();
-      }
-
-      /* Connect (dial) the UDP test server */
-      if(modem.socketDial(MODEM_SOCKET_ID, WALTER_MODEM_SOCKET_PROTO_UDP, UDP_PORT, UDP_HOST)) {
-        ESP_LOGI(TAG, "Successfully connected Socket %u to UDP server %s:%d", MODEM_SOCKET_ID,
-                 UDP_HOST, UDP_PORT);
-      } else {
-        ESP_LOGE(TAG, "Could not dial UDP server");
-        return;
-      }
-    }
-
-    if(!udpSendBasicInfoPacket()) {
-      ESP_LOGE(TAG, "UDP send failed, restarting...");
+    if(!lteConnected() && !lteConnect()) {
+      ESP_LOGE(TAG, "Failed to register to network");
       vTaskDelay(pdMS_TO_TICKS(1000));
       esp_restart();
     }
 
-    counter++;
-    vTaskDelay(pdMS_TO_TICKS(15000));
+    if(modem.coapCreateContext(MODEM_COAP_PROFILE, "coap.me", 5683)) {
+      ESP_LOGI(TAG, "Successfully created or refreshed CoAP context");
+    } else {
+      ESP_LOGE(TAG, "Could not create CoAP context.");
+      continue;
+    }
+
+    if(modem.coapSetHeader(MODEM_COAP_PROFILE, counter)) {
+      ESP_LOGI(TAG, "Set CoAP header with message id %d", counter);
+    } else {
+      ESP_LOGE(TAG, "Could not set CoAP header");
+      vTaskDelay(pdMS_TO_TICKS(1000));
+      esp_restart();
+    }
+
+    if(modem.coapSendData(MODEM_COAP_PROFILE, WALTER_MODEM_COAP_SEND_TYPE_CON,
+                          WALTER_MODEM_COAP_SEND_METHOD_GET, 8, out_buf)) {
+      ESP_LOGI(TAG, "Sent CoAP datagram");
+    } else {
+      ESP_LOGE(TAG, "Could not send CoAP datagram");
+      vTaskDelay(pdMS_TO_TICKS(1000));
+      esp_restart();
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(1500));
     printf("\n");
   }
 }
