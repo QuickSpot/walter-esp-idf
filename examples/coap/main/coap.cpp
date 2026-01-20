@@ -254,34 +254,34 @@ static void myNetworkEventHandler(WalterModemNetworkRegState state, void* args)
  *
  * @return void
  */
-static void myCoAPEventHandler(WMCoAPEventType event, WMCoAPEventData data, void* args)
+static void myCoAPEventHandler(WMCoAPEventType event, const WMCoAPEventData* data, void* args)
 {
   switch(event) {
   case WALTER_MODEM_COAP_EVENT_CONNECTED:
-    ESP_LOGI(TAG, "CoAP: Connected successfully (profile %d)", data.profile_id);
+    ESP_LOGI(TAG, "CoAP: Connected successfully (profile %d)", data->profile_id);
     break;
 
   case WALTER_MODEM_COAP_EVENT_CLOSED:
-    ESP_LOGI(TAG, "CoAP: Disconnected (profile %d) reason: %s", data.profile_id, data.reason);
+    ESP_LOGI(TAG, "CoAP: Disconnected (profile %d) reason: %s", data->profile_id, data->reason);
     break;
 
   case WALTER_MODEM_COAP_EVENT_RING:
     ESP_LOGI(TAG,
              "CoAP: Message received on profile %d. (id: %d | %s | type: %d | code: %u | "
              "size: %u)",
-             data.profile_id, data.msg_id, data.req_rsp ? "response" : "request", data.type,
-             data.rsp_code, data.data_len);
+             data->profile_id, data->msg_id, data->req_rsp ? "response" : "request", data->type,
+             data->rsp_code, data->data_len);
 
     /* Receive the CoAP message from the modem buffer */
     memset(in_buf, 0, sizeof(in_buf));
-    if(modem.coapReceive(data.profile_id, data.msg_id, in_buf, data.data_len)) {
-      if(data.data_len > 0) {
-        ESP_LOGI(TAG, "Received message for profile %d: %s", data.profile_id, in_buf);
+    if(modem.coapReceive(data->profile_id, data->msg_id, in_buf, data->data_len)) {
+      if(data->data_len > 0) {
+        ESP_LOGI(TAG, "Received message for profile %d: %s", data->profile_id, in_buf);
       } else {
-        ESP_LOGI(TAG, "Received empty message for profile %d", data.profile_id);
+        ESP_LOGI(TAG, "Received empty message for profile %d", data->profile_id);
       }
     } else {
-      ESP_LOGE(TAG, "Could not receive CoAP message for profile %d", data.profile_id);
+      ESP_LOGE(TAG, "Could not receive CoAP message for profile %d", data->profile_id);
     }
     break;
   }

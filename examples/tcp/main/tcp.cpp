@@ -271,22 +271,23 @@ static void myNetworkEventHandler(WalterModemNetworkRegState state, void* args)
  *
  * @return void
  */
-static void mySocketEventHandler(WMSocketEventType event, WMSocketEventData data, void* args)
+static void mySocketEventHandler(WMSocketEventType event, const WMSocketEventData* data, void* args)
 {
   switch(event) {
   case WALTER_MODEM_SOCKET_EVENT_DISCONNECTED:
-    ESP_LOGI(TAG, "SOCKET: Disconnected (id %d)", data.conn_id);
+    ESP_LOGI(TAG, "SOCKET: Disconnected (id %d)", data->conn_id);
     break;
 
   case WALTER_MODEM_SOCKET_EVENT_RING:
-    ESP_LOGI(TAG, "SOCKET: Message received on socket %d (size: %u)", data.conn_id, data.data_len);
+    ESP_LOGI(TAG, "SOCKET: Message received on socket %d (size: %u)", data->conn_id,
+             data->data_len);
 
     /* Receive the HTTP message from the modem buffer */
     memset(in_buf, 0, sizeof(in_buf));
-    if(modem.socketReceive(data.conn_id, in_buf, data.data_len)) {
-      ESP_LOGI(TAG, "Received message on socket %d: %s", data.conn_id, in_buf);
+    if(modem.socketReceive(data->conn_id, in_buf, data->data_len)) {
+      ESP_LOGI(TAG, "Received message on socket %d: %s", data->conn_id, in_buf);
     } else {
-      ESP_LOGE(TAG, "Could not receive message for socket %d", data.conn_id);
+      ESP_LOGE(TAG, "Could not receive message for socket %d", data->conn_id);
     }
     break;
 

@@ -306,22 +306,23 @@ static void myNetworkEventHandler(WalterModemNetworkRegState state, void* args)
  * @param dataBuffer  Pointer to received data
  * @param args        User argument pointer passed to socketSetEventHandler
  */
-static void mySocketEventHandler(WMSocketEventType event, WMSocketEventData data, void* args)
+static void mySocketEventHandler(WMSocketEventType event, const WMSocketEventData* data, void* args)
 {
   switch(event) {
   case WALTER_MODEM_SOCKET_EVENT_DISCONNECTED:
-    ESP_LOGI(TAG, "SOCKET: Disconnected (id %d)", data.conn_id);
+    ESP_LOGI(TAG, "SOCKET: Disconnected (id %d)", data->conn_id);
     break;
 
   case WALTER_MODEM_SOCKET_EVENT_RING:
-    ESP_LOGI(TAG, "SOCKET: Message received on socket %d (size: %u)", data.conn_id, data.data_len);
+    ESP_LOGI(TAG, "SOCKET: Message received on socket %d (size: %u)", data->conn_id,
+             data->data_len);
 
     /* Receive the message from the modem buffer */
     memset(in_buf, 0, sizeof(in_buf));
-    if(modem.socketReceive(data.conn_id, in_buf, data.data_len)) {
-      ESP_LOGI(TAG, "Received message on socket %d: %s", data.conn_id, in_buf);
+    if(modem.socketReceive(data->conn_id, in_buf, data->data_len)) {
+      ESP_LOGI(TAG, "Received message on socket %d: %s", data->conn_id, in_buf);
     } else {
-      ESP_LOGE(TAG, "Could not receive message for socket %d", data.conn_id);
+      ESP_LOGE(TAG, "Could not receive message for socket %d", data->conn_id);
     }
     break;
 
@@ -343,13 +344,13 @@ static void mySocketEventHandler(WMSocketEventType event, WMSocketEventData data
  *
  * @return None.
  */
-void myGNSSEventHandler(WMGNSSEventType type, WMGNSSEventData data, void* args)
+void myGNSSEventHandler(WMGNSSEventType type, const WMGNSSEventData* data, void* args)
 {
   uint8_t goodSatCount = 0;
 
   switch(type) {
   case WALTER_MODEM_GNSS_EVENT_FIX:
-    memcpy(&latestGnssFix, &data.gnssfix, sizeof(WMGNSSFixEvent));
+    memcpy(&latestGnssFix, &data->gnssfix, sizeof(WMGNSSFixEvent));
 
     /* Count satellites with good signal strength */
     for(int i = 0; i < latestGnssFix.satCount; ++i) {
@@ -367,11 +368,11 @@ void myGNSSEventHandler(WMGNSSEventType type, WMGNSSEventData data, void* args)
     break;
 
   case WALTER_MODEM_GNSS_EVENT_ASSISTANCE:
-    if(data.assistance == WALTER_MODEM_GNSS_ASSISTANCE_TYPE_ALMANAC) {
+    if(data->assistance == WALTER_MODEM_GNSS_ASSISTANCE_TYPE_ALMANAC) {
       ESP_LOGI(TAG, "GNSS Assistance: Almanac updated");
-    } else if(data.assistance == WALTER_MODEM_GNSS_ASSISTANCE_TYPE_REALTIME_EPHEMERIS) {
+    } else if(data->assistance == WALTER_MODEM_GNSS_ASSISTANCE_TYPE_REALTIME_EPHEMERIS) {
       ESP_LOGI(TAG, "GNSS Assistance: Real-time ephemeris updated");
-    } else if(data.assistance == WALTER_MODEM_GNSS_ASSISTANCE_TYPE_PREDICTED_EPHEMERIS) {
+    } else if(data->assistance == WALTER_MODEM_GNSS_ASSISTANCE_TYPE_PREDICTED_EPHEMERIS) {
       ESP_LOGI(TAG, "GNSS Assistance: Predicted ephemeris updated");
     }
 
