@@ -345,7 +345,7 @@ extern "C" void app_main(void)
       esp_restart();
     }
 
-    vTaskDelay(pdMS_TO_TICKS(1500));
+    vTaskDelay(pdMS_TO_TICKS(15000));
     printf("\n");
   }
 }
