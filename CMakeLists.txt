@@ -1,8 +1,6 @@
-message(STATUS "WalterModem:")
+message(STATUS "WalterModem Configuration:")
 
-
-
-foreach(feature IN ITEMS SOCKETS COAP MQTT HTTP MOTA OTA)
+foreach(feature IN ITEMS BLUECHERRY GNSS MOTA SOCKETS COAP MQTT HTTP)
     if(CONFIG_WALTER_MODEM_ENABLE_${feature} STREQUAL "y")
         message(STATUS "${feature} enabled: true")
     else()
@@ -20,6 +18,7 @@ idf_component_register(
          "src/proto/WalterSocket.cpp"
     INCLUDE_DIRS "src"
     REQUIRES fatfs esp_partition app_update spi_flash driver vfs
+    PRIV_REQUIRES esp_timer
 )
 
 add_compile_options(-Wno-error)

@@ -2,13 +2,14 @@
  * @file BlueCherryZTP.h
  * @author Daan Pape <daan@dptechnics.com>
  * @author Thibo Verheyde <thibo@dptechnics.com>
- * @date 14 Jan 2025
- * @copyright DPTechnics bv
+ * @date 16 January 2026
+ * @version 1.5.0
+ * @copyright DPTechnics bv <info@dptechnics.com>
  * @brief BlueCherry ZTP (Zero Touch Provisioning) library.
  *
  * @section LICENSE
  *
- * Copyright (C) 2025, DPTechnics bv
+ * Copyright (C) 2026, DPTechnics bv
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -114,7 +115,7 @@ typedef union {
    * @brief Pointer to the BlueCherry Type ID, as this is always programmed in
    * the application, no extra memory is required.
    */
-  const char *bcTypeId;
+  const char* bcTypeId;
 
   /**
    * @brief A MAC address used for authentication.
@@ -182,14 +183,15 @@ typedef struct {
  * @brief This class implements the BlueCherry ZTP (Zero Touch Provisioning)
  * protocol.
  */
-class BlueCherryZTP {
+class BlueCherryZTP
+{
 private:
-  static inline const WalterModem *_modem;
+  static inline const WalterModem* _modem;
 
   /**
    * @brief The BlueCherry type ID associated with this firmware.
    */
-  static inline const char *_bcTypeId = nullptr;
+  static inline const char* _bcTypeId = nullptr;
 
   /**
    * @brief The modem security profile in use for BlueCherry communication.
@@ -263,8 +265,7 @@ private:
    *
    * @return 0 on success.
    */
-  static int _hardwareRandomEntropyFunc(void *data, unsigned char *output,
-                                        size_t len);
+  static int _hardwareRandomEntropyFunc(void* data, unsigned char* output, size_t len);
 
   /**
    * @brief Seed the counter-mode deterministic random bit generator.
@@ -304,8 +305,8 @@ public:
    *
    * @return True on success, false if the Type ID is not valid.
    */
-  static bool begin(const char *typeId, const uint8_t tlsProfileId,
-                    const char *caCert, const WalterModem *modem);
+  static bool begin(const char* typeId, const uint8_t tls_profile_id, const char* caCert,
+                    const WalterModem* modem);
 
   /**
    * @brief Get the last generated private key as a string.
@@ -315,7 +316,7 @@ public:
    *
    * @return The private key as a string.
    */
-  static const char *getPrivKey();
+  static const char* getPrivKey();
 
   /**
    * @brief Get the last generated CSR.
@@ -324,7 +325,7 @@ public:
    *
    * @return The CSR as an unsigned char array.
    */
-  static const unsigned char *getCsr();
+  static const unsigned char* getCsr();
 
   /**
    * @brief Get the last generated CSR length.
@@ -344,7 +345,7 @@ public:
    *
    * @return The certificate as a string.
    */
-  static const char *getCert();
+  static const char* getCert();
 
   /**
    * @brief Clear all device ID parameters.
@@ -366,8 +367,7 @@ public:
    *
    * @return True on success, false if the internal array is full.
    */
-  static bool addDeviceIdParameter(BlueCherryZtpDeviceIdType type,
-                                   const char *str);
+  static bool addDeviceIdParameter(BlueCherryZtpDeviceIdType type, const char* str);
 
   /**
    * @brief Add a blob to the device ID parameter list.
@@ -381,8 +381,7 @@ public:
    *
    * @return True on success, false if the internal array is full.
    */
-  static bool addDeviceIdParameter(BlueCherryZtpDeviceIdType type,
-                                   const unsigned char *blob);
+  static bool addDeviceIdParameter(BlueCherryZtpDeviceIdType type, const unsigned char* blob);
 
   /**
    * @brief Add a number to the device ID parameter list.
@@ -394,8 +393,7 @@ public:
    *
    * @return True on success, false if the internal array is full.
    */
-  static bool addDeviceIdParameter(BlueCherryZtpDeviceIdType type,
-                                   unsigned long long number);
+  static bool addDeviceIdParameter(BlueCherryZtpDeviceIdType type, unsigned long long number);
 
   /**
    * @brief Request a provisional BlueCherry Device ID from the ZTP server.

@@ -1,13 +1,14 @@
 /**
  * @file https.cpp
  * @author Arnoud Devoogdt <arnoud@dptechnics.com>
- * @date 11 September 2025
- * @copyright DPTechnics bv
+ * @date 16 January 2026
+ * @version 1.5.0
+ * @copyright DPTechnics bv <info@dptechnics.com>
  * @brief Walter Modem library examples
  *
  * @section LICENSE
  *
- * Copyright (C) 2025, DPTechnics bv
+ * Copyright (C) 2026, DPTechnics bv
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -47,14 +48,13 @@
  * HTTPS GET/POST request and show the result.
  */
 
-#include <driver/temperature_sensor.h>
 #include <WalterModem.h>
 #include <driver/uart.h>
 #include <esp_timer.h>
 #include <esp_log.h>
 #include <esp_mac.h>
 
-#define HTTPS_PORT 80
+#define HTTPS_PORT 443
 #define HTTPS_HOST "quickspot.io"
 #define HTTPS_GET_ENDPOINT "/hello/get"
 #define HTTPS_POST_ENDPOINT "/hello/post"
@@ -121,9 +121,11 @@ WalterModem modem;
 WalterModemRsp rsp = {};
 
 /**
- * @brief Buffer for incoming HTTPS response
+ * @brief The buffer to receive from the HTTP server.
+ * @note Make sure this is sufficiently large enough for incoming data. (Up to 1500 bytes supported
+ * by Sequans)
  */
-uint8_t incomingBuf[1024] = { 0 };
+uint8_t in_buf[1500] = { 0 };
 
 /**
  * @brief ESP-IDF log prefix.
@@ -273,26 +275,102 @@ bool setupTLSProfile(void)
 }
 
 /**
- * @brief Common routine to wait for and print an HTTPS response.
+ * @brief The network registration event handler.
+ *
+ * You can use this handler to get notified of network registration state changes. For this example,
+ * we use polling to get the network registration state. You can use this to implement your own
+ * reconnection logic.
+ *
+ * @note Make sure to keep this handler as lightweight as possible to avoid blocking the event
+ * processing task.
+ *
+ * @param[out] state The network registration state.
+ * @param[out] args User arguments.
+ *
+ * @return void
  */
-static bool waitForHttpsResponse(uint8_t profile, const char* contentType)
+static void myNetworkEventHandler(WalterModemNetworkRegState state, void* args)
 {
-  ESP_LOGI(TAG, "Waiting for reply...");
-  const uint16_t maxPolls = 30;
-  for(uint16_t i = 0; i < maxPolls; i++) {
-    printf(".");
-    if(modem.httpDidRing(profile, incomingBuf, sizeof(incomingBuf), &rsp)) {
-      printf("\r\n");
-      ESP_LOGI(TAG, "HTTPS status code (Modem): %d\r\n", rsp.data.httpResponse.httpStatus);
-      ESP_LOGI(TAG, "Content type: %s\r\n", contentType);
-      ESP_LOGI(TAG, "Payload:\r\n%s\r\n", incomingBuf);
-      return true;
-    }
-    vTaskDelay(pdMS_TO_TICKS(500));
+  switch(state) {
+  case WALTER_MODEM_NETWORK_REG_REGISTERED_HOME:
+    ESP_LOGI(TAG, "Network registration: Registered (home)");
+    break;
+
+  case WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING:
+    ESP_LOGI(TAG, "Network registration: Registered (roaming)");
+    break;
+
+  case WALTER_MODEM_NETWORK_REG_NOT_SEARCHING:
+    ESP_LOGI(TAG, "Network registration: Not searching");
+    break;
+
+  case WALTER_MODEM_NETWORK_REG_SEARCHING:
+    ESP_LOGI(TAG, "Network registration: Searching");
+    break;
+
+  case WALTER_MODEM_NETWORK_REG_DENIED:
+    ESP_LOGI(TAG, "Network registration: Denied");
+    break;
+
+  case WALTER_MODEM_NETWORK_REG_UNKNOWN:
+    ESP_LOGI(TAG, "Network registration: Unknown");
+    break;
+
+  default:
+    break;
   }
-  printf("\r\n");
-  ESP_LOGE(TAG, "HTTPS response timeout");
-  return false;
+}
+
+/**
+ * @brief The HTTP event handler.
+ *
+ * This function will be called on various HTTP events such as connection, disconnection,
+ * ring, etc. You can modify this handler to implement your own logic based on the events received.
+ *
+ * @note Make sure to keep this handler as lightweight as possible to avoid blocking the event
+ * processing task.
+ *
+ * @param[out] event The type of HTTP event.
+ * @param[out] data The data associated with the event.
+ * @param[out] args User arguments.
+ *
+ * @return void
+ */
+static void myHTTPEventHandler(WMHTTPEventType event, const WMHTTPEventData* data, void* args)
+{
+  switch(event) {
+  case WALTER_MODEM_HTTP_EVENT_CONNECTED:
+    if(data->rc != 0) {
+      ESP_LOGI(TAG, "HTTP: Connection (profile %d) could not be established. (CURL: %d)",
+               data->profile_id, data->rc);
+    } else {
+      ESP_LOGI(TAG, "HTTP: Connected successfully (profile %d)", data->profile_id);
+    }
+    break;
+
+  case WALTER_MODEM_HTTP_EVENT_DISCONNECTED:
+    ESP_LOGI(TAG, "HTTP: Disconnected successfully (profile %d)", data->profile_id);
+    break;
+
+  case WALTER_MODEM_HTTP_EVENT_CONNECTION_CLOSED:
+    ESP_LOGI(TAG, "HTTP: Connection (profile %d) was interrupted (CURL: %d)", data->profile_id,
+             data->rc);
+    break;
+
+  case WALTER_MODEM_HTTP_EVENT_RING:
+    ESP_LOGI(TAG,
+             "HTTP: Message received on profile %d. (status: %d | content-type: %s | size: %u)",
+             data->profile_id, data->status, data->content_type, data->data_len);
+
+    /* Receive the HTTP message from the modem buffer */
+    memset(in_buf, 0, sizeof(in_buf));
+    if(modem.httpReceive(data->profile_id, in_buf, data->data_len)) {
+      ESP_LOGI(TAG, "Received message for profile %d: %s", data->profile_id, in_buf);
+    } else {
+      ESP_LOGI(TAG, "Could not receive HTTP message for profile %d", data->profile_id);
+    }
+    break;
+  }
 }
 
 /**
@@ -302,14 +380,14 @@ bool httpsGet(const char* path)
 {
   char ctBuf[32] = { 0 };
 
-  ESP_LOGI(TAG, "Sending HTTPS GET to %s%s\r\n", HTTPS_HOST, path);
+  ESP_LOGI(TAG, "Sending HTTPS GET to %s%s", HTTPS_HOST, path);
   if(!modem.httpQuery(MODEM_HTTPS_PROFILE, path, WALTER_MODEM_HTTP_QUERY_CMD_GET, ctBuf,
                       sizeof(ctBuf))) {
     ESP_LOGE(TAG, "HTTPS GET query failed");
     return false;
   }
   ESP_LOGI(TAG, "HTTPS GET successfully sent");
-  return waitForHttpsResponse(MODEM_HTTPS_PROFILE, ctBuf);
+  return true;
 }
 
 /**
@@ -320,8 +398,8 @@ bool httpsPost(const char* path, const uint8_t* body, size_t bodyLen,
 {
   char ctBuf[32] = { 0 };
 
-  ESP_LOGI(TAG, "Sending HTTPS POST to %s%s (%u bytes, type %s)\r\n", HTTPS_HOST, path,
-           (unsigned) bodyLen, mimeType);
+  ESP_LOGI(TAG, "Sending HTTPS POST to %s%s (content-type: %s | size: %d)", HTTPS_HOST, path,
+           mimeType, (int) bodyLen);
   if(!modem.httpSend(MODEM_HTTPS_PROFILE, path, (uint8_t*) body, (uint16_t) bodyLen,
                      WALTER_MODEM_HTTP_SEND_CMD_POST, WALTER_MODEM_HTTP_POST_PARAM_JSON, ctBuf,
                      sizeof(ctBuf))) {
@@ -329,7 +407,7 @@ bool httpsPost(const char* path, const uint8_t* body, size_t bodyLen,
     return false;
   }
   ESP_LOGI(TAG, "HTTPS POST successfully sent");
-  return waitForHttpsResponse(MODEM_HTTPS_PROFILE, ctBuf);
+  return true;
 }
 
 /**
@@ -337,21 +415,21 @@ bool httpsPost(const char* path, const uint8_t* body, size_t bodyLen,
  */
 extern "C" void app_main()
 {
-  ESP_LOGI(TAG, "=== WalterModem HTTPS example ===");
+  ESP_LOGI(TAG, "\r\n\r\n=== WalterModem HTTPS example (IDF v1.5.0) ===\r\n\r\n");
 
   /* Start the modem */
-  if(WalterModem::begin(UART_NUM_1)) {
+  if(modem.begin(UART_NUM_1)) {
     ESP_LOGI(TAG, "Successfully initialized the modem");
   } else {
     ESP_LOGE(TAG, "Could not initialize the modem");
     return;
   }
 
-  /* Connect the modem to the LTE network */
-  if(!lteConnect()) {
-    ESP_LOGE(TAG, "Could not connect to LTE");
-    return;
-  }
+  /* Set the network registration event handler (optional) */
+  modem.setRegistrationEventHandler(myNetworkEventHandler, NULL);
+
+  /* Set the HTTP event handler */
+  modem.setHTTPEventHandler(myHTTPEventHandler, NULL);
 
   /* Set up the TLS profile */
   if(setupTLSProfile()) {
@@ -363,36 +441,39 @@ extern "C" void app_main()
 
   /* Configure the HTTPS profile */
   if(modem.httpConfigProfile(MODEM_HTTPS_PROFILE, HTTPS_HOST, HTTPS_PORT, HTTPS_TLS_PROFILE)) {
-    ESP_LOGI(TAG, "Successfully configured the HTTPS profile");
+    ESP_LOGI(TAG, "Successfully configured the HTTP profile");
   } else {
-    ESP_LOGE(TAG, "Failed to configure HTTPS profile");
+    ESP_LOGE(TAG, "Failed to configure HTTP profile");
+    return;
   }
 
   while(true) {
-    static int64_t lastRequest = 0;
-    const int64_t requestInterval = 30000 * 1000;
-
-    int64_t now = esp_timer_get_time();
-    if((now - lastRequest) >= requestInterval) {
-      lastRequest = now;
-
-      // Example GET
-      if(!httpsGet(HTTPS_GET_ENDPOINT)) {
-        ESP_LOGE(TAG, "HTTPS GET failed, restarting...");
-        vTaskDelay(pdMS_TO_TICKS(1000));
-        esp_restart();
-      }
-
-      vTaskDelay(pdMS_TO_TICKS(2000));
-
-      // Example POST
-      const char jsonBody[] = "{\"hello\":\"walter\"}";
-      if(!httpsPost(HTTPS_POST_ENDPOINT, (const uint8_t*) jsonBody, strlen(jsonBody),
-                    "application/json")) {
-        ESP_LOGE(TAG, "HTTPS POST failed, restarting...");
-        vTaskDelay(pdMS_TO_TICKS(1000));
-        esp_restart();
-      }
+    if(!lteConnected() && !lteConnect()) {
+      ESP_LOGE(TAG, "Failed to register to network");
+      vTaskDelay(pdMS_TO_TICKS(1000));
+      esp_restart();
     }
+
+    // Example GET
+    if(!httpsGet(HTTPS_GET_ENDPOINT)) {
+      ESP_LOGE(TAG, "HTTPS GET failed, restarting...");
+      vTaskDelay(pdMS_TO_TICKS(1000));
+      esp_restart();
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(5000));
+    printf("\n");
+
+    // Example POST
+    const char jsonBody[] = "{\"hello\":\"quickspot\"}";
+    if(!httpsPost(HTTPS_POST_ENDPOINT, (const uint8_t*) jsonBody, strlen(jsonBody),
+                  "application/json")) {
+      ESP_LOGE(TAG, "HTTPS POST failed, restarting...");
+      vTaskDelay(pdMS_TO_TICKS(1000));
+      esp_restart();
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(15000));
+    printf("\n");
   }
 }

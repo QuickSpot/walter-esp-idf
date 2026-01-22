@@ -1,2 +1,2 @@
-idf_component_register(SRCS "coap_example.cpp"
+idf_component_register(SRCS "coap.cpp"
                     INCLUDE_DIRS ".")

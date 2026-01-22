@@ -1,13 +1,14 @@
 /**
  * @file mqtts.cpp
  * @author Arnoud Devoogdt <arnoud@dptechnics.com>
- * @date 24 Sept 2025
- * @copyright DPTechnics bv
+ * @date 16 January 2026
+ * @version 1.5.0
+ * @copyright DPTechnics bv <info@dptechnics.com>
  * @brief Walter Modem library examples
  *
  * @section LICENSE
  *
- * Copyright (C) 2025, DPTechnics bv
+ * Copyright (C) 2026, DPTechnics bv
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -44,7 +45,7 @@
  * @section DESCRIPTION
  *
  * This file contains a sketch which uses the modem in Walter to subscribe and
- * publish data to an MQTTS broker.
+ * publish data to an MQTT broker using TLS (MQTTS).
  */
 
 #include <driver/temperature_sensor.h>
@@ -109,14 +110,21 @@ WalterModem modem;
 WalterModemRsp rsp = {};
 
 /**
- * @brief Buffer for incoming response
+ * @brief Flag indicating whether to publish a message.
  */
-uint8_t incomingBuf[256] = { 0 };
+bool mqtt_connected = false;
 
 /**
- * @brief MQTTS client and message prefix based on mac address
+ * @brief The buffer to transmit to the MQTT server.
  */
-char macString[32];
+uint8_t out_buf[32] = { 0 };
+
+/**
+ * @brief The buffer to receive from the MQTT server.
+ * @note Make sure this is sufficiently large enough for incoming data. (Up to 4096 bytes supported
+ * by Sequans)
+ */
+uint8_t in_buf[4096] = { 0 };
 
 /**
  * @brief ESP-IDF log prefix.
@@ -266,33 +274,143 @@ bool setupTLSProfile(void)
 }
 
 /**
- * @brief Common routine to publish a message to an MQTTS topic.
+ * @brief The network registration event handler.
+ *
+ * You can use this handler to get notified of network registration state changes. For this example,
+ * we use polling to get the network registration state. You can use this to implement your own
+ * reconnection logic.
+ *
+ * @note Make sure to keep this handler as lightweight as possible to avoid blocking the event
+ * processing task.
+ *
+ * @param[out] state The network registration state.
+ * @param[out] args User arguments.
+ *
+ * @return void
  */
-static bool mqttPublishMessage(const char* topic, const char* message)
+static void myNetworkEventHandler(WalterModemNetworkRegState state, void* args)
 {
-  ESP_LOGI(TAG, "Publishing to topic '%s': %s\r\n", topic, message);
-  if(modem.mqttPublish(topic, (uint8_t*) message, strlen(message))) {
-    ESP_LOGI(TAG, "MQTTS publish succeeded");
-    return true;
+  switch(state) {
+  case WALTER_MODEM_NETWORK_REG_REGISTERED_HOME:
+    ESP_LOGI(TAG, "Network registration: Registered (home)");
+    break;
+
+  case WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING:
+    ESP_LOGI(TAG, "Network registration: Registered (roaming)");
+    break;
+
+  case WALTER_MODEM_NETWORK_REG_NOT_SEARCHING:
+    ESP_LOGI(TAG, "Network registration: Not searching");
+    break;
+
+  case WALTER_MODEM_NETWORK_REG_SEARCHING:
+    ESP_LOGI(TAG, "Network registration: Searching");
+    break;
+
+  case WALTER_MODEM_NETWORK_REG_DENIED:
+    ESP_LOGI(TAG, "Network registration: Denied");
+    break;
+
+  case WALTER_MODEM_NETWORK_REG_UNKNOWN:
+    ESP_LOGI(TAG, "Network registration: Unknown");
+    break;
+
+  default:
+    break;
   }
-  ESP_LOGE(TAG, "MQTTS publish failed");
-  return false;
 }
 
 /**
- * @brief Common routine to check for and print incoming MQTTS messages.
+ * @brief The MQTT event handler.
+ *
+ * This function will be called on various MQTT events such as connection, disconnection,
+ * subscription, publication and incoming messages. You can modify this handler to implement your
+ * own logic based on the events received.
+ *
+ * @note Make sure to keep this handler as lightweight as possible to avoid blocking the event
+ * processing task.
+ *
+ * @param[out] event The type of MQTT event.
+ * @param[out] data The data associated with the event.
+ * @param[out] args User arguments.
+ *
+ * @return void
  */
-static void mqttCheckIncoming(const char* topic)
+static void myMQTTEventHandler(WMMQTTEventType event, const WMMQTTEventData* data, void* args)
 {
-  while(modem.mqttDidRing(topic, incomingBuf, sizeof(incomingBuf), &rsp)) {
-    ESP_LOGI(TAG, "Incoming MQTTS message on '%s'\r\n", topic);
-    ESP_LOGI(TAG, "  QoS: %d, Message ID: %d, Length: %d\r\n", rsp.data.mqttResponse.qos,
-             rsp.data.mqttResponse.messageId, rsp.data.mqttResponse.length);
-    ESP_LOGI(TAG, "  Payload:");
-    for(int i = 0; i < rsp.data.mqttResponse.length; i++) {
-      ESP_LOGI(TAG, "  '%c' 0x%02X\r\n", incomingBuf[i], incomingBuf[i]);
+  switch(event) {
+  case WALTER_MODEM_MQTT_EVENT_CONNECTED:
+    if(data->rc != 0) {
+      ESP_LOGI(TAG, "MQTT: Connection could not be established. (code: %d)", data->rc);
+    } else {
+      ESP_LOGI(TAG, "MQTT: Connected successfully");
+
+      /* Subscribe to the test topic */
+      if(modem.mqttSubscribe(MQTTS_TOPIC)) {
+        ESP_LOGI(TAG, "Subscribing to '%s'...", MQTTS_TOPIC);
+      } else {
+        ESP_LOGI(TAG, "Subscribing failed");
+      }
     }
+    break;
+
+  case WALTER_MODEM_MQTT_EVENT_DISCONNECTED:
+    if(data->rc != 0) {
+      ESP_LOGI(TAG, "MQTT: Connection was interrupted (code: %d)", data->rc);
+    } else {
+      ESP_LOGI(TAG, "MQTT: Disconnected");
+    }
+    mqtt_connected = false;
+    break;
+
+  case WALTER_MODEM_MQTT_EVENT_SUBSCRIBED:
+    if(data->rc != 0) {
+      ESP_LOGI(TAG, "MQTT: Could not subscribe to topic. (code: %d)", data->rc);
+    } else {
+      ESP_LOGI(TAG, "MQTT: Successfully subscribed to topic '%s'", data->topic);
+      mqtt_connected = true;
+    }
+    break;
+
+  case WALTER_MODEM_MQTT_EVENT_PUBLISHED:
+    if(data->rc != 0) {
+      ESP_LOGI(TAG, "MQTT: Could not publish message (id: %d) to topic. (code: %d)", data->mid,
+               data->rc);
+    } else {
+      ESP_LOGI(TAG, "MQTT: Successfully published message (id: %d)", data->mid);
+    }
+    break;
+
+  case WALTER_MODEM_MQTT_EVENT_MESSAGE:
+    ESP_LOGI(TAG, "MQTT: Message (id: %d) received on topic '%s' (size: %u bytes)", data->mid,
+             data->topic, data->msg_length);
+
+    /* Receive the MQTT message from the modem buffer */
+    memset(in_buf, 0, sizeof(in_buf));
+    if(modem.mqttReceive(data->topic, data->mid, in_buf, data->msg_length)) {
+      ESP_LOGI(TAG, "Received message: %s", in_buf);
+    } else {
+      ESP_LOGI(TAG, "Could not receive MQTT message");
+    }
+    break;
+
+  case WALTER_MODEM_MQTT_EVENT_MEMORY_FULL:
+    ESP_LOGI(TAG, "MQTT: Memory full");
+    break;
   }
+}
+
+/**
+ * @brief Common routine to publish a message to an MQTT topic.
+ */
+static bool mqttPublishMessage(const char* topic, const char* message)
+{
+  ESP_LOGI(TAG, "Publishing to topic '%s': %s ...", topic, message);
+  if(!modem.mqttPublish(topic, (uint8_t*) message, strlen(message))) {
+    ESP_LOGI(TAG, "Publishing failed");
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -300,26 +418,26 @@ static void mqttCheckIncoming(const char* topic)
  */
 extern "C" void app_main()
 {
-  ESP_LOGI(TAG, "=== WalterModem MQTTS example ===");
+  ESP_LOGI(TAG, "\r\n\r\n=== WalterModem MQTTS example (IDF v1.5.0) ===\r\n\r\n");
 
-  /* Build a unique client ID from the ESP MAC address */
-  esp_read_mac(incomingBuf, ESP_MAC_WIFI_STA);
-  sprintf(macString, "walter%02X:%02X:%02X:%02X:%02X:%02X", incomingBuf[0], incomingBuf[1],
-          incomingBuf[2], incomingBuf[3], incomingBuf[4], incomingBuf[5]);
+  uint8_t mac[6] = { 0 };
+  esp_read_mac(mac, ESP_MAC_WIFI_STA);
+  sprintf((char*) out_buf, "walter-%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3],
+          mac[4], mac[5]);
 
   /* Start the modem */
-  if(WalterModem::begin(UART_NUM_1)) {
+  if(modem.begin(UART_NUM_1)) {
     ESP_LOGI(TAG, "Successfully initialized the modem");
   } else {
     ESP_LOGE(TAG, "Could not initialize the modem");
     return;
   }
 
-  /* Connect the modem to the LTE network */
-  if(!lteConnect()) {
-    ESP_LOGE(TAG, "Could not connect to LTE");
-    return;
-  }
+  /* Set the network registration event handler (optional) */
+  modem.setRegistrationEventHandler(myNetworkEventHandler, NULL);
+
+  /* Set the MQTT event handler */
+  modem.setMQTTEventHandler(myMQTTEventHandler, NULL);
 
   /* Set up the TLS profile */
   if(setupTLSProfile()) {
@@ -330,53 +448,45 @@ extern "C" void app_main()
   }
 
   /* Configure the MQTTS client */
-  if(modem.mqttConfig(MQTTS_CLIENT_ID, MQTTS_USERNAME, MQTTS_PASSWORD, MQTTS_TLS_PROFILE)) {
-    ESP_LOGI(TAG, "Successfully configured the MQTTS client");
+  if(modem.mqttConfig((char*) out_buf, MQTTS_USERNAME, MQTTS_PASSWORD, MQTTS_TLS_PROFILE)) {
+    ESP_LOGI(TAG, "Successfully configured the MQTT client");
   } else {
-    ESP_LOGE(TAG, "Failed to configure MQTTS client");
+    ESP_LOGE(TAG, "Failed to configure MQTT client");
     return;
-  }
-
-  /* Connect to a public MQTTS broker */
-  if(modem.mqttConnect(MQTTS_HOST, MQTTS_PORT)) {
-    ESP_LOGI(TAG, "Successfully connected to MQTTS broker");
-  } else {
-    ESP_LOGE(TAG, "Failed to connect to MQTTS broker");
-    return;
-  }
-
-  /* Subscribe to the test topic */
-  if(modem.mqttSubscribe(MQTTS_TOPIC)) {
-    ESP_LOGI(TAG, "Successfully subscribed to '%s'", MQTTS_TOPIC);
-  } else {
-    ESP_LOGE(TAG, "MQTTS subscribe failed");
   }
 
   while(true) {
-    static int64_t lastPublish = 0;
-    const int64_t publishInterval = 10000 * 1000;
-
     static int seq = 0;
-    static char outgoingMsg[64];
+    static char out_msg[64];
+    seq++;
 
-    int64_t now = esp_timer_get_time();
-    if((now - lastPublish) >= publishInterval) {
-      lastPublish = now;
-      seq++;
-
-      if(seq % 3 == 0) {
-        sprintf(outgoingMsg, "%s-%d", macString, seq);
-        if(!mqttPublishMessage(MQTTS_TOPIC, outgoingMsg)) {
-          ESP_LOGE(TAG, "MQTTS publish failed, restarting...");
-          vTaskDelay(pdMS_TO_TICKS(1000));
-          esp_restart();
-        }
-        printf("\r\n");
+    if(!lteConnected()) {
+      if(!lteConnect()) {
+        ESP_LOGE(TAG, "Failed to connect to network");
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        esp_restart();
       }
-
-      /* Check for incoming messages */
-      mqttCheckIncoming(MQTTS_TOPIC);
+      mqtt_connected = false;
     }
-    vTaskDelay(pdMS_TO_TICKS(10));
+
+    /* Connect to a public MQTT broker */
+    if(!mqtt_connected) {
+      if(modem.mqttConnect(MQTTS_HOST, MQTTS_PORT)) {
+        ESP_LOGI(TAG, "Connecting to MQTT broker...");
+      } else {
+        ESP_LOGE(TAG, "Failed to connect to MQTT broker");
+      }
+      vTaskDelay(pdMS_TO_TICKS(5000));
+      continue;
+    }
+
+    printf("\n");
+    sprintf(out_msg, "%s-%d", out_buf, seq);
+    if(!mqttPublishMessage(MQTTS_TOPIC, out_msg)) {
+      ESP_LOGI(TAG, "MQTT publish failed");
+      mqtt_connected = false;
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(15000));
   }
 }
