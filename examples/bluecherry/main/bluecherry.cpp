@@ -83,6 +83,12 @@ WalterModem modem;
 const char* psmActive = "00000001";
 const char* psmTAU = "00000110";
 
+/**
+ * @brief The binary configuration settings for eDRX.
+ */
+const char* edrxValue = "1101";
+const char* edrxPagingTimeWindow = "0000";
+
 // The BlueCherry CA root + intermediate certificate used for CoAP DTLS
 // communication
 const char* bc_ca_cert = "-----BEGIN CERTIFICATE-----\r\n\
@@ -185,6 +191,20 @@ bool lteDisconnect()
  */
 bool lteConnect()
 {
+  /* Configure power saving mode */
+  if(modem.configPSM(WALTER_MODEM_PSM_ENABLE, psmTAU, psmActive)) {
+    ESP_LOGI(TAG, "Successfully configured PSM");
+  } else {
+    ESP_LOGE(TAG, "Error: Could not configure PSM");
+  }
+
+  /* Configure eDRX */
+  if(modem.configEDRX(WALTER_MODEM_EDRX_ENABLE_WITH_RESULT, edrxValue, edrxPagingTimeWindow)) {
+    ESP_LOGI(TAG, "Successfully configured eDRX");
+  } else {
+    ESP_LOGE(TAG, "Error: Could not configure eDRX");
+  }
+
   /* Set the operational state to NO RF */
   if(modem.setOpState(WALTER_MODEM_OPSTATE_NO_RF)) {
     ESP_LOGI(TAG, "Successfully set operational state to NO RF");
@@ -220,6 +240,67 @@ bool lteConnect()
   return waitForNetwork();
 }
 
+/** * @brief The network registration event handler.
+ *
+ * This function will be called when network registration state changes or when
+ * eDRX parameters are received from the network.
+ *
+ * @note Make sure to keep this handler as lightweight as possible to avoid blocking
+ * the event processing task.
+ *
+ * @param[out] event The network registration state event.
+ * @param[out] data The registration event data including state and PSM info.
+ * @param[out] args User arguments.
+ *
+ * @return void
+ */
+static void myNetworkEventHandler(WMNetworkEventType event, const WMNetworkEventData* data,
+                                  void* args)
+{
+  if(event == WALTER_MODEM_NETWORK_EVENT_REG_STATE_CHANGE) {
+    switch(data->cereg.state) {
+    case WALTER_MODEM_NETWORK_REG_REGISTERED_HOME:
+      ESP_LOGI(TAG, "Network event: Network registration state changed: Registered (home)");
+      if(data->cereg.hasPsmInfo) {
+        ESP_LOGI(TAG, "PSM info received: Active Time: %s, TAU: %s", data->cereg.activeTime,
+                 data->cereg.periodicTau);
+      }
+      break;
+
+    case WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING:
+      ESP_LOGI(TAG, "Network event: Network registration state changed: Registered (roaming)");
+      if(data->cereg.hasPsmInfo) {
+        ESP_LOGI(TAG, "PSM info received: Active Time: %s, TAU: %s", data->cereg.activeTime,
+                 data->cereg.periodicTau);
+      }
+      break;
+
+    case WALTER_MODEM_NETWORK_REG_NOT_SEARCHING:
+      ESP_LOGI(TAG, "Network event: Network registration state changed: Not searching");
+      break;
+
+    case WALTER_MODEM_NETWORK_REG_SEARCHING:
+      ESP_LOGI(TAG, "Network event: Network registration state changed: Searching");
+      break;
+
+    case WALTER_MODEM_NETWORK_REG_DENIED:
+      ESP_LOGI(TAG, "Network event: Network registration state changed: Denied");
+      break;
+
+    case WALTER_MODEM_NETWORK_REG_UNKNOWN:
+      ESP_LOGI(TAG, "Network event: Network registration state changed: Unknown");
+      break;
+
+    default:
+      break;
+    }
+  } else if(event == WALTER_MODEM_NETWORK_EVENT_EDRX_RECEIVED) {
+    ESP_LOGI(TAG, "Network event: eDRX received (ACT: %d) Requested: %s, NW-Provided: %s, PTW: %s",
+             data->edrx.actType, data->edrx.requestedEdrx, data->edrx.nwProvidedEdrx,
+             data->edrx.pagingTimeWindow);
+  }
+}
+
 // This function will poll the BlueCherry cloud platform to check if there is an
 // incoming MQTT message or new firmware version available. If a new firmware
 // version is available, the device automatically downloads and reboots with the
@@ -227,33 +308,38 @@ bool lteConnect()
 void syncBlueCherry()
 {
   WalterModemRsp rsp = {};
+  int attempt = 0;
+  bool fail = false;
 
   do {
     if(!modem.blueCherrySync(&rsp)) {
       ESP_LOGE(TAG, "Error during BlueCherry cloud platform synchronisation: %d",
                rsp.data.blueCherry.state);
-      modem.softReset();
+      modem.reset();
       lteConnect();
-      return;
-    }
+      attempt++;
+      fail = true;
+    } else {
+      attempt = 0;
+      fail = false;
+      for(uint8_t msgIdx = 0; msgIdx < rsp.data.blueCherry.messageCount; msgIdx++) {
+        if(rsp.data.blueCherry.messages[msgIdx].topic == 0) {
+          ESP_LOGI(TAG, "Downloading new firmware version: %d%% complete",
+                   modem.blueCherryGetOtaProgressPercentage());
+          break;
+        } else {
+          ESP_LOGI(TAG, "Incoming message %d/%d:", msgIdx + 1, rsp.data.blueCherry.messageCount);
+          ESP_LOGI(TAG, "Topic: %02x\r\n", rsp.data.blueCherry.messages[msgIdx].topic);
+          ESP_LOGI(TAG, "Data size: %d\r\n", rsp.data.blueCherry.messages[msgIdx].dataSize);
 
-    for(uint8_t msgIdx = 0; msgIdx < rsp.data.blueCherry.messageCount; msgIdx++) {
-      if(rsp.data.blueCherry.messages[msgIdx].topic == 0) {
-        ESP_LOGI(TAG, "Downloading new firmware version: %d%% complete",
-                 modem.blueCherryGetOtaProgressPercentage());
-        break;
-      } else {
-        ESP_LOGI(TAG, "Incoming message %d/%d:", msgIdx + 1, rsp.data.blueCherry.messageCount);
-        ESP_LOGI(TAG, "Topic: %02x\r\n", rsp.data.blueCherry.messages[msgIdx].topic);
-        ESP_LOGI(TAG, "Data size: %d\r\n", rsp.data.blueCherry.messages[msgIdx].dataSize);
+          rsp.data.blueCherry.messages[msgIdx].data[rsp.data.blueCherry.messages[msgIdx].dataSize] =
+              '\0';
 
-        rsp.data.blueCherry.messages[msgIdx].data[rsp.data.blueCherry.messages[msgIdx].dataSize] =
-            '\0';
-
-        ESP_LOGI(TAG, "%s", rsp.data.blueCherry.messages[msgIdx].data);
+          ESP_LOGI(TAG, "%s", rsp.data.blueCherry.messages[msgIdx].data);
+        }
       }
     }
-  } while(!rsp.data.blueCherry.syncFinished);
+  } while(!rsp.data.blueCherry.syncFinished || (fail && attempt < 3));
 
   ESP_LOGI(TAG, "Synchronized with BlueCherry cloud platform");
   return;
@@ -326,6 +412,7 @@ bool configureBluecherry()
 
 extern "C" void app_main(void)
 {
+  WalterModemRsp rsp = {};
   ESP_LOGI(TAG, "\r\n\r\n=== Walter BlueCherry example (IDF v1.5.0) ===\r\n\r\n");
 
   /* Start the modem */
@@ -336,8 +423,8 @@ extern "C" void app_main(void)
     return;
   }
 
-  /* Configure power saving mode */
-  modem.configPSM(WALTER_MODEM_PSM_ENABLE, psmTAU, psmActive);
+  /* Register network event handler */
+  modem.setNetworkEventHandler(myNetworkEventHandler, NULL);
 
   /* Connect to cellular network */
   if(!lteConnected() && !lteConnect()) {
@@ -356,8 +443,63 @@ extern "C" void app_main(void)
     }
   }
 
-  /* Send a test message to BlueCherry */
-  const char* msg = "Hello from Walter Modem via BlueCherry!";
+  /* Enable temperature monitoring */
+  if(modem.configTemperatureMonitor(WALTER_MODEM_TEMP_MONITOR_MODE_ON)) {
+    ESP_LOGI(TAG, "Successfully enabled temperature monitoring");
+  } else {
+    ESP_LOGE(TAG, "Could not enable temperature monitoring");
+  }
+
+  /* Get temperature reading */
+  int8_t temperature = 0;
+  if(modem.getTemperature(&rsp)) {
+    if(rsp.type == WALTER_MODEM_RSP_DATA_TYPE_TEMPERATURE) {
+      temperature = rsp.data.temperature.temperature;
+      ESP_LOGI(TAG, "Current temperature: %d°C (status: %d)", temperature,
+               rsp.data.temperature.status);
+    }
+  } else {
+    ESP_LOGE(TAG, "Could not get temperature reading");
+  }
+
+  /* Disable temperature monitoring */
+  if(modem.configTemperatureMonitor(WALTER_MODEM_TEMP_MONITOR_MODE_OFF)) {
+    ESP_LOGI(TAG, "Successfully disabled temperature monitoring");
+  } else {
+    ESP_LOGE(TAG, "Could not disable temperature monitoring");
+  }
+
+  /* Enable voltage monitoring */
+  if(modem.configVoltageMonitor(WALTER_MODEM_VOLTAGE_MONITOR_MODE_ACTIVE)) {
+    ESP_LOGI(TAG, "Successfully enabled voltage monitoring");
+  } else {
+    ESP_LOGE(TAG, "Could not enable voltage monitoring");
+  }
+
+  /* Get voltage reading */
+  uint16_t voltage = 0;
+  if(modem.getVoltage(&rsp)) {
+    if(rsp.type == WALTER_MODEM_RSP_DATA_TYPE_VOLTAGE) {
+      voltage = rsp.data.voltage.voltage;
+      ESP_LOGI(TAG, "Current voltage: %dmV (status: %d)", voltage, rsp.data.voltage.status);
+    }
+  } else {
+    ESP_LOGE(TAG, "Could not get voltage reading");
+  }
+
+  /* Disable voltage monitoring */
+  if(modem.configVoltageMonitor(WALTER_MODEM_VOLTAGE_MONITOR_MODE_DISABLED)) {
+    ESP_LOGI(TAG, "Successfully disabled voltage monitoring");
+  } else {
+    ESP_LOGE(TAG, "Could not disable voltage monitoring");
+  }
+
+  /* Send a message to BlueCherry with sensor data */
+  char msg[128];
+  snprintf(msg, sizeof(msg),
+           "{\"message\":\"Hello from Walter Modem!\",\"temperature\":%d,\"voltage\":%d}",
+           temperature, voltage);
+  ESP_LOGI(TAG, "Publishing to BlueCherry: %s", msg);
   modem.blueCherryPublish(0x84, strlen(msg), (uint8_t*) msg);
 
   /* Poll BlueCherry platform if an incoming message or firmware update is available */
