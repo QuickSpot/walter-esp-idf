@@ -6,6 +6,26 @@ menu "walter-modem"
                 enable Kconfig for Walter Modem.
 
     if WALTER_MODEM_KCONFIG
+        menu "Events"
+            config WALTER_MODEM_EVENT_QUEUE_MAX_ITEMS
+                int "Max queued events"
+                range 1 32
+                default 8
+                help
+                    The maximum number of events that can be queued.
+            
+            config WALTER_MODEM_EVENT_TASK_STACK_SIZE
+                int "Event task stack size"
+                default 8192
+                help
+                    The stack size of the event handling task.
+
+            config WALTER_MODEM_MAX_EVENT_DURATION_MS
+                int "Max event handler duration in MS"
+                default 500
+                help
+                    The maximum duration an event handler is allowed to run.
+        endmenu
         menu "Protocols"
             config WALTER_MODEM_ENABLE_SOCKETS
                 bool "Enable Socket functions"
@@ -21,12 +41,6 @@ menu "walter-modem"
                         default 6
                         help
                             The maximum number of sockets.
-                    config WALTER_MODEM_MAX_SOCKET_RINGS 
-                        int "Max ring URC the library will store"
-                        range 1 20
-                        default 8
-                        help
-                            the maximum number of ring messages.
                 endmenu
             endif
 
@@ -37,19 +51,7 @@ menu "walter-modem"
                     Enable MQTT support for the WalterModem.
             
             if WALTER_MODEM_ENABLE_MQTT
-                menu "MQTT"
-                    config WALTER_MODEM_MQTT_TOPIC_MAX_SIZE
-                        int "Max topic lenght"
-                        default 127
-                        help
-                            The maximum number of characters in an MQTT topic.
-                    
-                    config WALTER_MODEM_MQTT_MAX_PENDING_RINGS
-                        int "Max pending rings"
-                        default 8
-                        help
-                            The maximum number of rings that can be pending for the MQTT protocol.
-                    
+                menu "MQTT"                                        
                     config WALTER_MODEM_MQTT_MIN_PREF_KEEP_ALIVE
                         int "minimum keep alive time"
                         default 20
@@ -90,6 +92,7 @@ menu "walter-modem"
                 menu "HTTP"
                     config WALTER_MODEM_MAX_HTTP_PROFILES
                         int "Max http profiles"
+                        range 1 3
                         default 3
                         help
                             The maximum number of HTTP profiles that the library can support.
@@ -110,13 +113,6 @@ menu "walter-modem"
                         range 1 3
                         help
                             The maximum number of CoAP profiles that the library can support.
-
-                    config WALTER_MODEM_COAP_MAX_PENDING_RINGS
-                        int "Max pending CoAP rings"
-                        default 8
-                        range 4 16
-                        help
-                            The maximum number of rings that can be pending for the CoAP protocol.
                 endmenu
 
                 config WALTER_MODEM_ENABLE_BLUECHERRY
@@ -199,84 +195,41 @@ menu "walter-modem"
                 help
                     The hardware flow control buffer threshold size for modem communication
         endmenu
-        menu "AT Commands"
+        menu "CMD settings"
             config WALTER_MODEM_CMD_TIMEOUT_MS
                 int "Default cmd timeout in MS"
-                default 300000
+                default 30000
                 help
-                    The maximum number of milliseconds to wait.
+                    The maximum number of milliseconds to wait before a command is considered timed out.
             
-            config WALTER_MODEM_MAX_PENDING_COMMANDS
+            config WALTER_MODEM_CMD_QUEUE_MAX_ITEMS
                 int "The maximum commands that can be pending at one moment"
-                default 32
+                range 8 64
+                default 8
                 help
                     The maximum number of pending commands. 
             
-            config WALTER_MODEM_DEFAULT_CMD_ATTEMTS
+            config WALTER_MODEM_DEFAULT_CMD_ATTEMPTS
                 int "Number of attempts to execute a command"
                 default 3
                 range 1 6
                 help
                     The default number of attempts to execute a command.
-            
-            config WALTER_MODEM_COMMAND_MAX_ELEMS
-                int "Number of elements allowed to build an AT command."
-                default 63
-                help
-                    The maximum number of elements allowed to build an AT command.
-            
-            config WALTER_MODEM_RSP_BUF_SIZE
-                int "The size of an AT response buffer"
-                default 1536
-                help
-                    The size of an AT response buffer.
-        endmenu
-        menu "modem task"
-            config WALTER_MODEM_TASK_QUEUE_MAX_ITEMS
-                int "Queue Mac items"
-                range 10 255
-                default 32
-                help
-                    The maximum number of items in the task queue.
-            
-            config WALTER_MODEM_TASK_STACK_SIZE
+
+            config WALTER_MODEM_CMD_TASK_STACK_SIZE
                 int "The stack size of the modem task in bytes"
                 default 4096
                 range 2048 8192
                 help
                     The size of the stack of the command and response processing task.
-
-            menu "Events"
-                config WALTER_MODEM_MAX_EVENT_DURATION_MS
-                    int "Max event handler duration in MS"
-                    default 500
-                    help
-                        The event handlers of the Walter modem library are as lightweight as possible and are not
-                        executed in their own thread. Therefore an application should handle them as interrupt handlers.
-                        It is not allowed to call other WalterModem functions from within an event handler and no
-                        blocking operations should be performed in an event handler. To aid the user in achieving this
-                        the library prints a warning when the handler takes more than the defined number of milliseconds.
-            endmenu
         endmenu
-        menu "Memory"
+        menu "Other"
             config WALTER_MODEM_BUFFER_POOL_SIZE
                 int "Buffer pool size"
                 range 4 16
                 default 8
                 help
                     The number of buffers in the buffer pool.
-            
-            config ENCRYPTED_BLOCK_SIZE
-                int "Encrypted block size"
-                default 16
-                help
-                    Encrypted block size within flash.
-            
-            config SPI_SECTORS_PER_BLOCK
-                int "SPI sectors per block"
-                default 16
-                help
-                    SPI flash sectors per erase block, usually large erase block is 32k/64k.
         endmenu
         menu "PDP"
             config WALTER_MODEM_MAX_PDP_CTXTS

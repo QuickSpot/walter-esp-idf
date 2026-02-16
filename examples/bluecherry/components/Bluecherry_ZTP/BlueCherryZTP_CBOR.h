@@ -2,13 +2,14 @@
  * @file BlueCherryZTP_CBOR.h
  * @author Daan Pape <daan@dptechnics.com>
  * @author Thibo Verheyde <thibo@dptechnics.com>
- * @date 14 Jan 2025
- * @copyright DPTechnics bv
+ * @date 16 January 2026
+ * @version 1.5.0
+ * @copyright DPTechnics bv <info@dptechnics.com>
  * @brief Simplified CBOR library for BlueCherry ZTP.
  *
  * @section LICENSE
  *
- * Copyright (C) 2025, DPTechnics bv
+ * Copyright (C) 2026, DPTechnics bv
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -62,7 +63,7 @@ typedef struct {
   /**
    * @brief Output buffer pointer.
    */
-  uint8_t *buffer;
+  uint8_t* buffer;
 
   /**
    * @brief Maximum size of the buffer.
@@ -84,7 +85,7 @@ typedef struct {
  *
  * @return 0 on success, non-zero on failure.
  */
-int ztp_cbor_init(ZTP_CBOR *cbor, uint8_t *buffer, size_t capacity);
+int ztp_cbor_init(ZTP_CBOR* cbor, uint8_t* buffer, size_t capacity);
 
 /**
  * @brief Returns the size of encoded data.
@@ -93,7 +94,7 @@ int ztp_cbor_init(ZTP_CBOR *cbor, uint8_t *buffer, size_t capacity);
  *
  * @return Size of encoded data.
  */
-size_t ztp_cbor_size(const ZTP_CBOR *cbor);
+size_t ztp_cbor_size(const ZTP_CBOR* cbor);
 
 /**
  * @brief Encodes a byte string into CBOR format.
@@ -104,7 +105,7 @@ size_t ztp_cbor_size(const ZTP_CBOR *cbor);
  *
  * @return 0 on success, non-zero on failure.
  */
-int ztp_cbor_encode_bytes(ZTP_CBOR *cbor, const uint8_t *data, size_t length);
+int ztp_cbor_encode_bytes(ZTP_CBOR* cbor, const uint8_t* data, size_t length);
 
 /**
  * @brief Encodes a string into CBOR format.
@@ -114,7 +115,7 @@ int ztp_cbor_encode_bytes(ZTP_CBOR *cbor, const uint8_t *data, size_t length);
  *
  * @return 0 on success, non-zero on failure.
  */
-int ztp_cbor_encode_string(ZTP_CBOR *cbor, const char *str);
+int ztp_cbor_encode_string(ZTP_CBOR* cbor, const char* str);
 
 /**
  * @brief Encodes a 64-bit unsigned integer into CBOR format.
@@ -124,7 +125,7 @@ int ztp_cbor_encode_string(ZTP_CBOR *cbor, const char *str);
  *
  * @return 0 on success, non-zero on failure.
  */
-int ztp_cbor_encode_uint64(ZTP_CBOR *cbor, uint64_t value);
+int ztp_cbor_encode_uint64(ZTP_CBOR* cbor, uint64_t value);
 
 /**
  * @brief Encodes a signed integer into CBOR format.
@@ -134,7 +135,7 @@ int ztp_cbor_encode_uint64(ZTP_CBOR *cbor, uint64_t value);
  *
  * @return @brief 0 on success, non-zero on failure.
  */
-int ztp_cbor_encode_int(ZTP_CBOR *cbor, int value);
+int ztp_cbor_encode_int(ZTP_CBOR* cbor, int value);
 
 /**
  * @brief Starts encoding an array into CBOR format.
@@ -144,7 +145,7 @@ int ztp_cbor_encode_int(ZTP_CBOR *cbor, int value);
  *
  * @return @brief 0 on success, non-zero on failure.
  */
-int ztp_cbor_start_array(ZTP_CBOR *cbor, size_t size);
+int ztp_cbor_start_array(ZTP_CBOR* cbor, size_t size);
 
 /**
  * @brief Starts encoding a map into CBOR format.
@@ -154,7 +155,7 @@ int ztp_cbor_start_array(ZTP_CBOR *cbor, size_t size);
  *
  * @return @brief 0 on success, non-zero on failure.
  */
-int ztp_cbor_start_map(ZTP_CBOR *cbor, size_t size);
+int ztp_cbor_start_map(ZTP_CBOR* cbor, size_t size);
 
 /**
  * @brief Decodes a device ID from CBOR data.
@@ -166,8 +167,8 @@ int ztp_cbor_start_map(ZTP_CBOR *cbor, size_t size);
  *
  * @return @brief 0 on success, non-zero on failure.
  */
-int ztp_cbor_decode_device_id(const uint8_t *cbor_data, size_t cbor_size,
-                              char *decoded_str, size_t decoded_size);
+int ztp_cbor_decode_device_id(const uint8_t* cbor_data, size_t cbor_size, char* decoded_str,
+                              size_t decoded_size);
 
 /**
  * @brief Decodes a signed certificate from CBOR data.
@@ -179,8 +180,7 @@ int ztp_cbor_decode_device_id(const uint8_t *cbor_data, size_t cbor_size,
  *
  * @return @brief 0 on success, non-zero on failure.
  */
-int ztp_cbor_decode_certificate(const uint8_t *cbor_data, size_t cbor_size,
-                                unsigned char *decoded_data,
-                                size_t *decoded_len);
+int ztp_cbor_decode_certificate(const uint8_t* cbor_data, size_t cbor_size,
+                                unsigned char* decoded_data, size_t* decoded_len);
 
 #endif // BLUECHERRYZTP_CBOR_H

@@ -228,4 +228,14 @@ This is the Changelog for WalterModem
 - [[walter-esp-idf](https://github.com/QuickSpot/walter-esp-idf)] example(bluecherry): consistency ([#145](https://github.com/QuickSpot/walter-esp-idf/pull/145))
 - [[walter-esp-idf](https://github.com/QuickSpot/walter-esp-idf)] example(mfu): Add modem firmware flash example ([#146](https://github.com/QuickSpot/walter-esp-idf/pull/146))
 
+## [v1.5.0](https://github.com/QuickSpot/walter-esp-idf/releases/tag/v1.5.0) - MAJOR UPDATE
+
+> This release contains several breaking changes to earlier versions. Please read the description and review the updated examples carefully before updating.
+
+- release(1.5.0) [#152](https://github.com/QuickSpot/walter-esp-idf/pull/152)
+
+### Bug Fixes
+
+- fix(WalterSocket): panic after close before data received racecondition ([#110](https://github.com/QuickSpot/walter-arduino/pull/110))
+- fix(WalterModem): Retrieving ICCID and eUICCID using getSIMCardID() ([#110](https://github.com/QuickSpot/walter-arduino/pull/126))
 
