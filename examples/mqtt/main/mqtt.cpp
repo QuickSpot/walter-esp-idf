@@ -361,7 +361,7 @@ extern "C" void app_main()
   }
 
   /* Set the network registration event handler (optional) */
-  modem.setRegistrationEventHandler(myNetworkEventHandler, NULL);
+  modem.setNetworkEventHandler(myNetworkEventHandler, NULL);
 
   /* Set the MQTT event handler */
   modem.setMQTTEventHandler(myMQTTEventHandler, NULL);

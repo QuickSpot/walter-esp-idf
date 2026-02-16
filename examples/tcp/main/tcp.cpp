@@ -386,7 +386,7 @@ extern "C" void app_main()
   }
 
   /* Set the network registration event handler (optional) */
-  modem.setRegistrationEventHandler(myNetworkEventHandler, NULL);
+  modem.setNetworkEventHandler(myNetworkEventHandler, NULL);
 
   /* Set the Socket event handler */
   modem.setSocketEventHandler(mySocketEventHandler, NULL);
