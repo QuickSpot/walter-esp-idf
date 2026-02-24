@@ -203,47 +203,50 @@ bool lteConnect()
 /**
  * @brief The network registration event handler.
  *
- * You can use this handler to get notified of network registration state changes. For this example,
- * we use polling to get the network registration state. You can use this to implement your own
- * reconnection logic.
+ * This function will be called when network registration state changes or when
+ * eDRX parameters are received from the network.
  *
- * @note Make sure to keep this handler as lightweight as possible to avoid blocking the event
- * processing task.
+ * @note Make sure to keep this handler as lightweight as possible to avoid blocking
+ * the event processing task.
  *
- * @param[out] state The network registration state.
+ * @param[out] event The network registration state event.
+ * @param[out] data The registration event data including state and PSM info.
  * @param[out] args User arguments.
  *
  * @return void
  */
-static void myNetworkEventHandler(WalterModemNetworkRegState state, void* args)
+static void myNetworkEventHandler(WMNetworkEventType event, const WMNetworkEventData* data,
+                                  void* args)
 {
-  switch(state) {
-  case WALTER_MODEM_NETWORK_REG_REGISTERED_HOME:
-    ESP_LOGI(TAG, "Network registration: Registered (home)");
-    break;
+  if(event == WALTER_MODEM_NETWORK_EVENT_REG_STATE_CHANGE) {
+    switch(data->cereg.state) {
+    case WALTER_MODEM_NETWORK_REG_REGISTERED_HOME:
+      ESP_LOGI(TAG, "Network registration: Registered (home)");
+      break;
 
-  case WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING:
-    ESP_LOGI(TAG, "Network registration: Registered (roaming)");
-    break;
+    case WALTER_MODEM_NETWORK_REG_REGISTERED_ROAMING:
+      ESP_LOGI(TAG, "Network registration: Registered (roaming)");
+      break;
 
-  case WALTER_MODEM_NETWORK_REG_NOT_SEARCHING:
-    ESP_LOGI(TAG, "Network registration: Not searching");
-    break;
+    case WALTER_MODEM_NETWORK_REG_NOT_SEARCHING:
+      ESP_LOGI(TAG, "Network registration: Not searching");
+      break;
 
-  case WALTER_MODEM_NETWORK_REG_SEARCHING:
-    ESP_LOGI(TAG, "Network registration: Searching");
-    break;
+    case WALTER_MODEM_NETWORK_REG_SEARCHING:
+      ESP_LOGI(TAG, "Network registration: Searching");
+      break;
 
-  case WALTER_MODEM_NETWORK_REG_DENIED:
-    ESP_LOGI(TAG, "Network registration: Denied");
-    break;
+    case WALTER_MODEM_NETWORK_REG_DENIED:
+      ESP_LOGI(TAG, "Network registration: Denied");
+      break;
 
-  case WALTER_MODEM_NETWORK_REG_UNKNOWN:
-    ESP_LOGI(TAG, "Network registration: Unknown");
-    break;
+    case WALTER_MODEM_NETWORK_REG_UNKNOWN:
+      ESP_LOGI(TAG, "Network registration: Unknown");
+      break;
 
-  default:
-    break;
+    default:
+      break;
+    }
   }
 }
 
@@ -361,7 +364,7 @@ extern "C" void app_main()
   }
 
   /* Set the network registration event handler (optional) */
-  modem.setRegistrationEventHandler(myNetworkEventHandler, NULL);
+  modem.setNetworkEventHandler(myNetworkEventHandler, NULL);
 
   /* Set the MQTT event handler */
   modem.setMQTTEventHandler(myMQTTEventHandler, NULL);
