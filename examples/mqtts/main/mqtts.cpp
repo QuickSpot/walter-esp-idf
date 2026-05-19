@@ -449,6 +449,12 @@ extern "C" void app_main()
     ESP_LOGE(TAG, "TLS Profile setup failed");
     return;
   }
+  
+  /* Connect to the cellular network */
+  if(!lteConnect()) {
+    ESP_LOGE(TAG, "Failed to connect to network");
+    return;
+  }
 
   /* Configure the MQTTS client */
   if(modem.mqttConfig((char*) out_buf, MQTTS_USERNAME, MQTTS_PASSWORD, MQTTS_TLS_PROFILE)) {
