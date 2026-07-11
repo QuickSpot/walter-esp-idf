@@ -1062,6 +1062,7 @@ WalterModemBuffer* WalterModem::_getFreeBuffer(void)
       chosenBuf = _bufferPool + i;
       chosenBuf->free = false;
       chosenBuf->size = 0;
+      chosenBuf->rawChunk = false;
 
       break;
     }
@@ -1099,18 +1100,55 @@ void WalterModem::_addATByteToBuffer(char data, bool raw)
 
 void WalterModem::_addATBytesToBuffer(const char* data, size_t length)
 {
-  /* Try to get a free buffer if not already set */
-  if(_parserData.buf == NULL) {
-    _parserData.buf = _getFreeBuffer();
-  }
+  while(length > 0) {
+    /* Try to get a free buffer if not already set */
+    if(_parserData.buf == NULL) {
+      _parserData.buf = _getFreeBuffer();
+    }
 
-  /* If still NULL, drop data silently */
-  if(_parserData.buf == NULL) {
+    /* If still NULL, drop data silently */
+    if(_parserData.buf == NULL) {
+      return;
+    }
+
+    size_t capacity = WALTER_MODEM_RSP_BUF_SIZE - _parserData.buf->size;
+    if(length <= capacity) {
+      memcpy(&_parserData.buf->data[_parserData.buf->size], data, length);
+      _parserData.buf->size += length;
+      return;
+    }
+
+    /* The data does not fit in the current buffer. This only happens for payload responses
+     * larger than one buffer (e.g. +SQNSMQTTRCVMESSAGE): fill the buffer completely, flush it
+     * to the response processor as a raw chunk and continue in a fresh buffer. Without the
+     * flush the memcpy would overflow the fixed-size buffer and corrupt the pool. */
+    memcpy(&_parserData.buf->data[_parserData.buf->size], data, capacity);
+    _parserData.buf->size += capacity;
+    data += capacity;
+    length -= capacity;
+    _flushRawChunk();
+  }
+}
+
+void WalterModem::_flushRawChunk()
+{
+  WalterModemBuffer* buf = _parserData.buf;
+  if(buf == NULL || buf->size == 0) {
     return;
   }
 
-  memcpy(&_parserData.buf->data[_parserData.buf->size], data, length);
-  _parserData.buf->size += length;
+  /* The first chunk of a payload still starts with the response's leading CRLF framing: strip it
+   * here because the response processor must not CRLF-trim raw chunks (bytes at a chunk boundary
+   * may legitimately be CR/LF payload data). */
+  if(_parserData.flushedPayloadSize == 0 && buf->size >= 2 && buf->data[0] == '\r' &&
+     buf->data[1] == '\n') {
+    memmove(buf->data, buf->data + 2, buf->size - 2);
+    buf->size -= 2;
+  }
+
+  buf->rawChunk = true;
+  _parserData.flushedPayloadSize += buf->size;
+  _queueRxBuffer();
 }
 
 void WalterModem::_queueRxBuffer()
@@ -1329,12 +1367,19 @@ bool WalterModem::_expectingPayload()
     }
     if(sizeStr[0] != '\0') {
       _receivedPayloadSize = atoi(sizeStr);
-      if(_receivedPayloadSize >= dataSize) {
+      /* Payloads larger than one buffer are partially flushed to the response processor as raw
+       * chunks: the completion accounting must be cumulative across those flushes. */
+      size_t receivedSoFar = _parserData.flushedPayloadSize + dataSize;
+      if(_receivedPayloadSize >= receivedSoFar) {
         // Incomplete payload received so far
-        _receivedPayloadSize -= dataSize;
+        _receivedPayloadSize -= receivedSoFar;
       } else {
         // Complete payload already received - no more bytes expected
         _receivedPayloadSize = 0;
+        if(_parserData.flushedPayloadSize > 0) {
+          /* The buffer about to be queued is the tail of a partially flushed payload */
+          _parserData.payloadTail = true;
+        }
         return false;
       }
       return true;
@@ -1361,12 +1406,19 @@ bool WalterModem::_expectingPayload()
       }
       if(sizeStr[0] != '\0') {
         _receivedPayloadSize = atoi(sizeStr);
-        if(_receivedPayloadSize >= dataSize) {
+        /* Payloads larger than one buffer are partially flushed to the response processor as raw
+         * chunks: the completion accounting must be cumulative across those flushes. */
+        size_t receivedSoFar = _parserData.flushedPayloadSize + dataSize;
+        if(_receivedPayloadSize >= receivedSoFar) {
           // Incomplete payload received so far
-          _receivedPayloadSize -= dataSize;
+          _receivedPayloadSize -= receivedSoFar;
         } else {
           // Complete payload already received - no more bytes expected
           _receivedPayloadSize = 0;
+          if(_parserData.flushedPayloadSize > 0) {
+            /* The buffer about to be queued is the tail of a partially flushed payload */
+            _parserData.payloadTail = true;
+          }
           return false;
         }
         return true;
@@ -1446,6 +1498,22 @@ void WalterModem::_parseRxData(char* rx_data, size_t rx_len)
         continue;
       } else {
         _receivingPayload = false;
+        if(_parserData.payloadTail) {
+          /* Tail of a payload that was partially flushed as raw chunks: strip the trailing CRLF
+           * framing here and mark the buffer raw, so the response processor does not CRLF-trim
+           * payload bytes at the chunk boundary. */
+          _parserData.payloadTail = false;
+          _parserData.flushedPayloadSize = 0;
+          if(_parserData.buf->size >= 2 &&
+             _parserData.buf->data[_parserData.buf->size - 2] == '\r' &&
+             _parserData.buf->data[_parserData.buf->size - 1] == '\n') {
+            _parserData.buf->size -= 2;
+          }
+          _parserData.buf->rawChunk = true;
+        } else {
+          /* Any complete non-payload message ends a (possibly abandoned) raw-chunk accumulation */
+          _parserData.flushedPayloadSize = 0;
+        }
         /* Finally, queue the buffer if we are sure the message is complete */
         _queueRxBuffer();
       }
@@ -1682,6 +1750,7 @@ WalterModemCmd* WalterModem::_queueModemCMD(
   cmd->completeHandlerArg = completeHandlerArg;
   cmd->payload = payload;
   cmd->payloadSize = payloadSize;
+  cmd->payloadReceived = 0;
   cmd->maxAttempts = maxAttempts;
   cmd->atRspLen = atRsp == NULL ? 0 : strlen(atRsp);
   cmd->state = WALTER_MODEM_CMD_STATE_NEW;
@@ -1812,15 +1881,19 @@ void WalterModem::_processModemRSP(WalterModemCmd* cmd, WalterModemBuffer* buff)
   }
 #endif
 
-  // Skip leading \r\n if present
-  if(buff->size >= 2 && buff->data[0] == '\r' && buff->data[1] == '\n') {
-    memmove(buff->data, buff->data + 2, buff->size - 2);
-    buff->size -= 2;
-  }
+  /* Raw payload chunks carry no CRLF framing (stripped by the parser at flush time) and must not
+   * be trimmed: bytes at a chunk boundary may legitimately be CR/LF payload data. */
+  if(!buff->rawChunk) {
+    // Skip leading \r\n if present
+    if(buff->size >= 2 && buff->data[0] == '\r' && buff->data[1] == '\n') {
+      memmove(buff->data, buff->data + 2, buff->size - 2);
+      buff->size -= 2;
+    }
 
-  // Skip trailing \r\n if present
-  if(buff->size >= 2 && buff->data[buff->size - 2] == '\r' && buff->data[buff->size - 1] == '\n') {
-    buff->size -= 2;
+    // Skip trailing \r\n if present
+    if(buff->size >= 2 && buff->data[buff->size - 2] == '\r' && buff->data[buff->size - 1] == '\n') {
+      buff->size -= 2;
+    }
   }
 
   WalterModemState result = WALTER_MODEM_STATE_OK;
@@ -3496,14 +3569,20 @@ void WalterModem::_processModemRSP(WalterModemCmd* cmd, WalterModemBuffer* buff)
    * sent command is a MQTT receive message command.
    */
   if(cmd && cmd->atCmd[0] && !strcmp(cmd->atCmd[0], "AT+SQNSMQTTRCVMESSAGE=0,") &&
-     cmd->rsp->type != WALTER_MODEM_RSP_DATA_TYPE_MQTT) {
-
-    const char* rspStr = _buffStr(buff);
+     (cmd->rsp->type != WALTER_MODEM_RSP_DATA_TYPE_MQTT || buff->rawChunk)) {
 
     cmd->rsp->type = WALTER_MODEM_RSP_DATA_TYPE_MQTT;
 
     if(cmd->payload) {
-      memcpy(cmd->payload, rspStr, cmd->payloadSize);
+      /* Payloads larger than one buffer arrive as multiple raw chunks: accumulate them at the
+       * received offset. The copy is bounded by both the chunk size and the caller's buffer,
+       * which also fixes the single-buffer case reading past the response buffer when the
+       * payload is shorter than the requested size. */
+      size_t remaining =
+          (cmd->payloadSize > cmd->payloadReceived) ? cmd->payloadSize - cmd->payloadReceived : 0;
+      size_t chunkSize = (buff->size < remaining) ? buff->size : remaining;
+      memcpy(cmd->payload + cmd->payloadReceived, buff->data, chunkSize);
+      cmd->payloadReceived += chunkSize;
     }
 
     goto after_processing_logic;

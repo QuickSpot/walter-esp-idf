@@ -2932,6 +2932,15 @@ typedef struct {
    * not in use and can be used to store the next response in.
    */
   volatile bool free = true;
+
+  /**
+   * @brief This flag is set to true when the buffer holds a raw chunk of a payload response that
+   * spans multiple buffers (e.g. an +SQNSMQTTRCVMESSAGE payload larger than one buffer). Raw
+   * chunks carry no CRLF framing (it is stripped by the parser at flush time) and must not be
+   * CRLF-trimmed by the response processor: bytes at a chunk boundary may legitimately be CR/LF
+   * payload data.
+   */
+  bool rawChunk = false;
 } WalterModemBuffer;
 
 /**
@@ -2964,6 +2973,13 @@ typedef struct sWalterModemCmd {
    * @brief The number of bytes in the payload buffer.
    */
   uint16_t payloadSize;
+
+  /**
+   * @brief The number of payload bytes already copied into the payload buffer while processing a
+   * payload response that spans multiple buffers (e.g. an +SQNSMQTTRCVMESSAGE payload larger than
+   * one buffer). Reset when the command is queued.
+   */
+  uint16_t payloadReceived = 0;
 
   /**
    * @brief The expected command response starting string.
@@ -3084,6 +3100,20 @@ typedef struct {
    * @brief In raw data chunk parser state, we remember nr expected bytes
    */
   size_t rawChunkSize = 0;
+
+  /**
+   * @brief The number of payload bytes already flushed to the response processor as raw chunks
+   * for the in-flight payload response (payloads larger than one buffer). 0 when no flush has
+   * happened; used to make the payload-completion accounting cumulative across buffers.
+   */
+  size_t flushedPayloadSize = 0;
+
+  /**
+   * @brief Set when _expectingPayload() detects the completion of a payload that was partially
+   * flushed as raw chunks: the buffer about to be queued is the payload's tail and must have its
+   * trailing CRLF framing stripped and be marked as a raw chunk before queueing.
+   */
+  bool payloadTail = false;
 } walter_modem_at_parser_data_t;
 
 /**
@@ -3733,6 +3763,16 @@ private:
    * @return None.
    */
   static void _addATBytesToBuffer(const char* data, size_t length);
+
+  /**
+   * @brief Flush the parser's current buffer to the response processor as a raw payload chunk.
+   *
+   * Called when a payload response outgrows a single buffer from the pool: the full buffer is
+   * queued (marked as a raw chunk, with the response's leading CRLF framing stripped on the first
+   * chunk) so the response processor can accumulate the payload, and parsing continues in a fresh
+   * buffer. Without this, appending would overflow the fixed-size buffer and corrupt the pool.
+   */
+  static void _flushRawChunk();
 
   /**
    * @brief Copy the currently received data buffer into the task queue.
