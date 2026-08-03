@@ -114,31 +114,32 @@ menu "walter-modem"
                         help
                             The maximum number of CoAP profiles that the library can support.
                 endmenu
+            endif
 
-                config WALTER_MODEM_ENABLE_BLUECHERRY
-                    bool "Enable BlueCherry IoT functionality"
-                    default y
-                    select WALTER_MODEM_ENABLE_MOTA
-                    help
-                        Enable BlueCherry IoT functionality
-                
-                if WALTER_MODEM_ENABLE_BLUECHERRY
-                    menu "Bluecherry"
-                        comment "Mota and OTA functions are forced on when BlueCherry is enabled!"
-                        
-                        config WALTER_MODEM_BLUECHERRY_HOSTNAME
-                            string "bluecherry server hostname"
-                            default coap.bluecherry.io
-                            help
-                                The hostname to use for Bluecherry.
+            config WALTER_MODEM_ENABLE_BLUECHERRY
+                bool "Enable BlueCherry IoT functionality"
+                default y
+                select WALTER_MODEM_ENABLE_MOTA
+                select WALTER_MODEM_ENABLE_SOCKETS
+                help
+                    Enable BlueCherry IoT functionality
 
-                        config WALTER_MODEM_BLUECHERRY_PORT
-                            int "bluecherry server port"
-                            default 5684
-                            help
-                                The port to use for Bluecherry
-                    endmenu
-                endif
+            if WALTER_MODEM_ENABLE_BLUECHERRY
+                menu "Bluecherry"
+                    comment "Mota, OTA and socket functions are forced on when BlueCherry is enabled!"
+
+                    config WALTER_MODEM_BLUECHERRY_HOSTNAME
+                        string "bluecherry server hostname"
+                        default coap.bluecherry.io
+                        help
+                            The hostname to use for Bluecherry.
+
+                    config WALTER_MODEM_BLUECHERRY_PORT
+                        int "bluecherry server port"
+                        default 5684
+                        help
+                            The port to use for Bluecherry
+                endmenu
             endif
 
 

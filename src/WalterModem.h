@@ -109,6 +109,18 @@ for efficient configuration management."
 
 #endif
 
+#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY && !CONFIG_WALTER_MODEM_ENABLE_MOTA
+#error Bluecherry cannot be enabled with OTA or MOTA disabled.
+#endif
+
+#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY && !CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+#error Bluecherry cannot be enabled with sockets disabled. Please enable sockets in the configuration.
+#endif
+
+#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY && !CONFIG_WALTER_MODEM_ENABLE_COAP
+#error Bluecherry cannot be enabled with CoAP disabled. Please enable CoAP in the configuration.
+#endif
+
 #define CONFIG_INT(name, default_value) CONFIG(name, const int, default_value)
 #define CONFIG_UINT8(name, default_value) CONFIG(name, const uint8_t, default_value)
 #define CONFIG_UINT16(name, default_value) CONFIG(name, const uint16_t, default_value)
@@ -323,7 +335,7 @@ CONFIG_UINT8(WALTER_MODEM_MQTT_MAX_TOPICS, 4)
 #define WALTER_MODEM_MQTT_TOPIC_BUF_SIZE (WALTER_MODEM_MQTT_TOPIC_MAX_SIZE + 1)
 
 #endif
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY || CONFIG_WALTER_MODEM_ENABLE_MOTA
 
 /**
  * @brief The maximum size of an incoming protocol message payload.
@@ -402,7 +414,7 @@ constexpr uint16_t WALTER_MODEM_MAX_OUTGOING_MESSAGE_LEN = 1024;
 
 #include <condition_variable>
 
-#if CONFIG_WALTER_MODEM_ENABLE_MOTA || CONFIG_WALTER_MODEM_ENABLE_MOTA
+#if CONFIG_WALTER_MODEM_ENABLE_MOTA || CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
 
 #include <esp_partition.h>
 #include <esp_vfs.h>
@@ -1224,7 +1236,7 @@ typedef enum {
 #endif
 #pragma endregion
 #pragma region ENUMS PROTO BLUECHERRY
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY || CONFIG_WALTER_MODEM_ENABLE_MOTA
 
 #define WALTER_MODEM_BLUECHERRY_COAP_HEADER_SIZE 5
 
@@ -1670,7 +1682,7 @@ typedef struct {
 #pragma endregion
 #pragma region STRUCTS PROTO
 #pragma region STRUCTS PROTO BLUECHERRY
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY || CONFIG_WALTER_MODEM_ENABLE_MOTA
 
 /**
  * @brief This structure contains one of possibly multiple BlueCherry messages delivered in a CoAP
@@ -3428,7 +3440,7 @@ private:
 
 #endif
 #pragma endregion
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY || CONFIG_WALTER_MODEM_ENABLE_MOTA
 
   /*
    * @brief The current BlueCherry state.
@@ -3583,7 +3595,11 @@ private:
    *
    * @return The resulting checksum.
    */
+#if CONFIG_WALTER_MODEM_ENABLE_MOTA
+
   static uint16_t _calculateStpCrc16(const void* input, size_t length);
+
+#endif
 
 #pragma endregion
 #pragma region CLASS PRIVATE METHODS CMD_POOL_QUEUE
@@ -3986,7 +4002,7 @@ private:
 #endif
 #pragma endregion
 #pragma region CLASS PRIVATE METHODS OTA
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY && CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
 
   /**
    * @brief Process OTA init event
@@ -4082,6 +4098,8 @@ private:
    */
   static bool _processMotaChunkEvent(uint8_t* data, uint16_t len);
 
+#endif
+
   /**
    * @brief Finish the reception of the new modem firmware.
    *
@@ -4092,7 +4110,6 @@ private:
    */
   static bool _processMotaFinishEvent(void);
 
-#endif
 #endif
 #pragma endregion
 #pragma region CLASS PRIVATE METHODS TLS
@@ -4703,8 +4720,8 @@ public:
            WalterModemHttpSendCmd http_send_cmd = WALTER_MODEM_HTTP_SEND_CMD_POST,
            WalterModemHttpPostParam http_post_param = WALTER_MODEM_HTTP_POST_PARAM_UNSPECIFIED,
            char* content_type_buf = NULL, uint16_t content_type_buf_size = 0,
-           const char* extra_header_line = NULL,
-           WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+           const char* extra_header_line = NULL, WalterModemRsp* rsp = NULL,
+           walterModemCb cb = NULL, void* args = NULL);
 
   /**
    * @brief Receive data from an incoming HTTP connection.
