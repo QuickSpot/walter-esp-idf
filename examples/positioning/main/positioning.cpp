@@ -320,6 +320,11 @@ static void mySocketEventHandler(WMSocketEventType event, const WMSocketEventDat
     ESP_LOGI(TAG, "SOCKET: Message received on socket %d (size: %u)", data->conn_id,
              data->data_len);
 
+    /* Return if an empty message was received */
+    if(data->data_len == 0) {
+      break;
+    }
+
     /* Receive the message from the modem buffer */
     memset(in_buf, 0, sizeof(in_buf));
     if(modem.socketReceive(data->conn_id, in_buf, data->data_len)) {
