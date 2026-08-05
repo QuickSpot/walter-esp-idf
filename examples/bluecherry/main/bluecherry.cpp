@@ -49,13 +49,10 @@
  * platform. It also supports OTA updates which are scheduled through the BlueCherry web interface.
  */
 
-#include <BlueCherryZTP_CBOR.h>
-#include <BlueCherryZTP.h>
 #include <WalterModem.h>
 #include <driver/uart.h>
 #include <esp_sleep.h>
 #include <esp_log.h>
-#include <esp_mac.h>
 
 // The cellular Access Point Name
 // Leave blank for autodetection
@@ -88,31 +85,6 @@ const char* psmTAU = "00000110";
  */
 const char* edrxValue = "1101";
 const char* edrxPagingTimeWindow = "0000";
-
-// The BlueCherry CA root + intermediate certificate used for CoAP DTLS
-// communication
-const char* bc_ca_cert = "-----BEGIN CERTIFICATE-----\r\n\
-MIIBlTCCATqgAwIBAgICEAAwCgYIKoZIzj0EAwMwGjELMAkGA1UEBhMCQkUxCzAJ\r\n\
-BgNVBAMMAmNhMB4XDTI0MDMyNDEzMzM1NFoXDTQ0MDQwODEzMzM1NFowJDELMAkG\r\n\
-A1UEBhMCQkUxFTATBgNVBAMMDGludGVybWVkaWF0ZTBZMBMGByqGSM49AgEGCCqG\r\n\
-SM49AwEHA0IABJGFt28UrHlbPZEjzf4CbkvRaIjxDRGoeHIy5ynfbOHJ5xgBl4XX\r\n\
-hp/r8zOBLqSbu6iXGwgjp+wZJe1GCDi6D1KjZjBkMB0GA1UdDgQWBBR/rtuEomoy\r\n\
-49ovMAnj5Hpmk2gTGjAfBgNVHSMEGDAWgBR3Vw0Y1sUvMhkX7xySsX55tvsu8TAS\r\n\
-BgNVHRMBAf8ECDAGAQH/AgEAMA4GA1UdDwEB/wQEAwIBhjAKBggqhkjOPQQDAwNJ\r\n\
-ADBGAiEApN7DmuufC/aqyt6g2Y8qOWg6AXFUyTcub8/Y28XY3KgCIQCs2VUXCPwn\r\n\
-k8jR22wsqNvZfbndpHthtnPqI5+yFXrY4A==\r\n\
------END CERTIFICATE-----\r\n\
------BEGIN CERTIFICATE-----\r\n\
-MIIBmDCCAT+gAwIBAgIUDjfXeosg0fphnshZoXgQez0vO5UwCgYIKoZIzj0EAwMw\r\n\
-GjELMAkGA1UEBhMCQkUxCzAJBgNVBAMMAmNhMB4XDTI0MDMyMzE3MzU1MloXDTQ0\r\n\
-MDQwNzE3MzU1MlowGjELMAkGA1UEBhMCQkUxCzAJBgNVBAMMAmNhMFkwEwYHKoZI\r\n\
-zj0CAQYIKoZIzj0DAQcDQgAEB00rHNthOOYyKj80cd/DHQRBGSbJmIRW7rZBNA6g\r\n\
-fbEUrY9NbuhGS6zKo3K59zYc5R1U4oBM3bj6Q7LJfTu7JqNjMGEwHQYDVR0OBBYE\r\n\
-FHdXDRjWxS8yGRfvHJKxfnm2+y7xMB8GA1UdIwQYMBaAFHdXDRjWxS8yGRfvHJKx\r\n\
-fnm2+y7xMA8GA1UdEwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgGGMAoGCCqGSM49\r\n\
-BAMDA0cAMEQCID7AcgACnXWzZDLYEainxVDxEJTUJFBhcItO77gcHPZUAiAu/ZMO\r\n\
-VYg4UI2D74WfVxn+NyVd2/aXTvSBp8VgyV3odA==\r\n\
------END CERTIFICATE-----\r\n";
 
 /**
  * @brief ESP-IDF log prefix.
@@ -345,69 +317,14 @@ void syncBlueCherry()
   return;
 }
 
+// This function initializes the connection to the BlueCherry cloud platform. If Walter is not
+// yet provisioned, the first call to syncBlueCherry() will automatically perform Zero-Touch
+// Provisioning (fetching a device ID and a signed certificate from the BlueCherry ZTP server)
+// before resuming normal synchronization.
 bool configureBluecherry()
 {
   WalterModemRsp rsp = {};
-  unsigned short attempt = 0;
-  while(!modem.blueCherryInit(BC_TLS_PROFILE, ota_buffer, &rsp)) {
-    if(rsp.data.blueCherry.state == WALTER_MODEM_BLUECHERRY_STATUS_NOT_PROVISIONED &&
-       attempt <= 2) {
-      ESP_LOGW(TAG, "Device is not provisioned for BlueCherry communication, starting ZTP...");
-
-      if(attempt == 0) {
-        if(!BlueCherryZTP::begin(BC_DEVICE_TYPE, BC_TLS_PROFILE, bc_ca_cert, &modem)) {
-          ESP_LOGE(TAG, "Failed to initialize ZTP");
-          continue;
-        }
-
-        // Fetch MAC address
-        uint8_t mac[8] = { 0 };
-        esp_read_mac(mac, ESP_MAC_WIFI_STA);
-        if(!BlueCherryZTP::addDeviceIdParameter(BLUECHERRY_ZTP_DEVICE_ID_TYPE_MAC, mac)) {
-          ESP_LOGE(TAG, "Could not add MAC address as ZTP device ID parameter");
-        }
-
-        // Fetch IMEI number
-        if(!modem.getIdentity(&rsp)) {
-          ESP_LOGE(TAG, "Could not fetch IMEI number from modem");
-        }
-
-        if(!BlueCherryZTP::addDeviceIdParameter(BLUECHERRY_ZTP_DEVICE_ID_TYPE_IMEI,
-                                                rsp.data.identity.imei)) {
-          ESP_LOGE(TAG, "Could not add IMEI as ZTP device ID parameter");
-        }
-      }
-      attempt++;
-
-      // Request the BlueCherry device ID
-      if(!BlueCherryZTP::requestDeviceId()) {
-        ESP_LOGE(TAG, "Could not request device ID");
-        continue;
-      }
-
-      // Generate the private key and CSR
-      if(!BlueCherryZTP::generateKeyAndCsr()) {
-        ESP_LOGE(TAG, "Could not generate private key");
-      }
-      vTaskDelay(pdMS_TO_TICKS(1000));
-
-      // Request the signed certificate
-      if(!BlueCherryZTP::requestSignedCertificate()) {
-        ESP_LOGE(TAG, "Could not request signed certificate");
-        continue;
-      }
-
-      // Store BlueCherry TLS certificates + private key in the modem
-      if(!modem.blueCherryProvision(BlueCherryZTP::getCert(), BlueCherryZTP::getPrivKey(),
-                                    bc_ca_cert)) {
-        ESP_LOGE(TAG, "Failed to upload the DTLS certificates");
-        continue;
-      }
-    } else {
-      return false;
-    }
-  }
-  return true;
+  return modem.blueCherryInit(BC_TLS_PROFILE, ota_buffer, &rsp, 60, BC_DEVICE_TYPE);
 }
 
 extern "C" void app_main(void)
@@ -439,7 +356,9 @@ extern "C" void app_main(void)
     if(configureBluecherry()) {
       ESP_LOGI(TAG, "Successfully initialized BlueCherry");
     } else {
-      ESP_LOGE(TAG, "Could not initialize BlueCherry");
+      /* Walter is not provisioned yet: the first syncBlueCherry() call below will
+       * automatically perform Zero-Touch Provisioning before synchronizing. */
+      ESP_LOGW(TAG, "BlueCherry is not provisioned yet, Zero-Touch Provisioning will run on sync");
     }
   }
 

@@ -1286,6 +1286,60 @@ typedef enum {
 } WalterModemBlueCherryEventType;
 
 #endif
+#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+
+/**
+ * @brief The CoAP profile reserved for BlueCherry Zero-Touch Provisioning (ZTP) traffic.
+ */
+#define WALTER_MODEM_BLUECHERRY_ZTP_COAP_PROFILE 2
+
+/**
+ * @brief The port of the BlueCherry ZTP server (on the same host as WALTER_MODEM_BLUECHERRY_HOSTNAME).
+ */
+#define WALTER_MODEM_BLUECHERRY_ZTP_PORT 5688
+
+/**
+ * @brief The BlueCherry ZTP server API version path element.
+ */
+#define WALTER_MODEM_BLUECHERRY_ZTP_API_VERSION "v1"
+
+/**
+ * @brief The BlueCherry ZTP server device id path element.
+ */
+#define WALTER_MODEM_BLUECHERRY_ZTP_DEVID_PATH "devid"
+
+/**
+ * @brief The BlueCherry ZTP server CSR signing path element.
+ */
+#define WALTER_MODEM_BLUECHERRY_ZTP_CSR_PATH "sign"
+
+/**
+ * @brief The maximum number of seconds to wait for a ZTP CoAP ring.
+ */
+#define WALTER_MODEM_BLUECHERRY_ZTP_TIMEOUT_S 30
+
+/**
+ * @brief The number of characters in a BlueCherry ZTP Type ID or Device ID.
+ */
+#define WALTER_MODEM_BLUECHERRY_ZTP_ID_LEN 8
+
+/**
+ * @brief The maximum number of device identification parameters that can be sent to the ZTP
+ * server.
+ */
+#define WALTER_MODEM_BLUECHERRY_ZTP_MAX_DEVICE_ID_PARAMS 3
+
+/**
+ * @brief The different types of device identification parameters that can be sent to the
+ * BlueCherry ZTP server to prove device identity when requesting a device ID.
+ */
+typedef enum {
+  WALTER_MODEM_BLUECHERRY_ZTP_DEVICE_ID_TYPE_MAC = 0,
+  WALTER_MODEM_BLUECHERRY_ZTP_DEVICE_ID_TYPE_IMEI = 1,
+  WALTER_MODEM_BLUECHERRY_ZTP_DEVICE_ID_TYPE_OOB_CHALLENGE = 2
+} WalterModemBlueCherryZtpDeviceIdParamType;
+
+#endif
 #pragma endregion
 #pragma endregion
 #pragma region ENUMS EVENT_TYPES
@@ -1730,6 +1784,91 @@ typedef struct {
   WalterModemBlueCherryMessage messages[16];
 } WalterModemBlueCherryData;
 
+#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+
+/**
+ * @brief This structure represents a single BlueCherry ZTP device identification parameter,
+ * used to prove device identity to the ZTP server when requesting a device ID.
+ */
+typedef struct {
+  /**
+   * @brief The type of device identifier.
+   */
+  WalterModemBlueCherryZtpDeviceIdParamType type;
+
+  union {
+    /**
+     * @brief A MAC address used for authentication.
+     */
+    uint8_t mac[6];
+
+    /**
+     * @brief An IMEI number in ASCII format + 0-terminator.
+     */
+    char imei[16];
+
+    /**
+     * @brief A 64-bit OOB challenge.
+     */
+    uint64_t oobChallenge;
+  } value;
+} WalterModemBlueCherryZtpDeviceIdParam;
+
+/**
+ * @brief This structure represents the transient state of a BlueCherry Zero-Touch Provisioning
+ * (ZTP) cycle: the device identification parameters sent to the ZTP server, and the device
+ * ID/private key/certificate received back.
+ */
+typedef struct {
+  /**
+   * @brief The BlueCherry Type ID associated with this firmware, set once at blueCherryInit. Not
+   * copied, so the caller must keep the pointed-to string available. NULL when ZTP is disabled.
+   */
+  const char* deviceTypeId = NULL;
+
+  /**
+   * @brief The device identification parameters to send to the ZTP server.
+   */
+  WalterModemBlueCherryZtpDeviceIdParam params[WALTER_MODEM_BLUECHERRY_ZTP_MAX_DEVICE_ID_PARAMS];
+
+  /**
+   * @brief The number of parameters currently in the params array.
+   */
+  uint8_t paramCount = 0;
+
+  /**
+   * @brief The BlueCherry device ID received from the ZTP server.
+   */
+  char deviceId[WALTER_MODEM_BLUECHERRY_ZTP_ID_LEN + 1] = {};
+
+  /**
+   * @brief The CSR subject buffer ("C=BE,CN=<deviceTypeId>.<deviceId>").
+   */
+  char subject[32] = {};
+
+  /**
+   * @brief The generated device private key in PEM format.
+   */
+  char privKeyPem[256] = {};
+
+  /**
+   * @brief The ZTP-signed device certificate in PEM format.
+   */
+  char certPem[576] = {};
+
+  /**
+   * @brief The DER-encoded certificate signing request.
+   */
+  uint8_t csr[576] = {};
+
+  /**
+   * @brief The length of the DER-encoded certificate signing request.
+   */
+  size_t csrLen = 0;
+} WalterModemBlueCherryZtpState;
+
+#endif
+
 /**
  * @brief This structure represents the state of the BlueCherry connection.
  */
@@ -1838,6 +1977,14 @@ typedef struct {
    * @brief The current OTA partition.
    */
   const esp_partition_t* otaPartition = NULL;
+
+#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+  /**
+   * @brief The transient state of the Zero-Touch Provisioning (ZTP) cycle, used when
+   * blueCherrySync detects that Walter is not provisioned yet.
+   */
+  WalterModemBlueCherryZtpState ztp;
+#endif
 } WalterModemBlueCherryState;
 
 #endif
@@ -3999,6 +4146,83 @@ private:
    */
   static bool _blueCherryCoapProcessResponse(uint16_t dataReceived, uint8_t* dataBuffer);
 
+  /**
+   * @brief Finish BlueCherry initialization once credentials are known to be present.
+   *
+   * This is the shared tail of blueCherryInit: it (re)configures the TLS profile for mutual
+   * DTLS against the BlueCherry cloud, resets the CoAP-over-socket protocol state and connects
+   * the BlueCherry socket. Used both by blueCherryInit directly, and by blueCherrySync right
+   * after a successful Zero-Touch Provisioning cycle.
+   *
+   * @return True on success, false on error (status is set to NOT_PROVISIONED or NOT_CONNECTED).
+   */
+  static bool _blueCherryFinishInit();
+
+  /**
+   * @brief Clear all BlueCherry ZTP device ID parameters.
+   */
+  static void _blueCherryZtpResetDeviceIdParams();
+
+  /**
+   * @brief Add a string device ID parameter (currently only IMEI) to the ZTP request.
+   *
+   * @return True on success, false if the internal array is full or the type is not a string type.
+   */
+  static bool _blueCherryZtpAddDeviceIdParameter(WalterModemBlueCherryZtpDeviceIdParamType type,
+                                                 const char* str);
+
+  /**
+   * @brief Add a blob device ID parameter (currently only MAC) to the ZTP request.
+   *
+   * @return True on success, false if the internal array is full or the type is not a blob type.
+   */
+  static bool _blueCherryZtpAddDeviceIdParameter(WalterModemBlueCherryZtpDeviceIdParamType type,
+                                                 const uint8_t* blob);
+
+  /**
+   * @brief Add a numeric device ID parameter (currently only OOB challenge) to the ZTP request.
+   *
+   * @return True on success, false if the internal array is full or the type is not numeric.
+   */
+  static bool _blueCherryZtpAddDeviceIdParameter(WalterModemBlueCherryZtpDeviceIdParamType type,
+                                                 uint64_t number);
+
+  /**
+   * @brief Request a provisional BlueCherry device ID from the ZTP server.
+   *
+   * Connects a dedicated CoAP context to the ZTP server and sends the CBOR-encoded device type
+   * ID and identification parameters. The response is decoded into _blueCherry.ztp.deviceId.
+   *
+   * @return True on success, false on error.
+   */
+  static bool _blueCherryZtpRequestDeviceId();
+
+  /**
+   * @brief Generate a new device private key and certificate signing request.
+   *
+   * Generates a SECP256R1 keypair using the ESP32 hardware random number generator and builds a
+   * CSR with subject "C=BE,CN=<deviceTypeId>.<deviceId>", stored into _blueCherry.ztp.
+   *
+   * @return True on success, false on error.
+   */
+  static bool _blueCherryZtpGenerateKeyAndCsr();
+
+  /**
+   * @brief Request a signed device certificate for the CSR from the ZTP server.
+   *
+   * @return True on success, false on error.
+   */
+  static bool _blueCherryZtpRequestSignedCertificate();
+
+  /**
+   * @brief Run the full Zero-Touch Provisioning cycle: request a device ID, generate a
+   * key/CSR, request a signed certificate and provision the resulting credentials into the
+   * modem's NVRAM.
+   *
+   * @return True on success (Walter is now provisioned), false on error.
+   */
+  static bool _blueCherryZtpProvision();
+
 #endif
 #pragma endregion
 #pragma region CLASS PRIVATE METHODS OTA
@@ -4800,15 +5024,26 @@ public:
    * datagram, initialize the current message id to 1, the last acknowledged id to 0 and set
    * the state machine to IDLE.
    *
+   * If Walter is not yet provisioned for BlueCherry (no credentials in the modem's NVRAM), the
+   * state machine is set to NOT_PROVISIONED and this function returns false. When
+   * device_type_id is set, the next call to blueCherrySync will automatically perform
+   * Zero-Touch Provisioning (fetch a device ID and a signed certificate from the BlueCherry
+   * ZTP server) before resuming normal synchronization. When device_type_id is NULL,
+   * Walter must be provisioned manually via blueCherryProvision, exactly as before.
+   *
    * @param[in] tls_profile_id DTLS is used with the given profile (1-6).
    * @param[in] ota_buffer A user-supplied buffer for OTA updates to flash, aligned to 4K bytes.
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] ack_timeout_s Timeout for ACK of outgoing BlueCherry CoAP messages, in seconds.
+   * @param[in] device_type_id The 8 character BlueCherry Type ID identifying this
+   * firmware/device, used to opt into automatic Zero-Touch Provisioning. Pass NULL to keep
+   * requiring manual provisioning.
    *
    * @return True on success, false on error.
    */
   static bool blueCherryInit(uint8_t tls_profile_id, uint8_t* ota_buffer = NULL,
-                             WalterModemRsp* rsp = NULL, uint16_t ack_timeout_s = 60);
+                             WalterModemRsp* rsp = NULL, uint16_t ack_timeout_s = 60,
+                             const char* device_type_id = NULL);
 
   /**
    * @brief Enqueue a MQTT publish message.

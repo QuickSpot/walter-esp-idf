@@ -319,14 +319,42 @@ bool WalterModem::blueCherryIsProvisioned()
   return true;
 }
 
+bool WalterModem::_blueCherryFinishInit()
+{
+  if(!blueCherryIsProvisioned() ||
+     !tlsConfigProfile(_blueCherry.tls_profile_id, WALTER_MODEM_TLS_VALIDATION_URL_AND_CA,
+                       WALTER_MODEM_TLS_VERSION_12, 6, 5, 0)) {
+    _blueCherry.status = WALTER_MODEM_BLUECHERRY_STATUS_NOT_PROVISIONED;
+    return false;
+  }
+
+  _blueCherry.messageOutLen =
+      WALTER_MODEM_BLUECHERRY_COAP_HEADER_SIZE; // Reserve space for CoAP headers
+  _blueCherry.curMessageId = 0x0001;
+  _blueCherry.lastAckedMessageId = 0x0000;
+  _blueCherry.moreDataAvailable = false;
+
+  _blueCherry.emitErrorEvent = false;
+  _blueCherry.otaSize = 0;
+
+  if(_blueCherrySocketConnect()) {
+    _blueCherry.status = WALTER_MODEM_BLUECHERRY_STATUS_IDLE;
+    return true;
+  }
+
+  _blueCherry.status = WALTER_MODEM_BLUECHERRY_STATUS_NOT_CONNECTED;
+  return false;
+}
+
 bool WalterModem::blueCherryInit(uint8_t tls_profile_id, uint8_t* ota_buffer, WalterModemRsp* rsp,
-                                 uint16_t ack_timeout_s)
+                                 uint16_t ack_timeout_s, const char* device_type_id)
 {
   if(_blueCherry.status != WALTER_MODEM_BLUECHERRY_STATUS_NOT_INITIALIZED &&
      _blueCherry.status != WALTER_MODEM_BLUECHERRY_STATUS_NOT_PROVISIONED) {
     _blueCherry.tls_profile_id = tls_profile_id;
     _blueCherry.ota_buffer = ota_buffer;
     _blueCherry.ack_timeout_s = ack_timeout_s;
+    _blueCherry.ztp.deviceTypeId = device_type_id;
 
     if(rsp) {
       rsp->type = WALTER_MODEM_RSP_DATA_TYPE_BLUECHERRY;
@@ -338,40 +366,20 @@ bool WalterModem::blueCherryInit(uint8_t tls_profile_id, uint8_t* ota_buffer, Wa
     return true;
   }
 
-  if((!blueCherryIsProvisioned() ||
-      !tlsConfigProfile(tls_profile_id, WALTER_MODEM_TLS_VALIDATION_URL_AND_CA,
-                        WALTER_MODEM_TLS_VERSION_12, 6, 5, 0))) {
-    _blueCherry.status = WALTER_MODEM_BLUECHERRY_STATUS_NOT_PROVISIONED;
-
-    if(rsp) {
-      rsp->type = WALTER_MODEM_RSP_DATA_TYPE_BLUECHERRY;
-      rsp->data.blueCherry.state = WALTER_MODEM_BLUECHERRY_STATUS_NOT_PROVISIONED;
-      rsp->data.blueCherry.messageCount = 0;
-    }
-
-    return false;
-  }
-
   _blueCherry.tls_profile_id = tls_profile_id;
-
-  _blueCherry.messageOutLen =
-      WALTER_MODEM_BLUECHERRY_COAP_HEADER_SIZE; // Reserve space for CoAP headers
-  _blueCherry.curMessageId = 0x0001;
-  _blueCherry.lastAckedMessageId = 0x0000;
-  _blueCherry.moreDataAvailable = false;
-
-  _blueCherry.emitErrorEvent = false;
-  _blueCherry.otaSize = 0;
   _blueCherry.ota_buffer = ota_buffer;
   _blueCherry.ack_timeout_s = ack_timeout_s;
+  _blueCherry.ztp.deviceTypeId = device_type_id;
 
-  if(_blueCherrySocketConnect()) {
-    _blueCherry.status = WALTER_MODEM_BLUECHERRY_STATUS_IDLE;
-    return true;
-  } else {
-    _blueCherry.status = WALTER_MODEM_BLUECHERRY_STATUS_NOT_CONNECTED;
-    return false;
+  bool ok = _blueCherryFinishInit();
+
+  if(rsp) {
+    rsp->type = WALTER_MODEM_RSP_DATA_TYPE_BLUECHERRY;
+    rsp->data.blueCherry.state = _blueCherry.status;
+    rsp->data.blueCherry.messageCount = 0;
   }
+
+  return ok;
 }
 
 bool WalterModem::blueCherryPublish(uint8_t topic, uint8_t len, uint8_t* data)
@@ -397,6 +405,18 @@ bool WalterModem::blueCherrySync(WalterModemRsp* rsp)
 {
   walterModemCb cb = NULL;
   void* args = NULL;
+
+  if(_blueCherry.status == WALTER_MODEM_BLUECHERRY_STATUS_NOT_PROVISIONED) {
+    /* Zero-Touch Provisioning is only attempted when blueCherryInit was given a device type id;
+     * otherwise Walter must still be provisioned manually via blueCherryProvision. */
+    if(_blueCherry.ztp.deviceTypeId == NULL || !_blueCherryZtpProvision() ||
+       !_blueCherryFinishInit()) {
+      rsp->type = WALTER_MODEM_RSP_DATA_TYPE_BLUECHERRY;
+      rsp->data.blueCherry.state = _blueCherry.status;
+      rsp->data.blueCherry.messageCount = 0;
+      _returnState(WALTER_MODEM_STATE_ERROR)
+    }
+  }
 
   if(_blueCherry.status != WALTER_MODEM_BLUECHERRY_STATUS_IDLE &&
      _blueCherry.status != WALTER_MODEM_BLUECHERRY_STATUS_NOT_CONNECTED) {

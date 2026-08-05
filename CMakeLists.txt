@@ -12,12 +12,13 @@ idf_component_register(
     SRCS "src/WalterModem.cpp"
          "src/proto/WalterCoAP.cpp"
          "src/proto/WalterBlueCherry.cpp"
+         "src/proto/WalterBlueCherryZTP.cpp"
          "src/proto/WalterGNSS.cpp"
          "src/proto/WalterHTTP.cpp"
          "src/proto/WalterMQTT.cpp"
          "src/proto/WalterSocket.cpp"
     INCLUDE_DIRS "src"
-    REQUIRES fatfs esp_partition app_update spi_flash esp_driver_uart vfs
+    REQUIRES fatfs esp_partition app_update spi_flash esp_driver_uart vfs mbedtls bootloader_support
     PRIV_REQUIRES esp_timer
 )
 
