@@ -3558,7 +3558,7 @@ after_processing_logic:
 
 #pragma endregion // RSP_PROCESSING
 #pragma region OTA
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY && CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
 
 bool WalterModem::_processOtaInitializeEvent(uint8_t* data, uint16_t len)
 {
@@ -3801,6 +3801,8 @@ bool WalterModem::_motaFormatAndMount(void)
   return true;
 }
 
+#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+
 bool WalterModem::_processMotaInitializeEvent(uint8_t* data, uint16_t len)
 {
   if(!_blueCherry.ota_buffer || len != sizeof(uint32_t)) {
@@ -3823,8 +3825,6 @@ bool WalterModem::_processMotaInitializeEvent(uint8_t* data, uint16_t len)
 
   return false;
 }
-
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
 
 bool WalterModem::_processMotaChunkEvent(uint8_t* data, uint16_t len)
 {
@@ -3854,6 +3854,8 @@ bool WalterModem::_processMotaChunkEvent(uint8_t* data, uint16_t len)
 
   return false;
 }
+
+#endif
 
 bool WalterModem::_processMotaFinishEvent(void)
 {
@@ -3908,8 +3910,6 @@ bool WalterModem::_processMotaFinishEvent(void)
     return false;
   }
 }
-
-#endif
 
 void WalterModem::offlineMotaUpgrade(uint8_t* ota_buffer)
 {

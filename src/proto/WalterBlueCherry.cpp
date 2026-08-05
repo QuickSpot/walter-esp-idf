@@ -49,14 +49,6 @@
 #include <WalterDefines.h>
 #include <esp_log.h>
 
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY && !CONFIG_WALTER_MODEM_ENABLE_MOTA
-#error Bluecherry cannot be enabled with OTA or MOTA disabled.
-#endif
-
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY && !CONFIG_WALTER_MODEM_ENABLE_SOCKETS
-#error Bluecherry cannot be enabled with sockets disabled.
-#endif
-
 #if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
 
 #pragma region PRIVATE_METHODS
