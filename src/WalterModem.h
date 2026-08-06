@@ -6142,5 +6142,4 @@ public:
 };
 
 #pragma endregion // CLASS
-
 #endif
