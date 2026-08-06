@@ -139,6 +139,13 @@ menu "walter-modem"
                         default 5684
                         help
                             The port to use for Bluecherry
+
+                    config WALTER_MODEM_BLUECHERRY_ZTP_PORT
+                        int "bluecherry zero-touch provisioning server port"
+                        default 5688
+                        help
+                            The port to use for Bluecherry Zero-Touch Provisioning, on the same
+                            host as the Bluecherry server hostname.
                 endmenu
             endif
 

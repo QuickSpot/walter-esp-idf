@@ -12,7 +12,6 @@ idf_component_register(
     SRCS "src/WalterModem.cpp"
          "src/proto/WalterCoAP.cpp"
          "src/proto/WalterBlueCherry.cpp"
-         "src/proto/WalterBlueCherryZTP.cpp"
          "src/proto/WalterGNSS.cpp"
          "src/proto/WalterHTTP.cpp"
          "src/proto/WalterMQTT.cpp"

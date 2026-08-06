@@ -117,10 +117,6 @@ for efficient configuration management."
 #error Bluecherry cannot be enabled with sockets disabled. Please enable sockets in the configuration.
 #endif
 
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY && !CONFIG_WALTER_MODEM_ENABLE_COAP
-#error Bluecherry cannot be enabled with CoAP disabled. Please enable CoAP in the configuration.
-#endif
-
 #define CONFIG_INT(name, default_value) CONFIG(name, const int, default_value)
 #define CONFIG_UINT8(name, default_value) CONFIG(name, const uint8_t, default_value)
 #define CONFIG_UINT16(name, default_value) CONFIG(name, const uint16_t, default_value)
@@ -224,6 +220,12 @@ CONFIG(WALTER_MODEM_BLUECHERRY_HOSTNAME, const char*, "coap.bluecherry.io")
  * @brief The default port for Bluecherry CoAP.
  */
 CONFIG(WALTER_MODEM_BLUECHERRY_PORT, uint16_t, 5684)
+
+/**
+ * @brief The port of the BlueCherry Zero-Touch Provisioning server. Shares the host with
+ * WALTER_MODEM_BLUECHERRY_HOSTNAME.
+ */
+CONFIG(WALTER_MODEM_BLUECHERRY_ZTP_PORT, uint16_t, 5688)
 
 #endif
 
@@ -1289,16 +1291,6 @@ typedef enum {
 #if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
 
 /**
- * @brief The CoAP profile reserved for BlueCherry Zero-Touch Provisioning (ZTP) traffic.
- */
-#define WALTER_MODEM_BLUECHERRY_ZTP_COAP_PROFILE 2
-
-/**
- * @brief The port of the BlueCherry ZTP server (on the same host as WALTER_MODEM_BLUECHERRY_HOSTNAME).
- */
-#define WALTER_MODEM_BLUECHERRY_ZTP_PORT 5688
-
-/**
  * @brief The BlueCherry ZTP server API version path element.
  */
 #define WALTER_MODEM_BLUECHERRY_ZTP_API_VERSION "v1"
@@ -1312,11 +1304,6 @@ typedef enum {
  * @brief The BlueCherry ZTP server CSR signing path element.
  */
 #define WALTER_MODEM_BLUECHERRY_ZTP_CSR_PATH "sign"
-
-/**
- * @brief The maximum number of seconds to wait for a ZTP CoAP ring.
- */
-#define WALTER_MODEM_BLUECHERRY_ZTP_TIMEOUT_S 30
 
 /**
  * @brief The number of characters in a BlueCherry ZTP Type ID or Device ID.
@@ -1784,100 +1771,16 @@ typedef struct {
   WalterModemBlueCherryMessage messages[16];
 } WalterModemBlueCherryData;
 
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
-
-/**
- * @brief This structure represents a single BlueCherry ZTP device identification parameter,
- * used to prove device identity to the ZTP server when requesting a device ID.
- */
-typedef struct {
-  /**
-   * @brief The type of device identifier.
-   */
-  WalterModemBlueCherryZtpDeviceIdParamType type;
-
-  union {
-    /**
-     * @brief A MAC address used for authentication.
-     */
-    uint8_t mac[6];
-
-    /**
-     * @brief An IMEI number in ASCII format + 0-terminator.
-     */
-    char imei[16];
-
-    /**
-     * @brief A 64-bit OOB challenge.
-     */
-    uint64_t oobChallenge;
-  } value;
-} WalterModemBlueCherryZtpDeviceIdParam;
-
-/**
- * @brief This structure represents the transient state of a BlueCherry Zero-Touch Provisioning
- * (ZTP) cycle: the device identification parameters sent to the ZTP server, and the device
- * ID/private key/certificate received back.
- */
-typedef struct {
-  /**
-   * @brief The BlueCherry Type ID associated with this firmware, set once at blueCherryInit. Not
-   * copied, so the caller must keep the pointed-to string available. NULL when ZTP is disabled.
-   */
-  const char* deviceTypeId = NULL;
-
-  /**
-   * @brief The device identification parameters to send to the ZTP server.
-   */
-  WalterModemBlueCherryZtpDeviceIdParam params[WALTER_MODEM_BLUECHERRY_ZTP_MAX_DEVICE_ID_PARAMS];
-
-  /**
-   * @brief The number of parameters currently in the params array.
-   */
-  uint8_t paramCount = 0;
-
-  /**
-   * @brief The BlueCherry device ID received from the ZTP server.
-   */
-  char deviceId[WALTER_MODEM_BLUECHERRY_ZTP_ID_LEN + 1] = {};
-
-  /**
-   * @brief The CSR subject buffer ("C=BE,CN=<deviceTypeId>.<deviceId>").
-   */
-  char subject[32] = {};
-
-  /**
-   * @brief The generated device private key in PEM format.
-   */
-  char privKeyPem[256] = {};
-
-  /**
-   * @brief The ZTP-signed device certificate in PEM format.
-   */
-  char certPem[576] = {};
-
-  /**
-   * @brief The DER-encoded certificate signing request.
-   */
-  uint8_t csr[576] = {};
-
-  /**
-   * @brief The length of the DER-encoded certificate signing request.
-   */
-  size_t csrLen = 0;
-} WalterModemBlueCherryZtpState;
-
-#endif
-
 /**
  * @brief This structure represents the state of the BlueCherry connection.
  */
 typedef struct {
   // TODO: save CoAP specific state here
   /**
-   * @brief CoAP message id of the message being composed or sent. Start at 1, 0 is invalid.
+   * @brief The CoAP message id of the last message the cloud acknowledged. Transmitted message ids
+   * start at 1, so 0 means nothing has been acknowledged yet.
    */
-  uint16_t curMessageId = 1;
+  uint16_t curMessageId = 0;
 
   /**
    * @brief The UDP socket ID of the bluecherry CoAP socket.
@@ -1980,10 +1883,14 @@ typedef struct {
 
 #if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
   /**
-   * @brief The transient state of the Zero-Touch Provisioning (ZTP) cycle, used when
-   * blueCherrySync detects that Walter is not provisioned yet.
+   * @brief The BlueCherry Type ID associated with this firmware, set once at blueCherryInit and
+   * used to enable Zero-Touch Provisioning. Not copied, so the caller must keep the pointed-to
+   * string available. NULL when ZTP is disabled.
+   *
+   * The remaining ZTP state (device id, key, CSR and certificate) is strictly transient and lives
+   * in WalterBlueCherry.cpp, so it is not carried through deep sleep.
    */
-  WalterModemBlueCherryZtpState ztp;
+  const char* ztpDeviceTypeId = NULL;
 #endif
 } WalterModemBlueCherryState;
 
@@ -4115,10 +4022,24 @@ private:
   /**
    * @brief Connect to bluecherry with a socket.
    *
+   * Both the BlueCherry cloud and the Zero-Touch Provisioning server are reached through this
+   * single socket, so that the socket URC interception in _eventProcessingTask routes their
+   * datagrams to BlueCherry rather than to the user's socket event handler.
+   *
+   * @param port The remote UDP port to dial, the BlueCherry cloud port by default.
+   *
    * @return True if successfully configured, dialed or resumed a socket. False if unable
    * to establish a connection.
    */
-  static bool _blueCherrySocketConnect();
+  static bool _blueCherrySocketConnect(uint16_t port = WALTER_MODEM_BLUECHERRY_PORT);
+
+  /**
+   * @brief Close the BlueCherry socket and release it back to the socket pool.
+   *
+   * Required before dialing a different port or reconfiguring the TLS profile, since
+   * _blueCherrySocketConnect returns successfully for an already opened socket.
+   */
+  static void _blueCherrySocketDisconnect();
 
   /**
    * @brief The custom socket event handler for bluecherry communications.
@@ -4128,23 +4049,45 @@ private:
 
   /**
    * @brief Write the outgoing buffer's CoAP headers and set them accordingly.
+   *
+   * Writes the 4 byte CoAP header plus the payload marker, which is exactly the
+   * WALTER_MODEM_BLUECHERRY_COAP_HEADER_SIZE bytes that blueCherryPublish reserves.
    */
-  static void _blueCherrySetCoapHeaders(uint8_t code, uint8_t tokenLen, uint16_t msgId);
+  static void _blueCherrySetCoapHeaders(uint8_t code, uint16_t msgId);
 
   /**
-   * @brief Send data to bluecherry over a UDP socket using a custom tailored CoAP protocol.
+   * @brief Determine the CoAP message id to use for the next transmission.
+   *
+   * The message id is only committed to _blueCherry.curMessageId once the cloud acknowledges it,
+   * so a retried transmission reuses the same id.
+   *
+   * @return The message id of the next transmission, never 0.
+   */
+  static uint16_t _blueCherryCoapNextMessageId();
+
+  /**
+   * @brief Transmit the outgoing buffer and wait for the matching CoAP acknowledgement.
+   *
+   * Implements the RFC 7252 confirmable message retransmission scheme. Datagrams that are
+   * malformed, are not an acknowledgement or carry a different message id are discarded while
+   * the wait continues. On success _blueCherry.curMessageId is committed and the parsed response
+   * header is available to the caller.
+   *
+   * @param txLen The number of bytes to send from _blueCherry.messageOut.
+   * @param txMsgId The message id written into the outgoing CoAP header.
+   *
+   * @return True on successfull transmission and received acknowledgement. False when no
+   * acknowledgement was received in the CoAP timeout period.
+   */
+  static bool _blueCherryCoapTransmit(uint16_t txLen, uint16_t txMsgId);
+
+  /**
+   * @brief Send the composed BlueCherry payload to the cloud and interpret the response code.
    *
    * @return True on successfull transmission and received acknowledgement. False when no
    * acknowledgement was received in the CoAP timeout period.
    */
   static bool _blueCherryCoapSend();
-
-  /**
-   * @brief Process the incoming bluecherry CoAP datagram.
-   *
-   * @return True if successfully processed the datagram, False if malformed.
-   */
-  static bool _blueCherryCoapProcessResponse(uint16_t dataReceived, uint8_t* dataBuffer);
 
   /**
    * @brief Finish BlueCherry initialization once credentials are known to be present.
@@ -4188,10 +4131,30 @@ private:
                                                  uint64_t number);
 
   /**
+   * @brief Perform one request/response exchange with the BlueCherry ZTP server.
+   *
+   * Builds a confirmable CoAP GET for "<API version>/<path segment>" carrying the given payload
+   * into _blueCherry.messageOut, transmits it over the BlueCherry socket and copies the payload
+   * of the response out.
+   *
+   * @param path_segment The resource path segment following the API version.
+   * @param payload The request payload, may be NULL.
+   * @param payload_len The length of the request payload.
+   * @param rx_buf The buffer receiving the response payload.
+   * @param rx_buf_size The size of the response buffer.
+   * @param rx_len Set to the number of response payload bytes written into rx_buf.
+   *
+   * @return True on success, false on error.
+   */
+  static bool _blueCherryZtpTransact(const char* path_segment, const uint8_t* payload,
+                                     size_t payload_len, uint8_t* rx_buf, size_t rx_buf_size,
+                                     uint16_t* rx_len);
+
+  /**
    * @brief Request a provisional BlueCherry device ID from the ZTP server.
    *
-   * Connects a dedicated CoAP context to the ZTP server and sends the CBOR-encoded device type
-   * ID and identification parameters. The response is decoded into _blueCherry.ztp.deviceId.
+   * Sends the CBOR-encoded device type ID and identification parameters to the ZTP server. The
+   * response is decoded into the device ID this cycle will request a certificate for.
    *
    * @return True on success, false on error.
    */
@@ -4201,7 +4164,7 @@ private:
    * @brief Generate a new device private key and certificate signing request.
    *
    * Generates a SECP256R1 keypair using the ESP32 hardware random number generator and builds a
-   * CSR with subject "C=BE,CN=<deviceTypeId>.<deviceId>", stored into _blueCherry.ztp.
+   * CSR with subject "C=BE,CN=<deviceTypeId>.<deviceId>".
    *
    * @return True on success, false on error.
    */
@@ -5077,11 +5040,12 @@ public:
   static bool blueCherrySync(WalterModemRsp* rsp);
 
   /**
-   * @brief Close the BlueCherry platform CoAP connection.
+   * @brief Close the BlueCherry platform connection.
    *
-   * This function will close the CoAP connection to the Bluecherry cloud platform. Usually
-   * there is no need to call this function, unless using deep sleep mode (which might cause a
-   * modem bug in the latest modem firmware versions).
+   * This function will close the socket carrying the CoAP connection to the Bluecherry cloud
+   * platform and return BlueCherry to the uninitialized state, so that a subsequent
+   * blueCherryInit reconnects. Usually there is no need to call this function, unless using deep
+   * sleep mode (which might cause a modem bug in the latest modem firmware versions).
    *
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.

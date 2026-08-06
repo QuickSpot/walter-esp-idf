@@ -56,7 +56,7 @@
 
 // The cellular Access Point Name
 // Leave blank for autodetection
-#define CELLULAR_APN ""
+#define CELLULAR_APN "soracom.io"
 
 // Define BlueCherry cloud device ID
 #define BC_DEVICE_TYPE "walter01"

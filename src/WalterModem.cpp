@@ -1633,6 +1633,11 @@ void WalterModem::_eventProcessingTask(void* args)
          qItem.socket.data.conn_id == _blueCherry.bcSocketId) {
         if(qItem.socket.event == WALTER_MODEM_SOCKET_EVENT_RING) {
           uint16_t bcdatalen = qItem.socket.data.data_len;
+          if(bcdatalen > WALTER_MODEM_MAX_INCOMING_MESSAGE_LEN) {
+            ESP_LOGE("WalterModem", "Dropping %u byte BlueCherry ring, exceeds the %u byte maximum",
+                     (unsigned) bcdatalen, (unsigned) WALTER_MODEM_MAX_INCOMING_MESSAGE_LEN);
+            continue;
+          }
           uint8_t bcdata[bcdatalen];
           if(socketReceive(_blueCherry.bcSocketId, bcdata, bcdatalen)) {
             _blueCherrySocketEventHandler(WALTER_MODEM_SOCKET_EVENT_RING, bcdatalen, bcdata);
