@@ -161,11 +161,6 @@ RTC_DATA_ATTR walter_modem_pdp_context_t _pdpCtxSetRTC[WALTER_MODEM_MAX_PDP_CTXT
 RTC_DATA_ATTR WalterModemCoapContext _coapCtxSetRTC[WALTER_MODEM_MAX_COAP_PROFILES] = {};
 
 #endif
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
-
-RTC_DATA_ATTR WalterModemBlueCherryState blueCherryRTC = {};
-
-#endif
 #if CONFIG_WALTER_MODEM_ENABLE_MQTT
 
 RTC_DATA_ATTR WalterModemMqttTopic _mqttTopicSetRTC[WALTER_MODEM_MQTT_MAX_TOPICS] = {};
@@ -1626,29 +1621,6 @@ void WalterModem::_eventProcessingTask(void* args)
 
       /* Small delay to allow rsp processor to complete */
       vTaskDelay(pdMS_TO_TICKS(10));
-
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
-
-      if(qItem.type == WALTER_MODEM_EVENT_TYPE_SOCKET &&
-         qItem.socket.data.conn_id == _blueCherry.bcSocketId) {
-        if(qItem.socket.event == WALTER_MODEM_SOCKET_EVENT_RING) {
-          uint16_t bcdatalen = qItem.socket.data.data_len;
-          if(bcdatalen > WALTER_MODEM_MAX_INCOMING_MESSAGE_LEN) {
-            ESP_LOGE("WalterModem", "Dropping %u byte BlueCherry ring, exceeds the %u byte maximum",
-                     (unsigned) bcdatalen, (unsigned) WALTER_MODEM_MAX_INCOMING_MESSAGE_LEN);
-            continue;
-          }
-          uint8_t bcdata[bcdatalen];
-          if(socketReceive(_blueCherry.bcSocketId, bcdata, bcdatalen)) {
-            _blueCherrySocketEventHandler(WALTER_MODEM_SOCKET_EVENT_RING, bcdatalen, bcdata);
-          }
-        } else if(qItem.socket.event == WALTER_MODEM_SOCKET_EVENT_DISCONNECTED) {
-          _blueCherrySocketEventHandler(WALTER_MODEM_SOCKET_EVENT_DISCONNECTED, 0, nullptr);
-        }
-        continue;
-      }
-
-#endif
 
       _dispatchEvent(&qItem);
     }
@@ -3562,180 +3534,6 @@ after_processing_logic:
 }
 
 #pragma endregion // RSP_PROCESSING
-#pragma region OTA
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
-
-bool WalterModem::_processOtaInitializeEvent(uint8_t* data, uint16_t len)
-{
-  if(!_blueCherry.ota_buffer || len != sizeof(uint32_t)) {
-    return true;
-  }
-
-  _blueCherry.otaSize = *((uint32_t*) data);
-
-  /* check if there is enough space on the update partition */
-  _blueCherry.otaPartition = esp_ota_get_next_update_partition(NULL);
-  if(!_blueCherry.otaPartition || _blueCherry.otaSize > _blueCherry.otaPartition->size ||
-     _blueCherry.otaSize == 0) {
-    ESP_LOGD("WalterModem", "OTA init: no OTA partition or size 0 or %lu > %lu",
-             _blueCherry.otaSize, _blueCherry.otaPartition->size);
-    return true;
-  }
-
-  /* initialize buffer and state */
-  _blueCherry.otaBufferPos = 0;
-  _blueCherry.otaProgress = 0;
-
-  ESP_LOGD("WalterModem", "OTA init: size %lu <= partition size %lu", _blueCherry.otaSize,
-           _blueCherry.otaPartition->size);
-
-  return false;
-}
-
-bool WalterModem::_otaBufferToFlash(void)
-{
-  /* first bytes of new firmware must be postponed so
-   * partially written firmware is not bootable just yet
-   */
-  uint8_t skip = 0;
-
-  if(!_blueCherry.otaProgress) {
-    /* meanwhile check for the magic byte */
-    if(_blueCherry.ota_buffer[0] != ESP_IMAGE_HEADER_MAGIC) {
-      ESP_LOGD("WalterModem", "OTA chunk: magic header not found");
-      return false;
-    }
-
-    skip = ENCRYPTED_BLOCK_SIZE;
-    memcpy(_blueCherry.otaSkipBuffer, _blueCherry.ota_buffer, skip);
-  }
-
-  size_t flashOffset = _blueCherry.otaPartition->address + _blueCherry.otaProgress;
-
-  // if it's the block boundary, than erase the whole block from here
-  bool blockErase = (_blueCherry.otaSize - _blueCherry.otaProgress >= SPI_FLASH_BLOCK_SIZE) &&
-                    (flashOffset % SPI_FLASH_BLOCK_SIZE == 0);
-
-  // sector belong to unaligned partition heading block
-  bool partitionHeadSectors =
-      _blueCherry.otaPartition->address % SPI_FLASH_BLOCK_SIZE &&
-      flashOffset <
-          (_blueCherry.otaPartition->address / SPI_FLASH_BLOCK_SIZE + 1) * SPI_FLASH_BLOCK_SIZE;
-
-  // sector belong to unaligned partition tailing block
-  bool partitionTailSectors =
-      flashOffset >= (_blueCherry.otaPartition->address + _blueCherry.otaSize) /
-                         SPI_FLASH_BLOCK_SIZE * SPI_FLASH_BLOCK_SIZE;
-
-  if(blockErase || partitionHeadSectors || partitionTailSectors) {
-    if(esp_partition_erase_range(_blueCherry.otaPartition, _blueCherry.otaProgress,
-                                 blockErase ? SPI_FLASH_BLOCK_SIZE : SPI_FLASH_SEC_SIZE) !=
-       ESP_OK) {
-      ESP_LOGD("WalterModem", "OTA chunk: could not erase partition");
-      return false;
-    }
-  }
-
-  if(esp_partition_write(_blueCherry.otaPartition, _blueCherry.otaProgress + skip,
-                         (uint32_t*) _blueCherry.ota_buffer + skip / sizeof(uint32_t),
-                         _blueCherry.otaBufferPos - skip) != ESP_OK) {
-    ESP_LOGD("WalterModem", "OTA chunk: could not write data to partition");
-    return false;
-  }
-
-  _blueCherry.otaProgress += _blueCherry.otaBufferPos;
-  _blueCherry.otaBufferPos = 0;
-
-  return true;
-}
-
-bool WalterModem::_processOtaChunkEvent(uint8_t* data, uint16_t len)
-{
-  if(!_blueCherry.otaSize || len == 0 || _blueCherry.otaProgress + len > _blueCherry.otaSize) {
-    ESP_LOGD("WalterModem", "OTA: cancelled because empty chunk or chunk beyond update size");
-    /**
-     * TODO: Replace hard reset with immediate response to bluecherry that OTA was aborted.
-     *
-     * Reason for hard reset: The cloud will continue to send OTA data and assume it
-     * completes successfully unless the connection is aborted.
-     */
-    // vTaskDelay(5000);
-    // esp_restart();
-    return true;
-  }
-
-  size_t left = len;
-
-  while((_blueCherry.otaBufferPos + left) > SPI_FLASH_SEC_SIZE) {
-    size_t toBuff = SPI_FLASH_SEC_SIZE - _blueCherry.otaBufferPos;
-
-    memcpy(_blueCherry.ota_buffer + _blueCherry.otaBufferPos, data + (len - left), toBuff);
-    _blueCherry.otaBufferPos += toBuff;
-
-    if(!_otaBufferToFlash()) {
-      ESP_LOGD("WalterModem", "OTA chunk: failed to write to flash (within loop)");
-      return true;
-    } else {
-      ESP_LOGD("WalterModem", "OTA chunk written to flash; progress = %lu / %lu",
-               _blueCherry.otaProgress, _blueCherry.otaSize);
-    }
-
-    left -= toBuff;
-  }
-
-  memcpy(_blueCherry.ota_buffer + _blueCherry.otaBufferPos, data + (len - left), left);
-  _blueCherry.otaBufferPos += left;
-
-  if(_blueCherry.otaProgress + _blueCherry.otaBufferPos == _blueCherry.otaSize) {
-    if(!_otaBufferToFlash()) {
-      ESP_LOGD("WalterModem", "OTA chunk: failed to write to flash (remainder)");
-      return true;
-    } else {
-      ESP_LOGD("WalterModem", "OTA remainder written to flash; progress = %lu / %lu",
-               _blueCherry.otaProgress, _blueCherry.otaSize);
-    }
-  }
-
-  return false;
-}
-
-bool WalterModem::_processOtaFinishEvent(void)
-{
-  if(!_blueCherry.otaSize || _blueCherry.otaProgress != _blueCherry.otaSize) {
-    return true;
-  }
-
-  /* enable partition: write the stashed first bytes */
-  if(esp_partition_write(_blueCherry.otaPartition, 0, (uint32_t*) _blueCherry.otaSkipBuffer,
-                         ENCRYPTED_BLOCK_SIZE) != ESP_OK) {
-    ESP_LOGD("WalterModem", "OTA Finish: Could not write start of boot sector to partition");
-    return true;
-  }
-
-  /* check if partition is bootable */
-  if(esp_partition_read(_blueCherry.otaPartition, 0, (uint32_t*) _blueCherry.otaSkipBuffer,
-                        ENCRYPTED_BLOCK_SIZE) != ESP_OK) {
-    ESP_LOGD("WalterModem", "OTA Finish: Could not read boot partition");
-    return true;
-  }
-  if(_blueCherry.otaSkipBuffer[0] != ESP_IMAGE_HEADER_MAGIC) {
-    ESP_LOGD("WalterModem", "OTA Finish: Magic header is missing on partition");
-    return true;
-  }
-
-  if(esp_ota_set_boot_partition(_blueCherry.otaPartition)) {
-    ESP_LOGD("WalterModem", "OTA Finish: Could not set boot partition");
-    return true;
-  }
-
-  ESP_LOGD("WalterModem", "OTA Finish: set boot partition. Booting in new firmware.");
-  esp_restart();
-
-  return false;
-}
-
-#endif
-#pragma endregion
 #pragma region MOTA_BLUECHERRY
 #if CONFIG_WALTER_MODEM_ENABLE_MOTA
 
@@ -4133,11 +3931,6 @@ void WalterModem::_sleepPrepare()
   memcpy(_socketCtxSetRTC, _socketSet, WALTER_MODEM_MAX_SOCKETS * sizeof(WalterModemSocket));
 
 #endif
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
-
-  blueCherryRTC = _blueCherry;
-
-#endif
 }
 
 void WalterModem::_sleepWakeup()
@@ -4171,11 +3964,6 @@ void WalterModem::_sleepWakeup()
 
   memcpy(_socketSet, _socketCtxSetRTC, WALTER_MODEM_MAX_SOCKETS * sizeof(WalterModemSocket));
   WalterModem::socketGetState();
-
-#endif
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
-
-  _blueCherry = blueCherryRTC;
 
 #endif
 }
@@ -4385,11 +4173,6 @@ bool WalterModem::softReset(WalterModemRsp* rsp, walterModemCb cb, void* args)
   }
 
 #endif
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
-
-  _blueCherry.bcSocketId = 0;
-
-#endif
 
   _operator = {};
   _returnAfterReply();
@@ -4444,11 +4227,6 @@ bool WalterModem::reset(WalterModemRsp* rsp, walterModemCb cb, void* args)
   for(int i = 0; i < WALTER_MODEM_MAX_HTTP_PROFILES; ++i) {
     _httpContextSet[i] = {};
   }
-
-#endif
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
-
-  _blueCherry.bcSocketId = 0;
 
 #endif
 

@@ -58,15 +58,6 @@
 // Leave blank for autodetection
 #define CELLULAR_APN "soracom.io"
 
-// Define BlueCherry cloud device ID
-#define BC_DEVICE_TYPE "walter01"
-
-// Define modem TLS profile used for BlueCherry cloud platform
-#define BC_TLS_PROFILE 1
-
-// Buffer to store OTA firmware messages in
-uint8_t ota_buffer[SPI_FLASH_BLOCK_SIZE] = { 0 };
-
 /**
  * @brief The modem instance.
  */
@@ -273,60 +264,6 @@ static void myNetworkEventHandler(WMNetworkEventType event, const WMNetworkEvent
   }
 }
 
-// This function will poll the BlueCherry cloud platform to check if there is an
-// incoming MQTT message or new firmware version available. If a new firmware
-// version is available, the device automatically downloads and reboots with the
-// new firmware.
-void syncBlueCherry()
-{
-  WalterModemRsp rsp = {};
-  int attempt = 0;
-  bool fail = false;
-
-  do {
-    if(!modem.blueCherrySync(&rsp)) {
-      ESP_LOGE(TAG, "Error during BlueCherry cloud platform synchronisation: %d",
-               rsp.data.blueCherry.state);
-      modem.reset();
-      lteConnect();
-      attempt++;
-      fail = true;
-    } else {
-      attempt = 0;
-      fail = false;
-      for(uint8_t msgIdx = 0; msgIdx < rsp.data.blueCherry.messageCount; msgIdx++) {
-        if(rsp.data.blueCherry.messages[msgIdx].topic == 0) {
-          ESP_LOGI(TAG, "Downloading new firmware version: %d%% complete",
-                   modem.blueCherryGetOtaProgressPercentage());
-          break;
-        } else {
-          ESP_LOGI(TAG, "Incoming message %d/%d:", msgIdx + 1, rsp.data.blueCherry.messageCount);
-          ESP_LOGI(TAG, "Topic: %02x\r\n", rsp.data.blueCherry.messages[msgIdx].topic);
-          ESP_LOGI(TAG, "Data size: %d\r\n", rsp.data.blueCherry.messages[msgIdx].dataSize);
-
-          rsp.data.blueCherry.messages[msgIdx].data[rsp.data.blueCherry.messages[msgIdx].dataSize] =
-              '\0';
-
-          ESP_LOGI(TAG, "%s", rsp.data.blueCherry.messages[msgIdx].data);
-        }
-      }
-    }
-  } while(!rsp.data.blueCherry.syncFinished || (fail && attempt < 3));
-
-  ESP_LOGI(TAG, "Synchronized with BlueCherry cloud platform");
-  return;
-}
-
-// This function initializes the connection to the BlueCherry cloud platform. If Walter is not
-// yet provisioned, the first call to syncBlueCherry() will automatically perform Zero-Touch
-// Provisioning (fetching a device ID and a signed certificate from the BlueCherry ZTP server)
-// before resuming normal synchronization.
-bool configureBluecherry()
-{
-  WalterModemRsp rsp = {};
-  return modem.blueCherryInit(BC_TLS_PROFILE, ota_buffer, &rsp, 60, BC_DEVICE_TYPE);
-}
-
 extern "C" void app_main(void)
 {
   WalterModemRsp rsp = {};
@@ -349,17 +286,6 @@ extern "C" void app_main(void)
                   "in 10 seconds");
     vTaskDelay(pdMS_TO_TICKS(10000));
     esp_restart();
-  }
-
-  /* Configure BlueCherry on first boot */
-  if(esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_UNDEFINED) {
-    if(configureBluecherry()) {
-      ESP_LOGI(TAG, "Successfully initialized BlueCherry");
-    } else {
-      /* Walter is not provisioned yet: the first syncBlueCherry() call below will
-       * automatically perform Zero-Touch Provisioning before synchronizing. */
-      ESP_LOGW(TAG, "BlueCherry is not provisioned yet, Zero-Touch Provisioning will run on sync");
-    }
   }
 
   /* Enable temperature monitoring */
@@ -413,16 +339,11 @@ extern "C" void app_main(void)
     ESP_LOGE(TAG, "Could not disable voltage monitoring");
   }
 
-  /* Send a message to BlueCherry with sensor data */
   char msg[128];
   snprintf(msg, sizeof(msg),
            "{\"message\":\"Hello from Walter Modem!\",\"temperature\":%d,\"voltage\":%d}",
            temperature, voltage);
-  ESP_LOGI(TAG, "Publishing to BlueCherry: %s", msg);
-  modem.blueCherryPublish(0x84, strlen(msg), (uint8_t*) msg);
-
-  /* Poll BlueCherry platform if an incoming message or firmware update is available */
-  syncBlueCherry();
+  ESP_LOGI(TAG, "%s", msg);
 
   ESP_LOGI(TAG, "I'm tired, I'm going to deep sleep now for 5 minutes...");
   modem.sleep(60 * 5);
