@@ -121,8 +121,16 @@ menu "walter-modem"
                 default y
                 select WALTER_MODEM_ENABLE_MOTA
                 select WALTER_MODEM_ENABLE_SOCKETS
+                select MBEDTLS_X509_CREATE_C
+                select MBEDTLS_X509_CSR_WRITE_C
                 help
-                    Enable BlueCherry IoT functionality
+                    Enable BlueCherry IoT functionality.
+
+                    MBEDTLS_X509_CREATE_C and MBEDTLS_X509_CSR_WRITE_C are requirements rather
+                    than preferences: Zero-Touch Provisioning builds its request with the X.509
+                    CSR writer. ESP-IDF 6 made them optional and defaults them off, which breaks
+                    provisioning at link time; earlier versions compile them in unconditionally
+                    and have no such symbols, where selecting them is silently ignored.
 
             if WALTER_MODEM_ENABLE_BLUECHERRY
                 menu "Bluecherry"
@@ -146,6 +154,30 @@ menu "walter-modem"
                         help
                             The port to use for Bluecherry Zero-Touch Provisioning, on the same
                             host as the Bluecherry server hostname.
+
+                    config WALTER_MODEM_BLUECHERRY_PUBLISH_BUFFER_SIZE
+                        int "publish buffer size (bytes)"
+                        default 4096
+                        range 256 262144
+                        help
+                            Size of the buffer holding messages that are waiting to be published,
+                            used only when the application passes no buffer of its own to
+                            WalterBlueCherry::init. Each queued message costs its payload plus 9
+                            bytes; a message that does not fit in the buffer can never be queued
+                            at all. Pass a buffer to place this in PSRAM or in memory the
+                            application reserved itself.
+
+                    config WALTER_MODEM_BLUECHERRY_SYNC_TASK_STACK_SIZE
+                        int "synchronisation task stack size (bytes)"
+                        default 8192
+                        range 4096 32768
+                        help
+                            Stack for the background synchronisation task, which runs every
+                            network operation BlueCherry performs. The deepest path is
+                            Zero-Touch Provisioning: a DTLS handshake, then CBOR exchanges
+                            holding a few kilobytes in nested frames, then a SECP256R1 key
+                            generation. 4096 is not enough for that and overflows. Lower it only
+                            if you never use ZTP.
                 endmenu
             endif
 

@@ -227,6 +227,23 @@ CONFIG(WALTER_MODEM_BLUECHERRY_PORT, uint16_t, 5684)
  */
 CONFIG(WALTER_MODEM_BLUECHERRY_ZTP_PORT, uint16_t, 5688)
 
+/**
+ * @brief The size of the buffer holding messages waiting to be published, in bytes.
+ *
+ * Used only when the application passes no buffer of its own to WalterBlueCherry::init. Each
+ * queued message costs its payload plus 9 bytes.
+ */
+CONFIG_INT(WALTER_MODEM_BLUECHERRY_PUBLISH_BUFFER_SIZE, 4096)
+
+/**
+ * @brief The stack of the BlueCherry synchronisation task, in bytes.
+ *
+ * The task runs every network operation BlueCherry performs. The deepest path is Zero-Touch
+ * Provisioning: a DTLS handshake, then CBOR exchanges holding a few kilobytes in nested frames,
+ * then a SECP256R1 key generation. 4096 is not enough for that and overflows.
+ */
+CONFIG_INT(WALTER_MODEM_BLUECHERRY_SYNC_TASK_STACK_SIZE, 8192)
+
 #endif
 
 /**

@@ -298,8 +298,9 @@ typedef void (*walterModemBlueCherryMsgHandler)(uint8_t topic, uint16_t len, con
 /**
  * @brief Handler notified of every connection state change.
  *
- * Called on every transition, from the synchronisation task, so it must not block. Calling
- * blueCherrySync from it is safe, since that only signals the task.
+ * Called on every transition and must not block. Usually that is the synchronisation task, but a
+ * publish or a sync request reports the work it just created before returning, so it can also run
+ * on whichever task made that call.
  *
  * @param state The state just entered.
  * @param args The argument given to blueCherrySetStateHandler.
@@ -415,6 +416,9 @@ public:
    * to report BLUECHERRY_STATE_IDLE, or use a state handler, to know that everything queued has
    * gone out and everything queued at the cloud has come in.
    *
+   * The state leaves BLUECHERRY_STATE_IDLE before this returns, so a caller may poll it straight
+   * away without racing the task.
+   *
    * @return True when the task was signalled, false when BlueCherry is not initialized.
    */
   static bool sync();
@@ -523,6 +527,57 @@ public:
    * @return The announced image size in bytes, or 0 when no update is running.
    */
   static size_t getOtaSize();
+
+  /**
+   * =============================================================================================
+   * Bridges to the modem driver. Not part of the API; they exist because the implementation is
+   * written as file static helpers rather than as members, and the friendship that lets this class
+   * reach WalterModem's internals does not extend to those.
+   * =============================================================================================
+   */
+
+  /**
+   * @brief Reserve a modem socket for the BlueCherry session.
+   *
+   * @return The reserved socket id, or -1 when the pool is exhausted.
+   */
+  static int _reserveSocket();
+
+  /**
+   * @brief The staging buffer shared with the modem firmware upgrade paths.
+   *
+   * @return The buffer, or NULL when the application supplied none.
+   */
+  static uint8_t* _otaBuffer();
+
+  /**
+   * @brief The announced size of the firmware transfer in progress.
+   *
+   * @return A reference to the size in bytes.
+   */
+  static uint32_t& _otaSize();
+
+  /**
+   * @brief The number of bytes of the firmware transfer committed so far.
+   *
+   * @return A reference to the progress in bytes.
+   */
+  static uint32_t& _otaProgress();
+
+  /**
+   * @brief Hand a modem firmware update event to the modem driver.
+   *
+   * Events 5 to 8 belong to the modem rather than to the application processor, so BlueCherry only
+   * routes them. The handlers report whether an error should be sent back to the cloud, so the
+   * sense of the result is inverted compared with everything else here.
+   *
+   * @param event The BlueCherry event type, which must be one of the modem firmware events.
+   * @param data The event payload, without the event type byte.
+   * @param len The length of the payload.
+   *
+   * @return True when the cloud should be told the update failed.
+   */
+  static bool _motaDispatch(uint8_t event, uint8_t* data, uint16_t len);
 
 private:
   /**
