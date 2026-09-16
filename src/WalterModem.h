@@ -3002,8 +3002,20 @@ struct WalterModemStpResponseTransferBlock {
  * @brief The WalterModem class allows you to use the Sequans Monarch 2 modem and positioning
  * functionality.
  */
+#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+class WalterBlueCherry;
+#endif
+
 class WalterModem
 {
+#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+  /* BlueCherry is layered on top of the modem driver rather than part of it, but it reaches for
+   * three things the public API does not expose: socket reservation, socket lookup and the TLS
+   * credential presence check. It also shares the firmware staging buffer with the modem firmware
+   * upgrade paths. */
+  friend class WalterBlueCherry;
+#endif
+
 #pragma region CLASS PRIVATE
 private:
 #pragma region CLASS PRIVATE VARIABLES
@@ -3715,6 +3727,34 @@ private:
   static void _processModemRSP(WalterModemCmd* cmd, WalterModemBuffer* rsp);
 
 #pragma endregion
+#pragma region CLASS PRIVATE FIRMWARE TRANSFER STATE
+#if CONFIG_WALTER_MODEM_ENABLE_MOTA || CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+
+  /**
+   * @brief The staging buffer shared by every firmware transfer path.
+   *
+   * Used by the modem firmware upgrade over STP, by the modem firmware update over BlueCherry,
+   * and by the ESP32 update in WalterBlueCherry. It is supplied by the application, either
+   * through WalterBlueCherry::init or through offlineMotaUpgrade, and is NULL when it supplied
+   * none - in which case every transfer path must refuse rather than write through it.
+   *
+   * It lives here rather than in WalterBlueCherry because two of its three users are part of the
+   * modem driver itself and must keep working with BlueCherry compiled out.
+   */
+  static inline uint8_t* _otaBuffer = NULL;
+
+  /**
+   * @brief The announced size of the firmware transfer in progress, in bytes.
+   */
+  static inline uint32_t _otaSize = 0;
+
+  /**
+   * @brief The number of bytes of the transfer in progress committed so far.
+   */
+  static inline uint32_t _otaProgress = 0;
+
+#endif
+#pragma endregion
 #pragma region CLASS PRIVATE METHODS MOTA
 #if CONFIG_WALTER_MODEM_ENABLE_MOTA
 
@@ -4412,6 +4452,89 @@ public:
 #endif
 #pragma endregion
 
+
+  /**
+   * =============================================================================================
+   * BLUECHERRY FUNCTIONS (DEPRECATED)
+   * =============================================================================================
+   */
+
+#pragma region CLASS PUBLIC METHODS PROTO BLUECHERRY
+#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+
+  /**
+   * @brief Upload BlueCherry credentials to the modem.
+   *
+   * @param cert_pem The device certificate in PEM format.
+   * @param priv_key_pem The device private key in PEM format.
+   * @param ca_cert The BlueCherry CA chain in PEM format.
+   * @param rsp Ignored, the call is always synchronous.
+   * @param cb Ignored, the call is always synchronous.
+   * @param args Ignored, the call is always synchronous.
+   *
+   * @return True on success, false on error.
+   */
+  [[deprecated("Use WalterBlueCherry::provision instead")]] static bool
+  blueCherryProvision(const char* cert_pem, const char* priv_key_pem, const char* ca_cert,
+                      WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+
+  /**
+   * @brief Check whether the modem holds BlueCherry credentials.
+   *
+   * @return True when the certificate, key and CA are all present, false otherwise.
+   */
+  [[deprecated("Use WalterBlueCherry::isProvisioned instead")]] static bool
+  blueCherryIsProvisioned();
+
+  /**
+   * @brief Queue a message for publication.
+   *
+   * @param topic The single byte topic index the cloud maps to an MQTT topic.
+   * @param len The number of bytes in data.
+   * @param data The payload, which is copied.
+   *
+   * @return True when queued, false on error.
+   */
+  [[deprecated("Use WalterBlueCherry::publish instead")]] static bool
+  blueCherryPublish(uint8_t topic, uint8_t len, uint8_t* data);
+
+  /**
+   * @brief Close the BlueCherry session and release the modem socket.
+   *
+   * @param rsp Ignored, the call is always synchronous.
+   * @param cb Ignored, the call is always synchronous.
+   * @param args Ignored, the call is always synchronous.
+   *
+   * @return True on success, false on error.
+   */
+  [[deprecated("Use WalterBlueCherry::close instead")]] static bool
+  blueCherryClose(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+
+  /**
+   * @brief Get the progress of the firmware update in progress, as a percentage.
+   *
+   * @return The percentage of the image written to flash.
+   */
+  [[deprecated("Use WalterBlueCherry::getOtaProgressPercentage instead")]] static size_t
+  blueCherryGetOtaProgressPercentage();
+
+  /**
+   * @brief Get the progress of the firmware update in progress, in bytes.
+   *
+   * @return The number of bytes written to flash.
+   */
+  [[deprecated("Use WalterBlueCherry::getOtaProgressBytes instead")]] static size_t
+  blueCherryGetOtaProgressBytes();
+
+  /**
+   * @brief Get the total size of the firmware update in progress.
+   *
+   * @return The announced image size in bytes, or 0 when no update is running.
+   */
+  [[deprecated("Use WalterBlueCherry::getOtaSize instead")]] static size_t blueCherryGetOtaSize();
+
+#endif
+#pragma endregion
 
   /**
    * =============================================================================================

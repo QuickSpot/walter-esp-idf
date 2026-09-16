@@ -51,7 +51,7 @@
  * without manufacturing-time credentials.
  */
 
-#include <WalterDefines.h>
+#include <WalterBlueCherry.h>
 #include <esp_log.h>
 
 #if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
