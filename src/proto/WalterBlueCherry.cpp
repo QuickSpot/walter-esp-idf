@@ -531,6 +531,9 @@ typedef struct {
 
   uint16_t pending_event_len;
   uint8_t pending_event[BLUECHERRY_PENDING_EVENT_SIZE];
+
+  /** @brief Set on the INIT_INFO ack, not by _sleepPrepare, and read without the magic check. */
+  bool init_info_acked;
 } _bluecherry_rtc_t;
 
 #pragma endregion
@@ -1631,9 +1634,8 @@ static bool _bluecherry_info_add_str(uint8_t* buf, size_t cap, size_t* n, const 
 /**
  * @brief Queue INIT_INFO: the running partition hash plus optional details.
  *
- * Queued on every connect, as the first thing the new session carries. The contents cannot change
- * while the device runs, but the server tracks this per session: it is how a reconnecting device
- * re-identifies the image it is running, and how a reboot into new firmware is confirmed.
+ * Queued once per boot, as the first thing a session carries: the contents cannot change while
+ * the device runs, and it is how the server learns which image a device came up on.
  *
  * Fields MUST be written in ascending presence bit order: the server decodes positionally and
  * cannot recover from a field out of place.
@@ -3318,12 +3320,14 @@ static esp_err_t _bluecherry_sync_once(void)
       _bluecherry_ota_reset();
       _bluecherry_opdata.pending_event_len = 0;
 
-      /* Not IDLE: the INIT_INFO queued just below still has to go out. */
+      /* Not IDLE: the new session still has to run this cycle's exchange. */
       _bluecherry_set_state(BLUECHERRY_STATE_PENDING_MESSAGES);
       retry_interval_ms = 100;
 
-      /* Report the running image on every connect, not only at boot. */
-      _bluecherry_send_init_info();
+      /* Once per boot: the running image cannot change without a reset. */
+      if(!_bluecherry_rtc.init_info_acked) {
+        _bluecherry_send_init_info();
+      }
     } else {
       return ESP_ERR_NOT_FINISHED;
     }
@@ -3348,6 +3352,13 @@ static esp_err_t _bluecherry_sync_once(void)
       _bluecherry_set_state(BLUECHERRY_STATE_AWAIT_CONNECTION);
       return ESP_ERR_NOT_FINISHED;
     }
+
+    /* ESP_OK is the ACK, so the server now has this boot's INIT_INFO. */
+    if(ev.data[BLUECHERRY_COAP_HEADER_SIZE + BLUECHERRY_MQTT_HEADER_SIZE] ==
+       BLUECHERRY_EVENT_TYPE_INIT_INFO) {
+      _bluecherry_rtc.init_info_acked = true;
+    }
+
     _bluecherry_opdata.pending_event_len = 0;
 
     /* The round trip only returns ESP_OK once the ACK is in, so this is where a VERIFIED is known
