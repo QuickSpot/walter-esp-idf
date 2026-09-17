@@ -130,6 +130,11 @@ for efficient configuration management."
 #pragma region KCONFIG
 
 /**
+ * @brief The maximum number of milliseconds to wait.
+ */
+CONFIG_INT(WALTER_MODEM_CMD_TIMEOUT_MS, 180000)
+
+/**
  * @brief The maximum number of items in the CMD queue.
  */
 CONFIG_UINT8(WALTER_MODEM_CMD_QUEUE_MAX_ITEMS, 8)
@@ -4741,7 +4746,7 @@ public:
    * @return True on "OK" response, false otherwise.
    */
   static bool socketConfig(int socket_id, int pdp_ctx_id = 1, uint16_t mtu = 300,
-                           uint16_t exchange_timeout = 0, uint16_t conn_timeout = 30,
+                           uint16_t exchange_timeout = 0, uint16_t conn_timeout = 20,
                            uint16_t send_delay_ms = 5000, WalterModemRsp* rsp = NULL,
                            walterModemCb cb = NULL, void* args = NULL);
 

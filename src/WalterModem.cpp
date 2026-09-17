@@ -110,11 +110,6 @@ CONFIG_INT(WALTER_MODEM_PIN_RESET, 45)
 CONFIG_INT(WALTER_MODEM_BAUD, 115200)
 
 /**
- * @brief The maximum number of milliseconds to wait.
- */
-CONFIG_INT(WALTER_MODEM_CMD_TIMEOUT_MS, 180000)
-
-/**
  * @brief The maximum duration of an event in milliseconds.
  */
 CONFIG_INT(WALTER_MODEM_MAX_EVENT_DURATION_MS, 500)

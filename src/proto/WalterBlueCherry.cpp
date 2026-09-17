@@ -229,7 +229,7 @@ static const uint32_t BLUECHERRY_SSL_READ_TIMEOUT = 100;
 /**
  * @brief The handshake budget, handed to the modem as the socket connection timeout.
  */
-#define BLUECHERRY_HANDSHAKE_TIMEOUT_SEC 30
+#define BLUECHERRY_HANDSHAKE_TIMEOUT_SEC 20
 
 /**
  * @brief Socket tunables for the BlueCherry session.
