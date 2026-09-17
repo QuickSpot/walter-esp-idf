@@ -1869,6 +1869,7 @@ void WalterModem::_processModemRSP(WalterModemCmd* cmd, WalterModemBuffer* buff)
     if(isResponse) {
       if(mode > 0) {
         bool attached = ceReg == 5 || ceReg == 1;
+        _networkAttached = attached;
         for(size_t i = 0; i < WALTER_MODEM_MAX_PDP_CTXTS; i++) {
           if(_pdpCtxSet[i].state != WALTER_MODEM_PDP_CONTEXT_STATE_INACTIVE) {
             _pdpCtxSet[i].state = attached ? WALTER_MODEM_PDP_CONTEXT_STATE_ATTACHED
@@ -1879,6 +1880,7 @@ void WalterModem::_processModemRSP(WalterModemCmd* cmd, WalterModemBuffer* buff)
       }
     } else if(isUrc) {
       bool attached = ceReg == 5 || ceReg == 1;
+      _networkAttached = attached;
       for(size_t i = 0; i < WALTER_MODEM_MAX_PDP_CTXTS; i++) {
         if(_pdpCtxSet[i].state != WALTER_MODEM_PDP_CONTEXT_STATE_INACTIVE) {
           _pdpCtxSet[i].state = attached ? WALTER_MODEM_PDP_CONTEXT_STATE_ATTACHED

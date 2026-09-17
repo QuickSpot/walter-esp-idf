@@ -57,7 +57,7 @@
 
 // The cellular Access Point Name
 // Leave blank for autodetection
-#define CELLULAR_APN "iot.1nce.net"
+#define CELLULAR_APN "soracom.io"
 
 // The BlueCherry device type this firmware belongs to, used for Zero-Touch Provisioning
 #define BC_DEVICE_TYPE "walter01"

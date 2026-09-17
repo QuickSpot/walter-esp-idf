@@ -544,6 +544,13 @@ public:
   static int _reserveSocket();
 
   /**
+   * @brief Whether the modem last reported an attached network.
+   *
+   * @return True when a dial has something to dial into.
+   */
+  static bool _networkUp();
+
+  /**
    * @brief The staging buffer shared with the modem firmware upgrade paths.
    *
    * @return The buffer, or NULL when the application supplied none.

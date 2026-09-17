@@ -210,6 +210,11 @@ static const char* TAG = "[BlueCherry]";
 #define BLUECHERRY_RX_QUEUE_DEPTH 8
 
 /**
+ * @brief How many datagrams a resume drains before it gives up on the socket.
+ */
+#define BLUECHERRY_RESUME_DRAIN_MAX 8
+
+/**
  * @brief The priority of the BlueCherry synchronisation task.
  */
 static const UBaseType_t BLUECHERRY_SP = 10;
@@ -2044,7 +2049,7 @@ static void _bluecherry_cleanup_session(void)
  *
  * The modem is never asked for bytes it has not announced. The announcement is also what says how
  * many bytes there are, and asking without one fails with +CME ERROR, so the queue is the only
- * thing that may start a read.
+ * thing that may start a read - with one exception, _bluecherry_drain_socket.
  *
  * @param buf The buffer to read into.
  * @param len The capacity of the buffer.
@@ -3296,6 +3301,15 @@ static esp_err_t _bluecherry_sync_once(void)
 
   /* (re)connect if needed with exponential backoff (non-blocking) */
   if(_bluecherry_opdata.state == BLUECHERRY_STATE_AWAIT_CONNECTION) {
+    /* Nothing to dial into. The modem reports this on every +CEREG, polled or unsolicited, so it
+     * clears itself the moment the network is back; until then a dial would spend 20 s of RF to
+     * fail. The backoff is reset rather than advanced: the wait ends with the outage, not one
+     * interval later. */
+    if(!WalterBlueCherry::_networkUp()) {
+      retry_interval_ms = 100;
+      return ESP_ERR_NOT_FINISHED;
+    }
+
     int64_t now_us = esp_timer_get_time();
     int64_t elapsed_ms = (now_us - last_retry_time_us) / 1000;
     if(elapsed_ms >= retry_interval_ms) {
@@ -3492,6 +3506,38 @@ static esp_err_t _bluecherry_sync_once(void)
 #pragma region SLEEP
 
 /**
+ * @brief Read out and drop whatever the modem buffered while the ESP32 slept.
+ *
+ * An ACK that arrives once the exchange has settled is announced by a +SQNSRING with nobody awake
+ * to hear it. The datagram then stays in the modem and is handed back in answer to the next
+ * message instead, leaving every following cycle one buffer behind.
+ *
+ * This is the one place that asks the modem for bytes it has not announced. An empty socket, and
+ * equally a closed one, answers +CME ERROR, which is not retried and so costs a single round trip.
+ *
+ * Dropping is unconditional: the server only ever sends ACKs, and an ACK that outlived its
+ * exchange was answered before the device slept.
+ *
+ * @return True when the socket is empty, false when it would not empty.
+ */
+static bool _bluecherry_drain_socket(void)
+{
+  for(uint8_t i = 0; i < BLUECHERRY_RESUME_DRAIN_MAX; ++i) {
+    WalterModemRsp rsp = {};
+
+    if(!WalterModem::socketReceive(_bluecherry_opdata.sock, _bluecherry_opdata.in_buf,
+                                   sizeof(_bluecherry_opdata.in_buf), &rsp)) {
+      return true;
+    }
+
+    ESP_LOGD(TAG, "Dropped %uB the modem held across the sleep",
+             (unsigned) rsp.data.socketResponse.bytesReceived);
+  }
+
+  return false;
+}
+
+/**
  * @brief Take the session back out of RTC memory after a deep sleep.
  *
  * The modem stays powered across deep sleep, so the socket, the PDP context and the DTLS session
@@ -3551,12 +3597,15 @@ static bool _bluecherry_session_resume(void)
     }
   }
 
-  /* A datagram that arrived while the ESP32 was asleep is still held by the modem, and the ring
-   * notification announcing it was emitted with nobody awake to hear it. Nothing is synthesised to
-   * go and fetch it: the modem is asked for bytes only in answer to a ring notification, because
-   * the notification is also what says how many bytes there are, and a read without one fails with
-   * +CME ERROR. Such a datagram is picked up by the next notification instead, where it either
-   * answers the exchange in progress or fails the message id check and is discarded. */
+  /* Empty the modem's socket buffer before the first exchange runs, so that nothing left over
+   * from before the sleep answers it. Closing the socket is the only way to make the modem drop
+   * what a drain could not; the session then goes with it and the next cycle dials a new one. */
+  if(!_bluecherry_drain_socket()) {
+    ESP_LOGW(TAG, "Socket %d would not empty, closing it", _bluecherry_opdata.sock);
+    _bluecherry_cleanup_session();
+    _bluecherry_rtc.magic = 0;
+    return false;
+  }
 
   ESP_LOGI(TAG, "Resumed the BlueCherry session on socket %d at message %u",
            _bluecherry_opdata.sock, _bluecherry_opdata.cur_message_id);
@@ -3606,6 +3655,11 @@ void WalterBlueCherry::_sleepPrepare()
 
 #pragma endregion
 #pragma region PRIVATE_BRIDGES
+
+bool WalterBlueCherry::_networkUp()
+{
+  return WalterModem::_networkAttached;
+}
 
 int WalterBlueCherry::_reserveSocket()
 {

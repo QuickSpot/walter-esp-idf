@@ -3178,6 +3178,13 @@ private:
   static inline WalterModemNetworkRegState _regState = WALTER_MODEM_NETWORK_REG_NOT_SEARCHING;
 
   /**
+   * @brief Whether the last +CEREG reported an attached network.
+   *
+   * True until one says otherwise, so that not knowing yet reads the same as being attached.
+   */
+  static inline bool _networkAttached = true;
+
+  /**
    * @brief The current type of Radio Access Technology in use.
    */
   static inline WalterModemRAT _ratType = WALTER_MODEM_RAT_UNKNOWN;
