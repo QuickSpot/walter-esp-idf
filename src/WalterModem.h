@@ -3180,9 +3180,10 @@ private:
   /**
    * @brief Whether the last +CEREG reported an attached network.
    *
-   * True until one says otherwise, so that not knowing yet reads the same as being attached.
+   * False until one says otherwise: nothing is attached before the radio has been brought up, and
+   * a deep sleep wake asks the modem outright rather than assume its own zeroed RAM.
    */
-  static inline bool _networkAttached = true;
+  static inline bool _networkAttached = false;
 
   /**
    * @brief The current type of Radio Access Technology in use.

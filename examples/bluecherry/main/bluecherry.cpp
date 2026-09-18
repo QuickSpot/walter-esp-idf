@@ -79,10 +79,7 @@ WalterModem modem;
 WalterBlueCherry bc;
 
 /**
- * @brief Buffer to stage incoming firmware in.
- *
- * A flash sector is enough for an ESP32 update; a modem firmware update needs a whole erase
- * block, so that is what is reserved here.
+ * @brief Buffer to stage incoming firmware in, sized for a modem update's whole erase block.
  */
 uint8_t ota_buffer[SPI_FLASH_BLOCK_SIZE] = { 0 };
 
@@ -295,8 +292,8 @@ static void myNetworkEventHandler(WMNetworkEventType event, const WMNetworkEvent
 /**
  * @brief Handle a message the cloud sent down.
  *
- * Called on the BlueCherry synchronisation task with a pointer into the receive buffer, so it must
- * copy anything it keeps and must not block.
+ * Runs on the BlueCherry synchronisation task, so it must not block. The payload is a pointer into
+ * the receive buffer, so copy anything that has to outlive the call.
  *
  * @param topic The single byte topic index the cloud maps to an MQTT topic.
  * @param len The number of bytes in data.
@@ -314,21 +311,11 @@ void myMessageHandler(uint8_t topic, uint16_t len, const uint8_t* data, void* ar
 /**
  * @brief Handle a firmware update event, taking both update decisions in the application.
  *
- * Exactly two events carry a decision, and this handler takes both of them explicitly so that the
- * two calls involved are visible and easy to move:
+ * Runs on the BlueCherry synchronisation task, so it must not block.
  *
- *  - AVAILABLE: otaStart accepts the update. Returning true means "this one is mine", so nothing
- *    is downloaded until that call is made - which is where a device would instead stash the offer
- *    and start it once it is on mains power, or parked, or out of a measurement window. There is
- *    no deadline, and the event is raised again on every reconnect while the offer stands.
- *  - COMPLETE: the image is written, verified and acknowledged, and the boot partition is already
- *    set, so the only thing left to decide is when to restart into it.
- *
- * Returning false from either event hands that decision back to the library, which then downloads
- * an update as soon as it is offered and restarts as soon as it is installed - the behaviour when
- * no handler is registered at all. A handler that only logs is therefore free to return false
- * everywhere and change nothing. The other three events are notifications and the return value is
- * ignored.
+ * Two events carry a decision: AVAILABLE, where otaStart accepts the offer, and COMPLETE, where
+ * the image is installed and only the restart is left. Returning false hands either back to the
+ * library, which then downloads and restarts on its own. The other three are notifications.
  *
  * @param event The event that occurred.
  * @param info Details for the event, valid only for the duration of the call.
@@ -371,12 +358,9 @@ bool myOtaHandler(WalterModemBlueCherryOtaEvent event, const WalterModemBlueCher
 /**
  * @brief Report what the BlueCherry connection is doing.
  *
- * Runs on the synchronisation task, and on the calling task for the transitions that publish and
- * sync make before they return, so it must not block.
- *
- * BLUECHERRY_STATE_IDLE is the only state in which nothing is outstanding in either direction, and
- * therefore the only one in which it is safe to sleep. Setting a flag on it is what tells app_main
- * that the exchange is over.
+ * Runs on the BlueCherry synchronisation task, so it must not block. Publish and sync report the
+ * transitions they make themselves, so it can also run on the calling task. IDLE is the only state
+ * in which it is safe to sleep.
  *
  * @param state The state that was just entered.
  * @param args User arguments.
@@ -404,40 +388,19 @@ void myStateHandler(WalterModemBlueCherryState state, void* args)
   }
 }
 
-extern "C" void app_main(void)
+/**
+ * @brief Give BlueCherry its buffers and handlers.
+ *
+ * Runs on every boot: it resumes a session that survived deep sleep and re-registers the handlers
+ * and buffers, which do not survive one. Talks to the modem, never to the cloud, so it needs no
+ * network and there is nothing to retry.
+ *
+ * @return True when BlueCherry is ready to be published to.
+ */
+static bool initializeBlueCherry(void)
 {
-  WalterModemRsp rsp = {};
-  ESP_LOGI(TAG, "\r\n\r\n=== Walter BlueCherry example (IDF v1.5.1) ===\r\n\r\n");
-
-  /* Start the modem */
-  if(modem.begin(UART_NUM_1)) {
-    ESP_LOGI(TAG, "Successfully initialized the modem");
-  } else {
-    ESP_LOGE(TAG, "Could not initialize the modem");
-    return;
-  }
-
-  /* Register network event handler */
-  modem.setNetworkEventHandler(myNetworkEventHandler, NULL);
-
-  /* Connect to cellular network */
-  if(!lteConnected() && !lteConnect()) {
-    ESP_LOGE(TAG, "Unable to connect to cellular network, restarting Walter "
-                  "in 10 seconds");
-    vTaskDelay(pdMS_TO_TICKS(10000));
-    esp_restart();
-  }
-
-  /* Initialize BlueCherry.
-   *
-   * This runs on every boot, including after deep sleep: it is what resumes a session that
-   * survived the sleep and what re-registers the handlers and the staging buffer, none of which
-   * can be carried across one. It performs no network I/O and cannot fail because the cloud is
-   * unreachable, so there is nothing to retry here.
-   *
-   * The publish buffer is placed in PSRAM. The library allocates one in internal RAM when none is
-   * supplied; either way it does not survive deep sleep, which is why the pattern below is to
-   * sync until idle and only then sleep. */
+  /* PSRAM, falling back to a library-allocated one in internal RAM. This descriptor is read during
+   * init and not kept, so only the buffer it points at has to outlive the call. */
   WalterModemBlueCherryPublishBuffer publishBuffer = {};
   publishBuffer.buffer = (uint8_t*) heap_caps_malloc(BC_PUBLISH_BUFFER_SIZE, MALLOC_CAP_SPIRAM);
   publishBuffer.size = BC_PUBLISH_BUFFER_SIZE;
@@ -447,23 +410,43 @@ extern "C" void app_main(void)
     publishBuffer.size = 0;
   }
 
-  if(bc.init(BC_TLS_PROFILE, ota_buffer, BC_DEVICE_TYPE, myMessageHandler, NULL,
-             publishBuffer.buffer != NULL ? &publishBuffer : NULL)) {
-    ESP_LOGI(TAG, "Successfully initialized BlueCherry");
-  } else {
+  if(!bc.init(BC_TLS_PROFILE, ota_buffer, BC_DEVICE_TYPE, myMessageHandler, NULL,
+              publishBuffer.buffer != NULL ? &publishBuffer : NULL)) {
     ESP_LOGE(TAG, "Could not initialize BlueCherry");
+    return false;
+  }
+
+  /* Both optional: without them the library takes the update decisions itself, and bc.getState()
+   * answers what the state handler reports. */
+  bc.setOtaHandler(myOtaHandler, NULL);
+  bc.setStateHandler(myStateHandler, NULL);
+
+  ESP_LOGI(TAG, "Successfully initialized BlueCherry");
+  return true;
+}
+
+extern "C" void app_main(void)
+{
+  WalterModemRsp rsp = {};
+  ESP_LOGI(TAG, "\r\n\r\n=== Walter BlueCherry example (IDF v1.5.1) ===\r\n\r\n");
+
+  /* 1. Start the modem. */
+  if(modem.begin(UART_NUM_1)) {
+    ESP_LOGI(TAG, "Successfully initialized the modem");
+  } else {
+    ESP_LOGE(TAG, "Could not initialize the modem");
     return;
   }
 
-  /* Optional. This handler takes both firmware update decisions itself so that the calls involved
-   * are visible; drop it, or return false from those events, and the library downloads an offered
-   * update and restarts into it on its own. */
-  bc.setOtaHandler(myOtaHandler, NULL);
+  /* 2. Register the network event handler, before anything can change the registration state. */
+  modem.setNetworkEventHandler(myNetworkEventHandler, NULL);
 
-  /* Optional. Reading bc.getState() instead is equally valid, but the handler is what lets an
-   * application be told what the connection is doing rather than go looking for it. */
-  bc.setStateHandler(myStateHandler, NULL);
+  /* 3. Hand BlueCherry its buffers and handlers. Nothing here needs the network. */
+  if(!initializeBlueCherry()) {
+    return;
+  }
 
+  /* 4. Read the sensors. Both monitors are modem-local, so they need no network either. */
   /* Enable temperature monitoring */
   if(modem.configTemperatureMonitor(WALTER_MODEM_TEMP_MONITOR_MODE_ON)) {
     ESP_LOGI(TAG, "Successfully enabled temperature monitoring");
@@ -515,7 +498,7 @@ extern "C" void app_main(void)
     ESP_LOGE(TAG, "Could not disable voltage monitoring");
   }
 
-  /* Queue a message. This never touches the network; it goes out on the next synchronisation. */
+  /* 5. Queue a message. Never touches the network; it goes out on the next synchronisation. */
   char msg[128];
   snprintf(msg, sizeof(msg),
            "{\"message\":\"Hello from Walter Modem!\",\"temperature\":%d,\"voltage\":%d}",
@@ -523,35 +506,28 @@ extern "C" void app_main(void)
   ESP_LOGI(TAG, "Publishing to BlueCherry: %s", msg);
   bc.publish(0x84, strlen(msg), (const uint8_t*) msg);
 
-  /* Ask for a synchronisation and wait for it to settle.
-   *
-   * A sleepy device drives this itself rather than using bc.setAutoSync(seconds), so that it
-   * decides how many exchanges run before it sleeps. The alternative, for a device that stays
-   * awake, is to set an interval once and let the task keep the connection serviced.
-   *
-   * Clearing the flag is the application's job. BLUECHERRY_STATE_IDLE means "nothing outstanding",
-   * which is just as true of an exchange that finished before this one was asked for - the connect
-   * and INIT_INFO of a cold boot, for instance. Only the application knows which idle answers which
-   * request.
-   *
-   * Cleared between the publish and the sync because both leave BLUECHERRY_STATE_IDLE before they
-   * return, so from here the next idle can only be the end of this exchange. Clearing it after
-   * bc.sync() would risk discarding that very idle. */
+  /* 6. Connect to the cellular network. Everything above this line is local to the board, so the
+   * radio is only asked for once there is something to send. */
+  if(!lteConnected() && !lteConnect()) {
+    ESP_LOGE(TAG, "Unable to connect to cellular network, restarting Walter "
+                  "in 10 seconds");
+    vTaskDelay(pdMS_TO_TICKS(10000));
+    esp_restart();
+  }
+
+  /* 7. Synchronise. A sleepy device drives this itself rather than with setAutoSync, so it decides
+   * how many exchanges run before it sleeps. The flag is cleared here and not next to the publish:
+   * an idle reported before this line answers an exchange the task ran on its own. */
   bc_synchronized = false;
   bc.sync();
 
-  /* For this example, we block here until the BlueCherry state handler sets the flag */
-  /* Feel free to build your application code asynchronously */
-  /* There is deliberately no time-out: an exchange that has not settled is either still retrying a
-   * connection or still pulling a firmware update down - a transfer spans as many cycles as it
-   * needs and never reports idle in between - and sleeping on a deadline in the middle of either
-   * is how an update ends up restarting from its first chunk on the next wake. */
+  /* No time-out on purpose: an unsettled exchange is still retrying, or still pulling a firmware
+   * update down, and sleeping through either costs the transfer its progress. */
   while(!bc_synchronized) {
     vTaskDelay(pdMS_TO_TICKS(100));
   }
 
-  /* Safe to sleep: nothing is outstanding in either direction. The modem stays powered, so the
-   * DTLS session survives and the next boot resumes it instead of paying for a new handshake. */
+  /* The modem stays powered, so the session survives and the next boot resumes it. */
   ESP_LOGI(TAG, "I'm tired, I'm going to deep sleep now for 5 minutes...");
   modem.sleep(30);
 }

@@ -3974,6 +3974,11 @@ void WalterModem::_sleepWakeup()
     }
   }
 
+  /* Asked for its side effect: the modem stayed registered across the sleep but _regState and
+   * _networkAttached did not survive it, and a URC only arrives when something changes. Runs after
+   * the contexts are restored, so the answer refreshes their attach state too. */
+  WalterModem::getNetworkRegState();
+
 #if CONFIG_WALTER_MODEM_ENABLE_SOCKETS
 
   memcpy(_socketSet, _socketCtxSetRTC, WALTER_MODEM_MAX_SOCKETS * sizeof(WalterModemSocket));
