@@ -1230,19 +1230,19 @@ static bool _bluecherry_ota_buffer_to_flash(void)
   bool mid_sector = (ota_progress % SPI_FLASH_SEC_SIZE) != 0;
 
   // if it's the block boundary, than erase the whole block from here
-  bool block_erase =
-      (ota_size - ota_progress >= SPI_FLASH_BLOCK_SIZE) && (flash_offset % SPI_FLASH_BLOCK_SIZE == 0);
+  bool block_erase = (ota_size - ota_progress >= SPI_FLASH_BLOCK_SIZE) &&
+                     (flash_offset % SPI_FLASH_BLOCK_SIZE == 0);
 
   // sector belong to unaligned partition heading block
   bool partition_head_sectors =
       _bluecherry_opdata.ota_partition->address % SPI_FLASH_BLOCK_SIZE &&
-      flash_offset <
-          (_bluecherry_opdata.ota_partition->address / SPI_FLASH_BLOCK_SIZE + 1) * SPI_FLASH_BLOCK_SIZE;
+      flash_offset < (_bluecherry_opdata.ota_partition->address / SPI_FLASH_BLOCK_SIZE + 1) *
+                         SPI_FLASH_BLOCK_SIZE;
 
   // sector belong to unaligned partition tailing block
   bool partition_tail_sectors =
-      flash_offset >= (_bluecherry_opdata.ota_partition->address + ota_size) / SPI_FLASH_BLOCK_SIZE *
-                          SPI_FLASH_BLOCK_SIZE;
+      flash_offset >= (_bluecherry_opdata.ota_partition->address + ota_size) /
+                          SPI_FLASH_BLOCK_SIZE * SPI_FLASH_BLOCK_SIZE;
 
   if(!mid_sector && (block_erase || partition_head_sectors || partition_tail_sectors)) {
     if(esp_partition_erase_range(_bluecherry_opdata.ota_partition, ota_progress,
@@ -1672,12 +1672,12 @@ static void _bluecherry_send_init_info(void)
    * not just the total. */
   uint8_t payload[BLUECHERRY_EVENT_PAYLOAD_MAX];
   static_assert(1 + 1 + BLUECHERRY_PARTITION_HASH_LEN + 2 /* event, schema, hash, bitmap */
-                         + 1 + 3 + 4 + 4 + 4 /* platform, version, slot size, uptime, heap */
-                         + 2                 /* ota_slot, written after the strings */
-                         + 2 * (1 + BLUECHERRY_INFO_STR_MAX) /* lib_name, mcu */
-                     <= BLUECHERRY_EVENT_PAYLOAD_MAX,
-                 "INIT_INFO's unchecked writes must fit the event payload budget even when "
-                 "every preceding string field is at its maximum length");
+                        + 1 + 3 + 4 + 4 + 4 /* platform, version, slot size, uptime, heap */
+                        + 2                 /* ota_slot, written after the strings */
+                        + 2 * (1 + BLUECHERRY_INFO_STR_MAX) /* lib_name, mcu */
+                    <= BLUECHERRY_EVENT_PAYLOAD_MAX,
+                "INIT_INFO's unchecked writes must fit the event payload budget even when "
+                "every preceding string field is at its maximum length");
   size_t n = 0;
 
   payload[n++] = BLUECHERRY_EVENT_TYPE_INIT_INFO;
@@ -2310,8 +2310,8 @@ static esp_err_t _bluecherry_coap_rxtx(_bluecherry_msg_t* msg)
     }
 
     while(true) {
-      int ret = _bluecherry_mbed_dtls_read(_bluecherry_opdata.in_buf,
-                                           sizeof(_bluecherry_opdata.in_buf));
+      int ret =
+          _bluecherry_mbed_dtls_read(_bluecherry_opdata.in_buf, sizeof(_bluecherry_opdata.in_buf));
       if(ret > 0) {
         _bluecherry_opdata.in_buf_len = ret;
 
@@ -2838,9 +2838,9 @@ static bool _bluecherry_ztp_seed_random(void)
   mbedtls_ctr_drbg_init(&_bluecherry_opdata.ctr_drbg);
 
   bootloader_random_enable();
-  int ret = mbedtls_ctr_drbg_seed(&_bluecherry_opdata.ctr_drbg,
-                                  _bluecherry_ztp_hardware_random_entropy,
-                                  &_bluecherry_opdata.entropy, NULL, 0);
+  int ret =
+      mbedtls_ctr_drbg_seed(&_bluecherry_opdata.ctr_drbg, _bluecherry_ztp_hardware_random_entropy,
+                            &_bluecherry_opdata.entropy, NULL, 0);
   bootloader_random_disable();
 
   return ret == 0;
@@ -3103,10 +3103,10 @@ static bool _ztp_request_signed_certificate(void)
   }
 
   size_t pem_len;
-  ret = mbedtls_pem_write_buffer("-----BEGIN CERTIFICATE-----\n", "-----END CERTIFICATE-----\n",
-                                 _bluecherry_opdata.devcert.raw.p,
-                                 _bluecherry_opdata.devcert.raw.len, cbor_buf,
-                                 BLUECHERRY_ZTP_CERT_BUF_SIZE, &pem_len);
+  ret =
+      mbedtls_pem_write_buffer("-----BEGIN CERTIFICATE-----\n", "-----END CERTIFICATE-----\n",
+                               _bluecherry_opdata.devcert.raw.p, _bluecherry_opdata.devcert.raw.len,
+                               cbor_buf, BLUECHERRY_ZTP_CERT_BUF_SIZE, &pem_len);
   if(ret < 0) {
     ESP_LOGE(TAG, "Failed to write PEM: -0x%04X", -ret);
     mbedtls_x509_crt_free(&_bluecherry_opdata.devcert);
@@ -3131,10 +3131,10 @@ static bool _ztp_request_signed_certificate(void)
  */
 static bool _bluecherry_configure_own_cert(void)
 {
-  return WalterModem::tlsConfigProfile(
-      _bluecherry_opdata.tls_profile_id, WALTER_MODEM_TLS_VALIDATION_URL_AND_CA,
-      WALTER_MODEM_TLS_VERSION_12, BLUECHERRY_SLOT_CA, BLUECHERRY_SLOT_DEVCERT,
-      BLUECHERRY_SLOT_PRIVKEY);
+  return WalterModem::tlsConfigProfile(_bluecherry_opdata.tls_profile_id,
+                                       WALTER_MODEM_TLS_VALIDATION_URL_AND_CA,
+                                       WALTER_MODEM_TLS_VERSION_12, BLUECHERRY_SLOT_CA,
+                                       BLUECHERRY_SLOT_DEVCERT, BLUECHERRY_SLOT_PRIVKEY);
 }
 
 /**
@@ -3438,8 +3438,7 @@ static esp_err_t _bluecherry_sync_once(void)
 
   if(type == BLUECHERRY_COAP_TYPE_ACK) {
     if(msg_id != _bluecherry_opdata.cur_message_id) {
-      ESP_LOGE(TAG, "Received ACK for %u instead of %u", msg_id,
-               _bluecherry_opdata.cur_message_id);
+      ESP_LOGE(TAG, "Received ACK for %u instead of %u", msg_id, _bluecherry_opdata.cur_message_id);
       return ESP_ERR_INVALID_STATE;
     }
 
@@ -3769,9 +3768,8 @@ bool WalterBlueCherry::init(uint8_t tls_profile_id, const char* device_type_id,
    * DTLS handshake, the CBOR buffers and an EC key generation. */
   if(_sync_task == NULL) {
     BaseType_t ret =
-        xTaskCreate(_bluecherry_sync_task, "bc_sync",
-                    WALTER_MODEM_BLUECHERRY_SYNC_TASK_STACK_SIZE, NULL, BLUECHERRY_SP,
-                    &_sync_task);
+        xTaskCreate(_bluecherry_sync_task, "bc_sync", WALTER_MODEM_BLUECHERRY_SYNC_TASK_STACK_SIZE,
+                    NULL, BLUECHERRY_SP, &_sync_task);
     if(ret != pdPASS) {
       _sync_task = NULL;
       ESP_LOGE(TAG, "Could not start the synchronisation task");
