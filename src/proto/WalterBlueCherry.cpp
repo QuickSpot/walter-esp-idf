@@ -3722,6 +3722,14 @@ bool WalterBlueCherry::init(uint8_t tls_profile_id, const char* device_type_id,
                             walterModemBlueCherryMsgHandler msg_handler, void* msg_handler_args,
                             const WalterModemBlueCherryPublishBuffer* publish_buffer)
 {
+  /* First, because this call is not passive: isProvisioned below issues AT commands, and the
+   * command queue they go into is created by WalterModem::begin. Without this the send lands on a
+   * NULL queue handle and aborts inside FreeRTOS instead of failing here. */
+  if(!WalterModem::_initialized) {
+    ESP_LOGE(TAG, "The modem must be started before BlueCherry can be initialized");
+    return false;
+  }
+
   if(device_type_id != NULL && strlen(device_type_id) != BLUECHERRY_ZTP_ID_LEN) {
     ESP_LOGE(TAG, "The BlueCherry device type must be %u characters", BLUECHERRY_ZTP_ID_LEN);
     return false;

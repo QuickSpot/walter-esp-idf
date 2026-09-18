@@ -356,8 +356,9 @@ public:
    * @brief Initialize BlueCherry and start the synchronisation task.
    *
    * Performs no network I/O and cannot fail because the cloud is unreachable, so it needs no
-   * retry loop. It must be called on every boot, including after deep sleep: it is what resumes a
-   * session that survived the sleep and what re-registers the handlers, neither of which persist.
+   * retry loop. It does talk to the modem, so WalterModem::begin must have succeeded first. It
+   * must be called on every boot, including after deep sleep: it is what resumes a session that
+   * survived the sleep and what re-registers the handlers, neither of which persist.
    *
    * When the modem holds no device credentials the state becomes BLUECHERRY_STATE_NOT_PROVISIONED
    * and the first sync runs Zero-Touch Provisioning, which requires device_type_id.
