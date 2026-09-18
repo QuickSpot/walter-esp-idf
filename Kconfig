@@ -319,8 +319,14 @@ menu "walter-modem"
         config WALTER_MODEM_ENABLE_MOTA
             bool "Enable MOTA functionality (Modem firmware)"
             default y
+            depends on WALTER_MODEM_ENABLE_BLUECHERRY
             help
                 Enable Modem firmware upgrade functions.
+
+                Over-the-air is what MOTA means, and the air is BlueCherry: the update is
+                scheduled, delivered and acknowledged over the BlueCherry session, and the
+                transfer stages through BlueCherry's firmware buffer. There is nothing left to
+                enable with BlueCherry switched off, so this follows it.
         endmenu
     endif
 endmenu

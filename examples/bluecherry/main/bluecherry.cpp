@@ -79,11 +79,6 @@ WalterModem modem;
 WalterBlueCherry bc;
 
 /**
- * @brief Buffer to stage incoming firmware in, sized for a modem update's whole erase block.
- */
-uint8_t ota_buffer[SPI_FLASH_BLOCK_SIZE] = { 0 };
-
-/**
  * @brief Flag used to signal when BlueCherry has nothing left to do.
  */
 volatile bool bc_synchronized = false;
@@ -410,7 +405,7 @@ static bool initializeBlueCherry(void)
     publishBuffer.size = 0;
   }
 
-  if(!bc.init(BC_TLS_PROFILE, ota_buffer, BC_DEVICE_TYPE, myMessageHandler, NULL,
+  if(!bc.init(BC_TLS_PROFILE, BC_DEVICE_TYPE, myMessageHandler, NULL,
               publishBuffer.buffer != NULL ? &publishBuffer : NULL)) {
     ESP_LOGE(TAG, "Could not initialize BlueCherry");
     return false;

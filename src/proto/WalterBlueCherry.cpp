@@ -477,6 +477,19 @@ typedef struct {
   /** @brief The receive buffer, sized for the largest datagram the modem will hand over. */
   uint8_t in_buf[WALTER_MODEM_MAX_INCOMING_MESSAGE_LEN];
 
+  /**
+   * @brief One flash sector of firmware staged on its way to the partition.
+   *
+   * Distinct from in_buf on purpose: a chunk is copied out of in_buf into here, and a sector's
+   * worth spans many datagrams, so in_buf is overwritten several times before this is flushed.
+   *
+   * The modem firmware upgrade borrows it for STP transfer blocks. That is safe because it runs
+   * with the modem rx handler muted, so no OTA chunk can arrive while it holds it.
+   */
+  uint8_t ota_buffer[BLUECHERRY_OTA_BUFFER_SIZE];
+
+  uint32_t ota_size;
+  uint32_t ota_progress;
   uint32_t ota_buffer_pos;
   uint8_t ota_skip_buffer[ENCRYPTED_BLOCK_SIZE];
   const esp_partition_t* ota_partition;
@@ -1173,11 +1186,11 @@ static void _bluecherry_sync_task(void* args)
  */
 static float _bluecherry_ota_progress_percent(void)
 {
-  if(WalterBlueCherry::_otaSize() == 0) {
+  if(_bluecherry_opdata.ota_size == 0) {
     return 0.0f;
   }
 
-  return ((float) WalterBlueCherry::_otaProgress() / (float) WalterBlueCherry::_otaSize()) * 100.0f;
+  return ((float) _bluecherry_opdata.ota_progress / (float) _bluecherry_opdata.ota_size) * 100.0f;
 }
 
 /**
@@ -1187,13 +1200,9 @@ static float _bluecherry_ota_progress_percent(void)
  */
 static bool _bluecherry_ota_buffer_to_flash(void)
 {
-  uint8_t* ota_buffer = WalterBlueCherry::_otaBuffer();
-  uint32_t& ota_size = WalterBlueCherry::_otaSize();
-  uint32_t& ota_progress = WalterBlueCherry::_otaProgress();
-
-  if(ota_buffer == NULL) {
-    return false;
-  }
+  uint8_t* ota_buffer = _bluecherry_opdata.ota_buffer;
+  uint32_t& ota_size = _bluecherry_opdata.ota_size;
+  uint32_t& ota_progress = _bluecherry_opdata.ota_progress;
 
   /* first bytes of new firmware must be postponed so
    * partially written firmware is not bootable just yet
@@ -1311,8 +1320,8 @@ static bool _bluecherry_ota_notify(WalterModemBlueCherryOtaEvent event, uint8_t 
 
   WalterModemBlueCherryOtaInfo info = {};
   info.version = _bluecherry_opdata.ota_target_version;
-  info.size = WalterBlueCherry::_otaSize();
-  info.bytes_received = WalterBlueCherry::_otaProgress();
+  info.size = _bluecherry_opdata.ota_size;
+  info.bytes_received = _bluecherry_opdata.ota_progress;
   info.error_code = error_code;
   memcpy(info.sha256, _bluecherry_opdata.ota_expected_hash, BLUECHERRY_PARTITION_HASH_LEN);
 
@@ -1335,8 +1344,8 @@ static bool _bluecherry_ota_flush(void)
   }
 
   ESP_LOGD(TAG, "OTA: %lu / %lu bytes written (%.2f%%)",
-           (unsigned long) WalterBlueCherry::_otaProgress(),
-           (unsigned long) WalterBlueCherry::_otaSize(), _bluecherry_ota_progress_percent());
+           (unsigned long) _bluecherry_opdata.ota_progress,
+           (unsigned long) _bluecherry_opdata.ota_size, _bluecherry_ota_progress_percent());
   _bluecherry_ota_notify(BLUECHERRY_OTA_EVENT_PROGRESS, 0);
   return true;
 }
@@ -1353,8 +1362,8 @@ static bool _bluecherry_ota_flush(void)
 static void _bluecherry_ota_reset(void)
 {
   _bluecherry_opdata.ota_state = BLUECHERRY_OTA_STATE_IDLE;
-  WalterBlueCherry::_otaSize() = 0;
-  WalterBlueCherry::_otaProgress() = 0;
+  _bluecherry_opdata.ota_size = 0;
+  _bluecherry_opdata.ota_progress = 0;
   _bluecherry_opdata.ota_buffer_pos = 0;
   _bluecherry_opdata.ota_target_version = 0;
   _bluecherry_opdata.ota_unverified = false;
@@ -1419,11 +1428,11 @@ static void _bluecherry_ota_begin(void)
   }
 
   _bluecherry_opdata.ota_state = BLUECHERRY_OTA_STATE_DOWNLOADING;
-  WalterBlueCherry::_otaProgress() = 0;
+  _bluecherry_opdata.ota_progress = 0;
   _bluecherry_opdata.ota_buffer_pos = 0;
 
   ESP_LOGI(TAG, "OTA: requesting firmware v%d (%lu bytes)", _bluecherry_opdata.ota_target_version,
-           (unsigned long) WalterBlueCherry::_otaSize());
+           (unsigned long) _bluecherry_opdata.ota_size);
   _bluecherry_ota_notify(BLUECHERRY_OTA_EVENT_STARTED, 0);
 }
 
@@ -1769,13 +1778,6 @@ static void _bluecherry_ota_process_initialize(uint8_t* data, uint16_t len)
     return;
   }
 
-  if(WalterBlueCherry::_otaBuffer() == NULL) {
-    _bluecherry_opdata.ota_target_version = (int8_t) data[0];
-    ESP_LOGE(TAG, "OTA: no staging buffer was supplied, refusing the update");
-    _bluecherry_ota_fail(BLUECHERRY_OTA_ERR_NO_PARTITION);
-    return;
-  }
-
   _bluecherry_opdata.ota_partition = esp_ota_get_next_update_partition(NULL);
   if(!_bluecherry_opdata.ota_partition) {
     _bluecherry_opdata.ota_target_version = (int8_t) data[0];
@@ -1784,8 +1786,8 @@ static void _bluecherry_ota_process_initialize(uint8_t* data, uint16_t len)
   }
 
   _bluecherry_opdata.ota_target_version = (int8_t) data[0];
-  WalterBlueCherry::_otaSize() = ((uint32_t) data[1]) | ((uint32_t) data[2] << 8) |
-                                 ((uint32_t) data[3] << 16) | ((uint32_t) data[4] << 24);
+  _bluecherry_opdata.ota_size = ((uint32_t) data[1]) | ((uint32_t) data[2] << 8) |
+                                ((uint32_t) data[3] << 16) | ((uint32_t) data[4] << 24);
   memcpy(_bluecherry_opdata.ota_expected_hash, data + 5, BLUECHERRY_PARTITION_HASH_LEN);
 
   /* An all zero expected hash means the cloud has no fingerprint on record, so there is nothing to
@@ -1799,21 +1801,21 @@ static void _bluecherry_ota_process_initialize(uint8_t* data, uint16_t len)
     }
   }
 
-  if(WalterBlueCherry::_otaSize() == 0 ||
-     WalterBlueCherry::_otaSize() > _bluecherry_opdata.ota_partition->size) {
+  if(_bluecherry_opdata.ota_size == 0 ||
+     _bluecherry_opdata.ota_size > _bluecherry_opdata.ota_partition->size) {
     ESP_LOGE(TAG, "OTA: %lu bytes will not fit a %lu byte slot",
-             (unsigned long) WalterBlueCherry::_otaSize(),
+             (unsigned long) _bluecherry_opdata.ota_size,
              (unsigned long) _bluecherry_opdata.ota_partition->size);
     _bluecherry_ota_fail(BLUECHERRY_OTA_ERR_TOO_LARGE);
     return;
   }
 
-  WalterBlueCherry::_otaProgress() = 0;
+  _bluecherry_opdata.ota_progress = 0;
   _bluecherry_opdata.ota_buffer_pos = 0;
   _bluecherry_opdata.ota_state = BLUECHERRY_OTA_STATE_OFFERED;
 
   ESP_LOGI(TAG, "OTA: firmware v%d offered, %lu bytes, %s", _bluecherry_opdata.ota_target_version,
-           (unsigned long) WalterBlueCherry::_otaSize(),
+           (unsigned long) _bluecherry_opdata.ota_size,
            _bluecherry_opdata.ota_unverified ? "UNVERIFIED (no fingerprint)" : "verified");
 
   /* Nobody watching, or watching without taking the decision: start now. An application only gets
@@ -1845,9 +1847,9 @@ static void _bluecherry_ota_process_chunk(uint8_t* data, uint16_t len)
     return;
   }
 
-  uint8_t* ota_buffer = WalterBlueCherry::_otaBuffer();
-  uint32_t& ota_size = WalterBlueCherry::_otaSize();
-  uint32_t& ota_progress = WalterBlueCherry::_otaProgress();
+  uint8_t* ota_buffer = _bluecherry_opdata.ota_buffer;
+  uint32_t& ota_size = _bluecherry_opdata.ota_size;
+  uint32_t& ota_progress = _bluecherry_opdata.ota_progress;
 
   if(len == 0 || ota_progress + len > ota_size) {
     ESP_LOGE(TAG, "OTA: chunk empty or beyond the announced size");
@@ -1975,13 +1977,10 @@ static void _bluecherry_ota_sleep_flush(void)
     return;
   }
 
-  uint8_t* ota_buffer = WalterBlueCherry::_otaBuffer();
-  if(ota_buffer == NULL) {
-    return;
-  }
+  uint8_t* ota_buffer = _bluecherry_opdata.ota_buffer;
 
   /* Too little to extract the withheld image header from: keep it all for the next wake. */
-  if(WalterBlueCherry::_otaProgress() == 0 &&
+  if(_bluecherry_opdata.ota_progress == 0 &&
      _bluecherry_opdata.ota_buffer_pos < ENCRYPTED_BLOCK_SIZE) {
     _bluecherry_rtc.ota_tail_len = (uint8_t) _bluecherry_opdata.ota_buffer_pos;
     memcpy(_bluecherry_rtc.ota_tail, ota_buffer, _bluecherry_opdata.ota_buffer_pos);
@@ -3566,8 +3565,8 @@ static bool _bluecherry_session_resume(void)
   _bluecherry_opdata.last_acked_message_id = _bluecherry_rtc.last_acked_message_id;
 
   _bluecherry_opdata.ota_state = (_bluecherry_ota_state) _bluecherry_rtc.ota_state;
-  WalterBlueCherry::_otaSize() = _bluecherry_rtc.ota_size;
-  WalterBlueCherry::_otaProgress() = _bluecherry_rtc.ota_progress;
+  _bluecherry_opdata.ota_size = _bluecherry_rtc.ota_size;
+  _bluecherry_opdata.ota_progress = _bluecherry_rtc.ota_progress;
   _bluecherry_opdata.ota_target_version = _bluecherry_rtc.ota_target_version;
   _bluecherry_opdata.ota_unverified = _bluecherry_rtc.ota_unverified;
   memcpy(_bluecherry_opdata.ota_expected_hash, _bluecherry_rtc.ota_expected_hash,
@@ -3589,10 +3588,9 @@ static bool _bluecherry_session_resume(void)
            _bluecherry_rtc.ota_partition_slot) {
       ESP_LOGW(TAG, "OTA: the target slot moved across the sleep, abandoning the update");
       _bluecherry_ota_reset();
-    } else if(_bluecherry_rtc.ota_tail_len > 0 && WalterBlueCherry::_otaBuffer() != NULL) {
+    } else if(_bluecherry_rtc.ota_tail_len > 0) {
       /* Bytes the sleep flush could not write, put back in front of the next chunk. */
-      memcpy(WalterBlueCherry::_otaBuffer(), _bluecherry_rtc.ota_tail,
-             _bluecherry_rtc.ota_tail_len);
+      memcpy(_bluecherry_opdata.ota_buffer, _bluecherry_rtc.ota_tail, _bluecherry_rtc.ota_tail_len);
       _bluecherry_opdata.ota_buffer_pos = _bluecherry_rtc.ota_tail_len;
     }
   }
@@ -3637,8 +3635,8 @@ void WalterBlueCherry::_sleepPrepare()
   _bluecherry_rtc.last_acked_message_id = _bluecherry_opdata.last_acked_message_id;
 
   _bluecherry_rtc.ota_state = (uint8_t) _bluecherry_opdata.ota_state;
-  _bluecherry_rtc.ota_size = WalterBlueCherry::_otaSize();
-  _bluecherry_rtc.ota_progress = WalterBlueCherry::_otaProgress();
+  _bluecherry_rtc.ota_size = _bluecherry_opdata.ota_size;
+  _bluecherry_rtc.ota_progress = _bluecherry_opdata.ota_progress;
   _bluecherry_rtc.ota_target_version = _bluecherry_opdata.ota_target_version;
   _bluecherry_rtc.ota_unverified = _bluecherry_opdata.ota_unverified;
   _bluecherry_rtc.ota_partition_slot = _bluecherry_ota_slot_index(_bluecherry_opdata.ota_partition);
@@ -3669,17 +3667,7 @@ int WalterBlueCherry::_reserveSocket()
 
 uint8_t* WalterBlueCherry::_otaBuffer()
 {
-  return WalterModem::_otaBuffer;
-}
-
-uint32_t& WalterBlueCherry::_otaSize()
-{
-  return WalterModem::_otaSize;
-}
-
-uint32_t& WalterBlueCherry::_otaProgress()
-{
-  return WalterModem::_otaProgress;
+  return _bluecherry_opdata.ota_buffer;
 }
 
 bool WalterBlueCherry::_motaDispatch(uint8_t event, uint8_t* data, uint16_t len)
@@ -3730,8 +3718,7 @@ void WalterBlueCherry::_handleSocketEvent(WMSocketEventType event, uint16_t data
 #pragma endregion
 #pragma region PUBLIC
 
-bool WalterBlueCherry::init(uint8_t tls_profile_id, uint8_t* ota_buffer,
-                            const char* device_type_id,
+bool WalterBlueCherry::init(uint8_t tls_profile_id, const char* device_type_id,
                             walterModemBlueCherryMsgHandler msg_handler, void* msg_handler_args,
                             const WalterModemBlueCherryPublishBuffer* publish_buffer)
 {
@@ -3740,10 +3727,9 @@ bool WalterBlueCherry::init(uint8_t tls_profile_id, uint8_t* ota_buffer,
     return false;
   }
 
-  /* Handlers, the staging buffer and the device type are re-supplied on every boot, including
-   * after a deep sleep, because none of them can be carried across one. */
+  /* The handlers and the device type are re-supplied on every boot, including after a deep sleep,
+   * because neither can be carried across one. */
   bc_type_id = device_type_id;
-  WalterModem::_otaBuffer = ota_buffer;
   _bluecherry_opdata.msg_handler = msg_handler;
   _bluecherry_opdata.msg_handler_args = msg_handler_args;
 
@@ -3985,12 +3971,12 @@ size_t WalterBlueCherry::getOtaProgressPercentage()
 
 size_t WalterBlueCherry::getOtaProgressBytes()
 {
-  return (size_t) WalterModem::_otaProgress;
+  return (size_t) _bluecherry_opdata.ota_progress;
 }
 
 size_t WalterBlueCherry::getOtaSize()
 {
-  return (size_t) WalterModem::_otaSize;
+  return (size_t) _bluecherry_opdata.ota_size;
 }
 
 #pragma endregion

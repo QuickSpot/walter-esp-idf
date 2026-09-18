@@ -56,7 +56,7 @@
  *     WalterBlueCherry blueCherry;
  *
  *     modem.begin(UART_NUM_1);
- *     blueCherry.init(BC_TLS_PROFILE, ota_buffer, BC_DEVICE_TYPE, msgHandler);
+ *     blueCherry.init(BC_TLS_PROFILE, BC_DEVICE_TYPE, msgHandler);
  *     blueCherry.publish(0x84, len, data);
  *     blueCherry.sync();
  *     while(blueCherry.getState() != BLUECHERRY_STATE_IDLE) {
@@ -83,6 +83,14 @@
  * @brief The length of a partition SHA-256 digest.
  */
 #define BLUECHERRY_PARTITION_HASH_LEN 32
+
+/**
+ * @brief The size of the firmware staging buffer.
+ *
+ * One flash sector, because that is the granularity esp_partition_erase_range works in. The modem
+ * firmware upgrade borrows the same buffer and caps its STP transfer blocks to this.
+ */
+#define BLUECHERRY_OTA_BUFFER_SIZE SPI_FLASH_SEC_SIZE
 
 /**
  * @brief The smallest publish buffer that can be passed to blueCherryInit.
@@ -354,9 +362,12 @@ public:
    * When the modem holds no device credentials the state becomes BLUECHERRY_STATE_NOT_PROVISIONED
    * and the first sync runs Zero-Touch Provisioning, which requires device_type_id.
    *
+   * Firmware updates are accepted by default. An application that does not want them installs an
+   * OTA handler with setOtaHandler and, on BLUECHERRY_OTA_EVENT_AVAILABLE, either returns true
+   * without ever calling otaStart - which defers the update indefinitely - or calls otaAbort to
+   * refuse it outright.
+   *
    * @param tls_profile_id The modem TLS profile to use. BlueCherry owns NVM slots 0, 5 and 6.
-   * @param ota_buffer A buffer of at least SPI_FLASH_SEC_SIZE bytes to stage firmware in, or NULL
-   * to refuse updates. A modem firmware update needs SPI_FLASH_BLOCK_SIZE.
    * @param device_type_id The 8 character BlueCherry Type ID, required for provisioning only.
    * @param msg_handler Handler for incoming messages, or NULL to ignore them.
    * @param msg_handler_args Optional user arguments for the message handler.
@@ -365,8 +376,7 @@ public:
    *
    * @return True on success, false on error.
    */
-  static bool init(uint8_t tls_profile_id, uint8_t* ota_buffer = NULL,
-                   const char* device_type_id = NULL,
+  static bool init(uint8_t tls_profile_id, const char* device_type_id = NULL,
                    walterModemBlueCherryMsgHandler msg_handler = NULL,
                    void* msg_handler_args = NULL,
                    const WalterModemBlueCherryPublishBuffer* publish_buffer = NULL);
@@ -530,9 +540,11 @@ public:
 
   /**
    * =============================================================================================
-   * Bridges to the modem driver. Not part of the API; they exist because the implementation is
-   * written as file static helpers rather than as members, and the friendship that lets this class
-   * reach WalterModem's internals does not extend to those.
+   * Bridges across the modem driver boundary. Not part of the API. Most run outward, and exist
+   * because the implementation is written as file static helpers rather than as members, and the
+   * friendship that lets this class reach WalterModem's internals does not extend to those.
+   * _otaBuffer runs the other way: the op data is a file static, so the modem driver needs a
+   * handle to borrow the staging buffer for an STP transfer.
    * =============================================================================================
    */
 
@@ -551,25 +563,14 @@ public:
   static bool _networkUp();
 
   /**
-   * @brief The staging buffer shared with the modem firmware upgrade paths.
+   * @brief Lend the staging buffer to the modem firmware upgrade.
    *
-   * @return The buffer, or NULL when the application supplied none.
+   * The ESP32 update reaches it as an ordinary member; this exists only because the STP transfer
+   * lives in the modem driver, on the other side of the op data's translation unit.
+   *
+   * @return One flash sector, borrowable only while no OTA chunk can arrive.
    */
   static uint8_t* _otaBuffer();
-
-  /**
-   * @brief The announced size of the firmware transfer in progress.
-   *
-   * @return A reference to the size in bytes.
-   */
-  static uint32_t& _otaSize();
-
-  /**
-   * @brief The number of bytes of the firmware transfer committed so far.
-   *
-   * @return A reference to the progress in bytes.
-   */
-  static uint32_t& _otaProgress();
 
   /**
    * @brief Hand a modem firmware update event to the modem driver.

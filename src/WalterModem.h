@@ -374,6 +374,11 @@ constexpr uint16_t WALTER_MODEM_MAX_OUTGOING_MESSAGE_LEN = 1024;
 #endif
 
 /**
+ * @brief SPI flash sectors per erase block, usually large erase block is 32k/64k.
+ */
+#define SPI_SECTORS_PER_BLOCK 16
+
+/**
  * @brief SPI flash erase block size
  */
 #define SPI_FLASH_BLOCK_SIZE (SPI_SECTORS_PER_BLOCK * SPI_FLASH_SEC_SIZE)
@@ -382,11 +387,6 @@ constexpr uint16_t WALTER_MODEM_MAX_OUTGOING_MESSAGE_LEN = 1024;
  * @brief Encrypted block size within flash.
  */
 #define ENCRYPTED_BLOCK_SIZE 16
-
-/**
- * @brief SPI flash sectors per erase block, usually large erase block is 32k/64k.
- */
-#define SPI_SECTORS_PER_BLOCK 16
 
 #pragma endregion // CONFIG
 
@@ -3355,7 +3355,7 @@ private:
   /**
    * @brief Helper to boot modem to recovery modem and start upgrade.
    *
-   * @return The modem's maximum block size.
+   * @return The modem's maximum block size, or 0 when the STP session did not open.
    */
   static uint16_t _modemFirmwareUpgradeStart(void);
 
@@ -3371,12 +3371,13 @@ private:
   /**
    * @brief Helper to transfer a chunk of the modem firmware to modem during MOTA update.
    *
+   * @param block The bytes to send, borrowed from BlueCherry's staging buffer.
    * @param blockSize The size of the block in bytes.
    * @param transactionId The transaction id.
    *
    * @return None.
    */
-  static void _modemFirmwareUpgradeBlock(size_t blockSize, uint32_t transactionId);
+  static void _modemFirmwareUpgradeBlock(uint8_t* block, size_t blockSize, uint32_t transactionId);
 
 #endif
 #pragma endregion
@@ -3758,30 +3759,19 @@ private:
 
 #pragma endregion
 #pragma region CLASS PRIVATE FIRMWARE TRANSFER STATE
-#if CONFIG_WALTER_MODEM_ENABLE_MOTA || CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+#if CONFIG_WALTER_MODEM_ENABLE_MOTA
 
   /**
-   * @brief The staging buffer shared by every firmware transfer path.
+   * @brief The announced size of the modem firmware transfer in progress, in bytes.
    *
-   * Used by the modem firmware upgrade over STP, by the modem firmware update over BlueCherry,
-   * and by the ESP32 update in WalterBlueCherry. It is supplied by the application, either
-   * through WalterBlueCherry::init or through offlineMotaUpgrade, and is NULL when it supplied
-   * none - in which case every transfer path must refuse rather than write through it.
-   *
-   * It lives here rather than in WalterBlueCherry because two of its three users are part of the
-   * modem driver itself and must keep working with BlueCherry compiled out.
+   * MOTA only - the ESP32 update keeps its own counters in WalterBlueCherry's op data.
    */
-  static inline uint8_t* _otaBuffer = NULL;
+  static inline uint32_t _motaSize = 0;
 
   /**
-   * @brief The announced size of the firmware transfer in progress, in bytes.
+   * @brief The number of bytes of the modem firmware transfer committed so far.
    */
-  static inline uint32_t _otaSize = 0;
-
-  /**
-   * @brief The number of bytes of the transfer in progress committed so far.
-   */
-  static inline uint32_t _otaProgress = 0;
+  static inline uint32_t _motaProgress = 0;
 
 #endif
 #pragma endregion
@@ -3798,8 +3788,6 @@ private:
    * @return True on success, false on error.
    */
   static bool _motaFormatAndMount(void);
-
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
 
   /**
    * @brief Initialze a modem firmware update.
@@ -3826,8 +3814,6 @@ private:
    * @return True on success, false on error.
    */
   static bool _processMotaChunkEvent(uint8_t* data, uint16_t len);
-
-#endif
 
   /**
    * @brief Finish the reception of the new modem firmware.
@@ -5542,18 +5528,15 @@ public:
 #if CONFIG_WALTER_MODEM_ENABLE_MOTA
 
   /**
-   * @brief Offline update modem firmware from file on flash
+   * @brief Offline update modem firmware from a file on flash.
    *
-   * This function upgrades the modem firmware from a file called mota.dup on the FAT
-   * filesystem on the flash. See the ModemFota example sketch. Do not forget to put the
-   * supplied FAT image on the flash using esptool - see comments in ModemFota.ino.
+   * Upgrades the modem from a file called mota.dup on the FAT partition, which has to be put
+   * there with esptool beforehand. The transfer buffer is the library's own, so nothing has to be
+   * supplied.
    *
-   * Do not combine with initBlueCherry.
-   *
-   * @param[in] ota_buffer Buffer we can use for block transfers to modem, expected to be at least
-   * SPI_FLASH_SEC_SIZE = 4K
+   * Do not combine with a running BlueCherry session: both drive the same STP transfer state.
    */
-  static void offlineMotaUpgrade(uint8_t* ota_buffer);
+  static void offlineMotaUpgrade();
 
 #endif
 #pragma endregion

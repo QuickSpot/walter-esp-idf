@@ -613,6 +613,9 @@ uint16_t WalterModem::_modemFirmwareUpgradeStart(void)
   char* atCmd[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] = { NULL };
   int len;
 
+  /* Scratch for the AT replies below. The largest read is 64 bytes plus the NUL. */
+  uint8_t rsp[65];
+
   _rxHandlerInterrupted = true;
 
   /* reboot to recovery */
@@ -630,25 +633,25 @@ uint16_t WalterModem::_modemFirmwareUpgradeStart(void)
   atCmd[1] = NULL;
   _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
 
-  len = _uartRead(_otaBuffer, 6);
-  _otaBuffer[len] = 0;
-  ESP_LOGD("WalterModem", "sent AT, got %d:%s", len, _otaBuffer);
+  len = _uartRead(rsp, 6);
+  rsp[len] = 0;
+  ESP_LOGD("WalterModem", "sent AT, got %d:%s", len, rsp);
 
   atCmd[0] = (char*) "AT+SMLOG?";
   atCmd[1] = NULL;
   _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
 
-  len = _uartRead(_otaBuffer, 25);
-  _otaBuffer[len] = 0;
-  ESP_LOGD("WalterModem", "sent AT+SMLOG?, got %d:%s", len, _otaBuffer);
+  len = _uartRead(rsp, 25);
+  rsp[len] = 0;
+  ESP_LOGD("WalterModem", "sent AT+SMLOG?, got %d:%s", len, rsp);
 
   atCmd[0] = (char*) "AT+SMOD?";
   atCmd[1] = NULL;
   _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
 
-  len = _uartRead(_otaBuffer, 7);
-  _otaBuffer[len] = 0;
-  ESP_LOGD("WalterModem", "sent AT+SMOD?, got %d:%s", len, _otaBuffer);
+  len = _uartRead(rsp, 7);
+  rsp[len] = 0;
+  ESP_LOGD("WalterModem", "sent AT+SMOD?, got %d:%s", len, rsp);
 
   /* prepare modem firmware data transfer - must wait for OK still!! */
   atCmd[0] = (char*) "AT+SMSTPU=\"ON_THE_FLY\"";
@@ -656,9 +659,9 @@ uint16_t WalterModem::_modemFirmwareUpgradeStart(void)
   _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
 
   vTaskDelay(pdMS_TO_TICKS(2000));
-  len = _uartRead(_otaBuffer, 64);
-  _otaBuffer[len] = 0;
-  ESP_LOGD("WalterModem", "started STP mode, got %d:%s", len, _otaBuffer);
+  len = _uartRead(rsp, 64);
+  rsp[len] = 0;
+  ESP_LOGD("WalterModem", "started STP mode, got %d:%s", len, rsp);
 
   size_t bytesSent, bytesReceived;
 
@@ -726,13 +729,24 @@ uint16_t WalterModem::_modemFirmwareUpgradeStart(void)
 
   tickleWatchdog();
 
-  return _switchEndian16(stpResponseSessionOpen.maxTransferSize) - sizeof(stpRequest);
+  /* A session that never opened leaves maxTransferSize at 0, and 0 - sizeof(stpRequest) wraps to
+   * 65520 rather than to something obviously wrong. Report 0 so the caller can tell the two apart.
+   */
+  uint16_t maxTransferSize = _switchEndian16(stpResponseSessionOpen.maxTransferSize);
+  if(maxTransferSize <= sizeof(stpRequest)) {
+    return 0;
+  }
+
+  return maxTransferSize - sizeof(stpRequest);
 }
 
 void WalterModem::_modemFirmwareUpgradeFinish(bool success)
 {
   char* atCmd[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] = { NULL };
   int len;
+
+  /* Scratch for the AT replies below. The largest read is 64 bytes plus the NUL. */
+  uint8_t rsp[65];
 
   if(!success) {
     _rxHandlerInterrupted = false;
@@ -778,12 +792,11 @@ void WalterModem::_modemFirmwareUpgradeFinish(bool success)
     atCmd[1] = NULL;
     _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
 
-    /* reuse ota_buffer which is guaranteed to be 4K */
-    len = _uartRead(_otaBuffer, 32);
-    _otaBuffer[len] = 0;
-    ESP_LOGD("WalterModem", "sent AT, got %d:%s", len, _otaBuffer);
+    len = _uartRead(rsp, 32);
+    rsp[len] = 0;
+    ESP_LOGD("WalterModem", "sent AT, got %d:%s", len, rsp);
 
-    if(!strcmp((char*) _otaBuffer, "\r\nOK\r\n")) {
+    if(!strcmp((char*) rsp, "\r\nOK\r\n")) {
       break;
     }
   }
@@ -793,9 +806,9 @@ void WalterModem::_modemFirmwareUpgradeFinish(bool success)
   atCmd[1] = NULL;
   _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
 
-  len = _uartRead(_otaBuffer, 16);
-  _otaBuffer[len] = 0;
-  ESP_LOGD("WalterModem", "switched modem to FFF mode, got %d:%s", len, _otaBuffer);
+  len = _uartRead(rsp, 16);
+  rsp[len] = 0;
+  ESP_LOGD("WalterModem", "switched modem to FFF mode, got %d:%s", len, rsp);
 
   /* now reboot into new firmware */
   atCmd[0] = (char*) "AT^RESET";
@@ -804,39 +817,40 @@ void WalterModem::_modemFirmwareUpgradeFinish(bool success)
   ESP_LOGD("WalterModem", "sent reset command, waiting 10 seconds");
   vTaskDelay(pdMS_TO_TICKS(10000));
 
-  len = _uartRead(_otaBuffer, 64);
-  _otaBuffer[len] = 0;
-  ESP_LOGD("WalterModem", "assuming modem boot complete; got %d:%s", len, _otaBuffer);
+  len = _uartRead(rsp, 64);
+  rsp[len] = 0;
+  ESP_LOGD("WalterModem", "assuming modem boot complete; got %d:%s", len, rsp);
 
   /* check if we are back in fff mode and check update status */
   atCmd[0] = (char*) "AT+SMLOG?";
   atCmd[1] = NULL;
   _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
 
-  len = _uartRead(_otaBuffer, 64);
-  _otaBuffer[len] = 0;
-  ESP_LOGD("WalterModem", "AT+SMLOG? got %d:%s", len, _otaBuffer);
+  len = _uartRead(rsp, 64);
+  rsp[len] = 0;
+  ESP_LOGD("WalterModem", "AT+SMLOG? got %d:%s", len, rsp);
 
   atCmd[0] = (char*) "AT+SMOD?";
   atCmd[1] = NULL;
   _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
 
-  len = _uartRead(_otaBuffer, 64);
-  _otaBuffer[len] = 0;
-  ESP_LOGD("WalterModem", "AT+SMOD? got %d:%s", len, _otaBuffer);
+  len = _uartRead(rsp, 64);
+  rsp[len] = 0;
+  ESP_LOGD("WalterModem", "AT+SMOD? got %d:%s", len, rsp);
 
   atCmd[0] = (char*) "AT+SMUPGRADE?";
   atCmd[1] = NULL;
   _transmitCmd(WALTER_MODEM_CMD_TYPE_TX, atCmd);
 
-  len = _uartRead(_otaBuffer, 64);
-  _otaBuffer[len] = 0;
-  ESP_LOGD("WalterModem", "AT+SMUPGRADE? got %d:%s", len, _otaBuffer);
+  len = _uartRead(rsp, 64);
+  rsp[len] = 0;
+  ESP_LOGD("WalterModem", "AT+SMUPGRADE? got %d:%s", len, rsp);
 
   _rxHandlerInterrupted = false;
 }
 
-void WalterModem::_modemFirmwareUpgradeBlock(size_t blockSize, uint32_t transactionId)
+void WalterModem::_modemFirmwareUpgradeBlock(uint8_t* block, size_t blockSize,
+                                             uint32_t transactionId)
 {
   size_t bytesSent, bytesReceived;
 
@@ -885,7 +899,7 @@ void WalterModem::_modemFirmwareUpgradeBlock(size_t blockSize, uint32_t transact
   stpRequest.payloadLength = _switchEndian16(blockSize);
   stpRequest.transactionId = _switchEndian32(transactionId + 1);
   stpRequest.headerCrc16 = 0;
-  stpRequest.payloadCrc16 = _calculateStpCrc16(_otaBuffer, blockSize);
+  stpRequest.payloadCrc16 = _calculateStpCrc16(block, blockSize);
   stpRequest.headerCrc16 = _calculateStpCrc16(&stpRequest, sizeof(stpRequest));
 
   bytesSent = _uartWrite((uint8_t*) &stpRequest, sizeof(stpRequest));
@@ -897,7 +911,7 @@ void WalterModem::_modemFirmwareUpgradeBlock(size_t blockSize, uint32_t transact
       _switchEndian16(stpRequest.payloadLength), _switchEndian32(stpRequest.transactionId),
       _switchEndian16(stpRequest.headerCrc16), _switchEndian16(stpRequest.payloadCrc16));
 
-  bytesSent = _uartWrite(_otaBuffer, blockSize);
+  bytesSent = _uartWrite(block, blockSize);
 
   ESP_LOGD("WalterModem",
            "sent STP transfer block data: tx=%d payload: %d bytes data from flash dup file",
@@ -3613,15 +3627,13 @@ bool WalterModem::_motaFormatAndMount(void)
   return true;
 }
 
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
-
 bool WalterModem::_processMotaInitializeEvent(uint8_t* data, uint16_t len)
 {
-  if(!_otaBuffer || len != sizeof(uint32_t)) {
+  if(len != sizeof(uint32_t)) {
     return true;
   }
 
-  _otaSize = *((uint32_t*) data);
+  _motaSize = *((uint32_t*) data);
 
   if(!_motaFormatAndMount()) {
     ESP_LOGD("WalterModem", "MOTA initialize (format partition) failed");
@@ -3631,7 +3643,7 @@ bool WalterModem::_processMotaInitializeEvent(uint8_t* data, uint16_t len)
   _mota_file_ptr = fopen("/ffat/mota.dup", "w+");
 
   /* Initialize bytes written counter */
-  _otaProgress = 0;
+  _motaProgress = 0;
 
   ESP_LOGD("WalterModem", "MOTA procedure initialized");
 
@@ -3640,7 +3652,7 @@ bool WalterModem::_processMotaInitializeEvent(uint8_t* data, uint16_t len)
 
 bool WalterModem::_processMotaChunkEvent(uint8_t* data, uint16_t len)
 {
-  if(!_otaSize || len == 0 || _otaProgress + len > _otaSize) {
+  if(!_motaSize || len == 0 || _motaProgress + len > _motaSize) {
     ESP_LOGD("WalterModem", "MOTA: cancelled because empty chunk or chunk beyond update size");
     return true;
   }
@@ -3657,45 +3669,56 @@ bool WalterModem::_processMotaChunkEvent(uint8_t* data, uint16_t len)
     return true;
   }
 
-  _otaProgress += len;
+  _motaProgress += len;
 
   ESP_LOGD("WalterModem",
            "MOTA: appending new chunk of %d bytes to ESP32 flash; so far %" PRIu32 "/%" PRIu32
            " bytes written",
-           len, _otaProgress, _otaSize);
+           len, _motaProgress, _motaSize);
 
   return false;
 }
 
-#endif
-
 bool WalterModem::_processMotaFinishEvent(void)
 {
-  if(!_otaSize || _otaProgress != _otaSize || !_mota_file_ptr) {
+  if(!_motaSize || _motaProgress != _motaSize || !_mota_file_ptr) {
     ESP_LOGD("WalterModem", "MOTA error: incomplete or missing dup file");
     return true;
   }
 
   /* prepare modem, disable rx until done so we can talk with modem directly */
   uint16_t blockSize = _modemFirmwareUpgradeStart();
-  if(blockSize > SPI_FLASH_BLOCK_SIZE) {
-    blockSize = (uint16_t) SPI_FLASH_BLOCK_SIZE;
+
+  if(blockSize == 0) {
+    ESP_LOGD("WalterModem", "MOTA error: STP session did not open");
+    _modemFirmwareUpgradeFinish(false);
+    return true;
+  }
+
+  /* Borrowed for the duration of the transfer. Safe because the rx handler is muted from
+   * _modemFirmwareUpgradeStart until _modemFirmwareUpgradeFinish, so no OTA chunk can arrive and
+   * stage into it while we are here. */
+  uint8_t* block = WalterBlueCherry::_otaBuffer();
+
+  /* Every block declares its own length, so transferring less than the modem offered only costs
+   * round trips. Clamping to the staging buffer is what keeps the fread below in bounds. */
+  if(blockSize > BLUECHERRY_OTA_BUFFER_SIZE) {
+    blockSize = (uint16_t) BLUECHERRY_OTA_BUFFER_SIZE;
   }
 
   fseek(_mota_file_ptr, 0L, SEEK_SET);
 
   uint32_t transactionId = 2;
-  long bytesLeft = _otaSize;
+  long bytesLeft = _motaSize;
 
   while(bytesLeft > 0) {
-    /* we can reuse ota_buffer since we expect it to be at least 4K (SPI_FLASH_BLOCK_SIZE) */
-    size_t bytesRead = fread(_otaBuffer, 1, blockSize, _mota_file_ptr);
+    size_t bytesRead = fread(block, 1, blockSize, _mota_file_ptr);
     if(bytesRead <= 0) {
       break;
     }
 
     /* send this chunk to the modem */
-    _modemFirmwareUpgradeBlock(bytesRead, transactionId);
+    _modemFirmwareUpgradeBlock(block, bytesRead, transactionId);
     transactionId += 2;
 
     /* next block */
@@ -3703,7 +3726,7 @@ bool WalterModem::_processMotaFinishEvent(void)
     ESP_LOGD("WalterModem",
              "sent chunk of %d bytes from ESP flash to modem; so far %" PRIu32 "/%" PRIu32
              " bytes sent",
-             bytesRead, _otaSize - bytesLeft, _otaSize);
+             bytesRead, _motaSize - bytesLeft, _motaSize);
 
     tickleWatchdog();
   }
@@ -3723,7 +3746,7 @@ bool WalterModem::_processMotaFinishEvent(void)
   }
 }
 
-void WalterModem::offlineMotaUpgrade(uint8_t* ota_buffer)
+void WalterModem::offlineMotaUpgrade()
 {
   if(_wl_handle == WL_INVALID_HANDLE) {
     esp_err_t result;
@@ -3746,10 +3769,8 @@ void WalterModem::offlineMotaUpgrade(uint8_t* ota_buffer)
     if(!_mota_file_ptr) {
       ESP_LOGD("WalterModem", "Could not open MOTA update package");
     } else {
-      _otaBuffer = ota_buffer;
-
       fseek(_mota_file_ptr, 0L, SEEK_END);
-      _otaProgress = _otaSize = ftell(_mota_file_ptr);
+      _motaProgress = _motaSize = ftell(_mota_file_ptr);
       fseek(_mota_file_ptr, 0L, SEEK_SET);
 
       if(_processMotaFinishEvent()) {
