@@ -57,7 +57,7 @@
 
 // The cellular Access Point Name
 // Leave blank for autodetection
-#define CELLULAR_APN "soracom.io"
+#define CELLULAR_APN ""
 
 // The BlueCherry device type this firmware belongs to, used for Zero-Touch Provisioning
 #define BC_DEVICE_TYPE "walter01"
@@ -524,5 +524,5 @@ extern "C" void app_main(void)
 
   /* The modem stays powered, so the session survives and the next boot resumes it. */
   ESP_LOGI(TAG, "I'm tired, I'm going to deep sleep now for 5 minutes...");
-  modem.sleep(30);
+  modem.sleep(60 * 5);
 }
