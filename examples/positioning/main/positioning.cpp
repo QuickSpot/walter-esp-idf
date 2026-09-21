@@ -2,8 +2,8 @@
  * @file positioning.cpp
  * @author Daan Pape <daan@dptechnics.com>
  * @author Arnoud Devoogdt <arnoud@dptechnics.com>
- * @date 16 January 2026
- * @version 1.5.0
+ * @date 21 September 2026
+ * @version 1.5.1
  * @copyright DPTechnics bv <info@dptechnics.com>
  * @brief Walter Modem library examples
  *
@@ -656,7 +656,7 @@ extern "C" void app_main(void)
 {
   vTaskDelay(pdMS_TO_TICKS(2000));
 
-  ESP_LOGI(TAG, "\r\n\r\n=== WalterModem Positioning example (IDF v1.5.0) ===\r\n");
+  ESP_LOGI(TAG, "\r\n\r\n=== WalterModem Positioning example (IDF v1.5.1) ===\r\n");
 
   /* Get the MAC address for board validation */
   esp_read_mac(out_buf, ESP_MAC_WIFI_STA);
