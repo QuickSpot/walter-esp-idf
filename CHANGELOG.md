@@ -267,3 +267,6 @@ This is the Changelog for WalterModem
 ### Examples
 
 - [[walter-esp-idf](https://github.com/QuickSpot/walter-esp-idf)] fix(mqtt): add missing lteConnect call in mqtts example ([#161](https://github.com/QuickSpot/walter-esp-idf/pull/161))
+- [[walter-arduino](https://github.com/QuickSpot/walter-arduino)] fix(mqtt): add missing lteConnect call in mqtts example ([#147](https://github.com/QuickSpot/walter-arduino/pull/147))
+- [[walter-arduino](https://github.com/QuickSpot/walter-arduino)] fix(mqtt): add missing lteConnect call in aws_mqtt example ([#148](https://github.com/QuickSpot/walter-arduino/pull/148))
+- [[walter-arduino](https://github.com/QuickSpot/walter-arduino)] fix(GNSS): lteConnected check in GNSS assistance ([#144](https://github.com/QuickSpot/walter-arduino/pull/144))
