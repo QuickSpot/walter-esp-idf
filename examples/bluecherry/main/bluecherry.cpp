@@ -2,8 +2,8 @@
  * @file bluecherry.cpp
  * @author Jonas Maes <jonas@dptechnics.com>
  * @author Arnoud Devoogdt <arnoud@dptechnics.com>
- * @date 16 January 2026
- * @version 1.5.0
+ * @date 21 September 2026
+ * @version 1.5.1
  * @copyright DPTechnics bv <info@dptechnics.com>
  * @brief Walter Modem library examples
  *
@@ -413,7 +413,7 @@ bool configureBluecherry()
 extern "C" void app_main(void)
 {
   WalterModemRsp rsp = {};
-  ESP_LOGI(TAG, "\r\n\r\n=== Walter BlueCherry example (IDF v1.5.0) ===\r\n\r\n");
+  ESP_LOGI(TAG, "\r\n\r\n=== Walter BlueCherry example (IDF v1.5.1) ===\r\n\r\n");
 
   /* Start the modem */
   if(modem.begin(UART_NUM_1)) {

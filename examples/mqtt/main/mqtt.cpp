@@ -2,8 +2,8 @@
  * @file mqtt.cpp
  * @author Jonas Maes <jonas@dptechnics.com>
  * @author Arnoud Devoogdt <arnoud@dptechnics.com>
- * @date 16 January 2026
- * @version 1.5.0
+ * @date 21 September 2026
+ * @version 1.5.1
  * @copyright DPTechnics bv <info@dptechnics.com>
  * @brief Walter Modem library examples
  *
@@ -348,7 +348,7 @@ static bool mqttPublishMessage(const char* topic, const char* message)
  */
 extern "C" void app_main()
 {
-  ESP_LOGI(TAG, "\r\n\r\n=== WalterModem MQTT example (IDF v1.5.0) ===\r\n\r\n");
+  ESP_LOGI(TAG, "\r\n\r\n=== WalterModem MQTT example (IDF v1.5.1) ===\r\n\r\n");
 
   uint8_t mac[6] = { 0 };
   esp_read_mac(mac, ESP_MAC_WIFI_STA);

@@ -2,8 +2,8 @@
  * @file coap.cpp
  * @author Dries Vandenbussche <dries@dptechnics.com>
  * @author Arnoud Devoogdt <arnoud@dptechnics.com>
- * @date 16 January 2026
- * @version 1.5.0
+ * @date 21 September 2026
+ * @version 1.5.1
  * @copyright DPTechnics bv <info@dptechnics.com>
  * @brief Walter Modem library examples
  *
@@ -292,7 +292,7 @@ static void myCoAPEventHandler(WMCoAPEventType event, const WMCoAPEventData* dat
 
 extern "C" void app_main(void)
 {
-  ESP_LOGI(TAG, "\r\n\r\n=== WalterModem CoAP example (IDF v1.5.0) ===\r\n\r\n");
+  ESP_LOGI(TAG, "\r\n\r\n=== WalterModem CoAP example (IDF v1.5.1) ===\r\n\r\n");
 
   /* Get the MAC address for board validation */
   esp_read_mac(out_buf, ESP_MAC_WIFI_STA);
