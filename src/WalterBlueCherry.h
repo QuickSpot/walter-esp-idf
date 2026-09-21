@@ -56,7 +56,8 @@
  *     WalterBlueCherry blueCherry;
  *
  *     modem.begin(UART_NUM_1);
- *     blueCherry.init(BC_TLS_PROFILE, BC_DEVICE_TYPE, msgHandler);
+ *     blueCherry.init(BC_TLS_PROFILE, BC_DEVICE_TYPE);
+ *     blueCherry.setMsgHandler(msgHandler);
  *     blueCherry.publish(0x84, len, data);
  *     blueCherry.sync();
  *     while(blueCherry.getState() != BLUECHERRY_STATE_IDLE) {
@@ -67,7 +68,9 @@
  * The enumerator names below are deliberately the BLUECHERRY_* ones used by the bluecherry-esp-idf
  * client rather than WALTER_MODEM_BLUECHERRY_*. The protocol logic is shared between the two
  * implementations line for line, so keeping the names identical is what lets a fix on one side be
- * carried to the other without rewriting it. Only the type names carry the Walter prefix.
+ * carried to the other without rewriting it. The type names are BlueCherry* rather than
+ * WalterModem*: BlueCherry is its own client now, not a WalterModem abstraction, and the
+ * reference's snake_case bluecherry_*_t names leave the CamelCase spelling free.
  */
 
 #ifndef WALTER_BLUECHERRY_H
@@ -93,12 +96,12 @@
 #define BLUECHERRY_OTA_BUFFER_SIZE SPI_FLASH_SEC_SIZE
 
 /**
- * @brief The smallest publish buffer that can be passed to blueCherryInit.
+ * @brief The smallest publish buffer that can be passed to init.
  */
 #define BLUECHERRY_MIN_PUBLISH_BUFFER 256
 
 /**
- * @brief The largest payload a single blueCherryPublish call accepts.
+ * @brief The largest payload a single publish call accepts.
  *
  * The wire length field is a single byte, so this is 255 and not the 1017 bytes that would
  * otherwise fit in a frame. The reference client accepts the larger value and writes len & 0xFF,
@@ -117,10 +120,10 @@
 /**
  * @brief The states the BlueCherry connection can be in.
  *
- * Read with blueCherryGetState or subscribe with blueCherrySetStateHandler. BLUECHERRY_STATE_IDLE
- * is the only state in which nothing is outstanding in either direction, and therefore the point
- * at which a sleepy device can call WalterModem::sleep without stranding data. blueCherrySync
- * only starts the work, so waiting for it to return is not the same thing.
+ * Read with getState or subscribe with setStateHandler. BLUECHERRY_STATE_IDLE is the only state in
+ * which nothing is outstanding in either direction, and therefore the point at which a sleepy
+ * device can call WalterModem::sleep without stranding data. sync only starts the work, so waiting
+ * for it to return is not the same thing.
  */
 typedef enum {
   /**
@@ -131,7 +134,7 @@ typedef enum {
   /**
    * @brief Allocated, but the modem holds no device credentials yet.
    *
-   * The next blueCherrySync runs Zero-Touch Provisioning before connecting.
+   * The next sync runs Zero-Touch Provisioning before connecting.
    */
   BLUECHERRY_STATE_NOT_PROVISIONED,
 
@@ -157,7 +160,7 @@ typedef enum {
    * queue is not empty. The synchronisation task keeps cycling until this clears.
    */
   BLUECHERRY_STATE_PENDING_MESSAGES
-} WalterModemBlueCherryState;
+} BlueCherryState;
 
 /**
  * @brief The device identifier types the ZTP server accepts.
@@ -166,7 +169,7 @@ typedef enum {
   BLUECHERRY_ZTP_DEVICE_ID_TYPE_MAC = 0,
   BLUECHERRY_ZTP_DEVICE_ID_TYPE_IMEI,
   BLUECHERRY_ZTP_DEVICE_ID_TYPE_OOB_CHALLENGE
-} WalterModemBlueCherryZtpDeviceIdType;
+} BlueCherryZtpDeviceIdType;
 
 /**
  * @brief OTA error codes reported to the cloud.
@@ -181,17 +184,17 @@ typedef enum {
   BLUECHERRY_OTA_ERR_SET_BOOT_FAILED = 7,
   BLUECHERRY_OTA_ERR_APP_ABORTED = 8,
   BLUECHERRY_OTA_ERR_CHUNK_OVERRUN = 9
-} WalterModemBlueCherryOtaError;
+} BlueCherryOtaError;
 
 /**
  * @brief OTA events reported to the application.
  */
 typedef enum {
   /**
-   * @brief An update is available, details are in WalterModemBlueCherryOtaInfo.
+   * @brief An update is available, details are in BlueCherryOtaInfo.
    *
-   * Carries a decision: the download. Return true and nothing happens until blueCherryOtaStart is
-   * called, with no deadline. Raised again on every reconnect while the update is still on offer.
+   * Carries a decision: the download. Return true and nothing happens until otaStart is called,
+   * with no deadline. Raised again on every reconnect while the update is still on offer.
    */
   BLUECHERRY_OTA_EVENT_AVAILABLE,
 
@@ -219,13 +222,13 @@ typedef enum {
    * @brief The update failed, error_code says why. Carries no decision.
    */
   BLUECHERRY_OTA_EVENT_FAILED
-} WalterModemBlueCherryOtaEvent;
+} BlueCherryOtaEvent;
 
 #pragma endregion
 #pragma region STRUCTS
 
 /**
- * @brief Details accompanying a WalterModemBlueCherryOtaEvent.
+ * @brief Details accompanying a BlueCherryOtaEvent.
  */
 typedef struct {
   /**
@@ -253,15 +256,15 @@ typedef struct {
   uint32_t bytes_received;
 
   /**
-   * @brief A WalterModemBlueCherryOtaError, for BLUECHERRY_OTA_EVENT_FAILED.
+   * @brief A BlueCherryOtaError, for BLUECHERRY_OTA_EVENT_FAILED.
    */
   uint8_t error_code;
-} WalterModemBlueCherryOtaInfo;
+} BlueCherryOtaInfo;
 
 /**
  * @brief Where the queue of messages waiting to be published lives.
  *
- * Passed to blueCherryInit, or NULL to let the library allocate
+ * Passed to init, or NULL to let the library allocate
  * CONFIG_WALTER_MODEM_BLUECHERRY_PUBLISH_BUFFER_SIZE bytes in internal RAM. Supplying a buffer is
  * how an application decides both the size of the queue and the memory it comes out of; PSRAM and
  * static arrays both work.
@@ -282,7 +285,7 @@ typedef struct {
    * @brief The size of buffer in bytes, at least BLUECHERRY_MIN_PUBLISH_BUFFER.
    */
   size_t size;
-} WalterModemBlueCherryPublishBuffer;
+} BlueCherryPublishBuffer;
 
 #pragma endregion
 #pragma region HANDLERS
@@ -296,12 +299,11 @@ typedef struct {
  * @param topic The single byte topic index the cloud maps to an MQTT topic.
  * @param len The number of bytes in data.
  * @param data The payload, valid only for the duration of the call.
- * @param args The argument given to blueCherrySetMsgHandler.
+ * @param args The argument given to setMsgHandler.
  *
  * @return None.
  */
-typedef void (*walterModemBlueCherryMsgHandler)(uint8_t topic, uint16_t len, const uint8_t* data,
-                                                void* args);
+typedef void (*blueCherryMsgHandler)(uint8_t topic, uint16_t len, const uint8_t* data, void* args);
 
 /**
  * @brief Handler notified of every connection state change.
@@ -311,11 +313,11 @@ typedef void (*walterModemBlueCherryMsgHandler)(uint8_t topic, uint16_t len, con
  * on whichever task made that call.
  *
  * @param state The state just entered.
- * @param args The argument given to blueCherrySetStateHandler.
+ * @param args The argument given to setStateHandler.
  *
  * @return None.
  */
-typedef void (*walterModemBlueCherryStateHandler)(WalterModemBlueCherryState state, void* args);
+typedef void (*blueCherryStateHandler)(BlueCherryState state, void* args);
 
 /**
  * @brief Handler for OTA events.
@@ -329,13 +331,12 @@ typedef void (*walterModemBlueCherryStateHandler)(WalterModemBlueCherryState sta
  *
  * @param event The event that occurred.
  * @param info Details for the event, valid only for the duration of the call.
- * @param args The argument given to blueCherrySetOtaHandler.
+ * @param args The argument given to setOtaHandler.
  *
  * @return True if the application took this event's decision, false to apply the default.
  */
-typedef bool (*walterModemBlueCherryOtaHandler)(WalterModemBlueCherryOtaEvent event,
-                                                const WalterModemBlueCherryOtaInfo* info,
-                                                void* args);
+typedef bool (*blueCherryOtaHandler)(BlueCherryOtaEvent event, const BlueCherryOtaInfo* info,
+                                     void* args);
 
 #pragma endregion
 
@@ -358,7 +359,11 @@ public:
    * Performs no network I/O and cannot fail because the cloud is unreachable, so it needs no
    * retry loop. It does talk to the modem, so WalterModem::begin must have succeeded first. It
    * must be called on every boot, including after deep sleep: it is what resumes a session that
-   * survived the sleep and what re-registers the handlers, neither of which persist.
+   * survived the sleep, which does not persist on its own.
+   *
+   * Handlers are installed separately once this returns, with setMsgHandler, setOtaHandler and
+   * setStateHandler. They do not survive a deep sleep either, so they are re-installed on the
+   * same path.
    *
    * When the modem holds no device credentials the state becomes BLUECHERRY_STATE_NOT_PROVISIONED
    * and the first sync runs Zero-Touch Provisioning, which requires device_type_id.
@@ -370,17 +375,13 @@ public:
    *
    * @param tls_profile_id The modem TLS profile to use. BlueCherry owns NVM slots 0, 5 and 6.
    * @param device_type_id The 8 character BlueCherry Type ID, required for provisioning only.
-   * @param msg_handler Handler for incoming messages, or NULL to ignore them.
-   * @param msg_handler_args Optional user arguments for the message handler.
    * @param publish_buffer Where to queue outgoing messages, or NULL to allocate the Kconfig
    * default in internal RAM.
    *
    * @return True on success, false on error.
    */
   static bool init(uint8_t tls_profile_id, const char* device_type_id = NULL,
-                   walterModemBlueCherryMsgHandler msg_handler = NULL,
-                   void* msg_handler_args = NULL,
-                   const WalterModemBlueCherryPublishBuffer* publish_buffer = NULL);
+                   const BlueCherryPublishBuffer* publish_buffer = NULL);
 
   /**
    * @brief Upload BlueCherry credentials to the modem.
@@ -450,9 +451,9 @@ public:
   /**
    * @brief Get the current connection state.
    *
-   * @return The current WalterModemBlueCherryState.
+   * @return The current BlueCherryState.
    */
-  static WalterModemBlueCherryState getState();
+  static BlueCherryState getState();
 
   /**
    * @brief Install a handler notified of every connection state change.
@@ -462,17 +463,22 @@ public:
    *
    * @return True on success, false on error.
    */
-  static bool setStateHandler(walterModemBlueCherryStateHandler handler, void* args = NULL);
+  static bool setStateHandler(blueCherryStateHandler handler, void* args = NULL);
 
   /**
    * @brief Install a handler for incoming messages.
+   *
+   * Optional, but recommended: it is the only way an application sees its downlink. There is no
+   * default one to fall back on, because the payloads are application data the library cannot
+   * interpret - unlike OTA, which it drives itself when no handler is installed. Without one an
+   * incoming message is acknowledged like any other and then discarded.
    *
    * @param handler The handler, or NULL to ignore incoming messages.
    * @param args Optional user arguments for the handler.
    *
    * @return True on success, false on error.
    */
-  static bool setMsgHandler(walterModemBlueCherryMsgHandler handler, void* args = NULL);
+  static bool setMsgHandler(blueCherryMsgHandler handler, void* args = NULL);
 
   /**
    * @brief Install a handler for OTA events.
@@ -485,7 +491,7 @@ public:
    *
    * @return True on success, false on error.
    */
-  static bool setOtaHandler(walterModemBlueCherryOtaHandler handler, void* args = NULL);
+  static bool setOtaHandler(blueCherryOtaHandler handler, void* args = NULL);
 
   /**
    * @brief Accept an offered firmware update.
@@ -502,7 +508,7 @@ public:
    *
    * The cloud allows three attempts before it stops offering the update.
    *
-   * @param error_code A WalterModemBlueCherryOtaError reported to the cloud.
+   * @param error_code A BlueCherryOtaError reported to the cloud.
    *
    * @return True when the abort was queued, false when no update is in progress.
    */

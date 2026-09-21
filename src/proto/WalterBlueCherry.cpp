@@ -372,7 +372,7 @@ typedef union {
  * @brief One device identifier offered to the provisioning server.
  */
 typedef struct {
-  WalterModemBlueCherryZtpDeviceIdType type;
+  BlueCherryZtpDeviceIdType type;
   _bluecherry_ztp_device_id_value_t value;
 } _bluecherry_ztp_device_id_param_t;
 
@@ -444,7 +444,7 @@ typedef struct {
  * @brief The operational data used by the BlueCherry cloud connection.
  */
 typedef struct {
-  WalterModemBlueCherryState state;
+  BlueCherryState state;
 
   /** @brief The modem socket carrying the session, or -1 when there is none. */
   int sock;
@@ -465,7 +465,7 @@ typedef struct {
 
   _bluecherry_ring_t out_ring;
 
-  walterModemBlueCherryMsgHandler msg_handler;
+  blueCherryMsgHandler msg_handler;
   void* msg_handler_args;
 
   uint16_t cur_message_id;
@@ -507,9 +507,9 @@ typedef struct {
   uint8_t pending_event[BLUECHERRY_PENDING_EVENT_SIZE];
   size_t pending_event_len;
 
-  walterModemBlueCherryOtaHandler ota_handler;
+  blueCherryOtaHandler ota_handler;
   void* ota_handler_args;
-  walterModemBlueCherryStateHandler state_handler;
+  blueCherryStateHandler state_handler;
   void* state_handler_args;
 } _bluecherry_t;
 
@@ -691,6 +691,64 @@ static void _bluecherry_tickle_watchdog(void)
 }
 
 /**
+ * @brief Widen the task watchdog to the budget a synchronisation cycle needs.
+ *
+ * The watchdog has one timeout shared by every subscribed task, so the budget the synchronisation
+ * task needs is necessarily the whole timer's. A cycle feeds the watchdog around each blocking
+ * step, but socketDial cannot be broken up: the DTLS handshake runs inside AT+SQNSD and is allowed
+ * BLUECHERRY_HANDSHAKE_TIMEOUT_SEC on its own. Arduino has no Kconfig and its core ships a five
+ * second timeout, which that dial trips on every cold connect.
+ *
+ * Only ever widened, and left alone when it is already wide enough, so an application that asked
+ * for a longer budget keeps it.
+ *
+ * @param current_sec The timeout in force, or 0 when WalterModem left it at the project default.
+ *
+ * @return None.
+ */
+static void _bluecherry_widen_watchdog(uint16_t current_sec)
+{
+#if CONFIG_ESP_TASK_WDT_EN
+  if(current_sec == 0) {
+    current_sec = CONFIG_ESP_TASK_WDT_TIMEOUT_S;
+  }
+
+  if(current_sec >= WALTER_MODEM_BLUECHERRY_WDT_TIMEOUT_S) {
+    return;
+  }
+
+  /* Rebuilt from the project's own settings rather than carried over from a getter there is none
+   * of. Forcing an idle check onto a core the project excluded, or a panic it turned off, would
+   * change behaviour that is not ours to change; only the timeout is. */
+  esp_task_wdt_config_t twdt_config = {};
+  twdt_config.timeout_ms = (uint32_t) WALTER_MODEM_BLUECHERRY_WDT_TIMEOUT_S * 1000UL;
+#if CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0
+  twdt_config.idle_core_mask |= 1 << 0;
+#endif
+#if CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU1
+  twdt_config.idle_core_mask |= 1 << 1;
+#endif
+#if CONFIG_ESP_TASK_WDT_PANIC
+  twdt_config.trigger_panic = true;
+#endif
+
+#if CONFIG_ESP_TASK_WDT_INIT
+  esp_err_t ret = esp_task_wdt_reconfigure(&twdt_config);
+#else
+  esp_err_t ret = esp_task_wdt_init(&twdt_config);
+#endif
+
+  if(ret == ESP_OK) {
+    ESP_LOGD(TAG, "Task watchdog widened from %us to %ds", current_sec,
+             WALTER_MODEM_BLUECHERRY_WDT_TIMEOUT_S);
+  } else {
+    ESP_LOGW(TAG, "Could not widen the %us task watchdog to %ds, a dial may trip it", current_sec,
+             WALTER_MODEM_BLUECHERRY_WDT_TIMEOUT_S);
+  }
+#endif
+}
+
+/**
  * @brief Move to a new connection state and tell the application, if it asked.
  *
  * The single place the state is written, so the handler cannot miss a transition.
@@ -699,7 +757,7 @@ static void _bluecherry_tickle_watchdog(void)
  *
  * @return None.
  */
-static void _bluecherry_set_state(WalterModemBlueCherryState next)
+static void _bluecherry_set_state(BlueCherryState next)
 {
   bool changed = false;
 
@@ -754,9 +812,9 @@ static void _bluecherry_request_sync(void)
  *
  * @return The state settled on.
  */
-static WalterModemBlueCherryState _bluecherry_settle_to(bool pending)
+static BlueCherryState _bluecherry_settle_to(bool pending)
 {
-  WalterModemBlueCherryState next;
+  BlueCherryState next;
   bool changed = false;
 
   portENTER_CRITICAL(&_bluecherry_state_lock);
@@ -803,7 +861,7 @@ static void _bluecherry_ring_deinit(void)
  *
  * @return ESP_OK on success.
  */
-static esp_err_t _bluecherry_ring_init(const WalterModemBlueCherryPublishBuffer* cfg)
+static esp_err_t _bluecherry_ring_init(const BlueCherryPublishBuffer* cfg)
 {
   _bluecherry_ring_t* ring = &_bluecherry_opdata.out_ring;
 
@@ -1312,13 +1370,13 @@ static esp_err_t _bluecherry_publish_event(const uint8_t* payload, uint8_t len)
  * @return True when the application took this event's decision, false when the library should
  * apply its own default.
  */
-static bool _bluecherry_ota_notify(WalterModemBlueCherryOtaEvent event, uint8_t error_code)
+static bool _bluecherry_ota_notify(BlueCherryOtaEvent event, uint8_t error_code)
 {
   if(_bluecherry_opdata.ota_handler == NULL) {
     return false;
   }
 
-  WalterModemBlueCherryOtaInfo info = {};
+  BlueCherryOtaInfo info = {};
   info.version = _bluecherry_opdata.ota_target_version;
   info.size = _bluecherry_opdata.ota_size;
   info.bytes_received = _bluecherry_opdata.ota_progress;
@@ -1374,7 +1432,7 @@ static void _bluecherry_ota_reset(void)
 /**
  * @brief Abandon the transfer, tell the cloud why, and inform the application.
  *
- * @param error_code A WalterModemBlueCherryOtaError.
+ * @param error_code A BlueCherryOtaError.
  *
  * @return None.
  */
@@ -2876,7 +2934,7 @@ static bool _ztp_finish_csr_gen(bool result)
  *
  * @return True if the parameter was added successfully, false otherwise.
  */
-static bool _ztp_add_device_id_parameter_blob(WalterModemBlueCherryZtpDeviceIdType type,
+static bool _ztp_add_device_id_parameter_blob(BlueCherryZtpDeviceIdType type,
                                               const unsigned char* blob)
 {
   if(blob == NULL ||
@@ -3718,8 +3776,7 @@ void WalterBlueCherry::_handleSocketEvent(WMSocketEventType event, uint16_t data
 #pragma region PUBLIC
 
 bool WalterBlueCherry::init(uint8_t tls_profile_id, const char* device_type_id,
-                            walterModemBlueCherryMsgHandler msg_handler, void* msg_handler_args,
-                            const WalterModemBlueCherryPublishBuffer* publish_buffer)
+                            const BlueCherryPublishBuffer* publish_buffer)
 {
   /* First, because this call is not passive: isProvisioned below issues AT commands, and the
    * command queue they go into is created by WalterModem::begin. Without this the send lands on a
@@ -3734,11 +3791,9 @@ bool WalterBlueCherry::init(uint8_t tls_profile_id, const char* device_type_id,
     return false;
   }
 
-  /* The handlers and the device type are re-supplied on every boot, including after a deep sleep,
-   * because neither can be carried across one. */
+  /* The device type is re-supplied on every boot, including after a deep sleep, because it cannot
+   * be carried across one. Handlers are re-installed the same way, through their own setters. */
   bc_type_id = device_type_id;
-  _bluecherry_opdata.msg_handler = msg_handler;
-  _bluecherry_opdata.msg_handler_args = msg_handler_args;
 
   if(_bluecherry_opdata.state != BLUECHERRY_STATE_UNINITIALIZED) {
     return true;
@@ -3761,6 +3816,9 @@ bool WalterBlueCherry::init(uint8_t tls_profile_id, const char* device_type_id,
       return false;
     }
   }
+
+  /* Before the task exists, so it never runs a cycle against a budget a dial would trip. */
+  _bluecherry_widen_watchdog(WalterModem::_watchdogTimeout);
 
   /* Started unconditionally: a sync request is a trigger, so the task has to exist even when the
    * application drives synchronisation itself. Guarded on the handle so a retried init cannot
@@ -3907,26 +3965,26 @@ bool WalterBlueCherry::setAutoSync(uint32_t interval_sec)
   return true;
 }
 
-WalterModemBlueCherryState WalterBlueCherry::getState()
+BlueCherryState WalterBlueCherry::getState()
 {
   return _bluecherry_opdata.state;
 }
 
-bool WalterBlueCherry::setStateHandler(walterModemBlueCherryStateHandler handler, void* args)
+bool WalterBlueCherry::setStateHandler(blueCherryStateHandler handler, void* args)
 {
   _bluecherry_opdata.state_handler_args = args;
   _bluecherry_opdata.state_handler = handler;
   return true;
 }
 
-bool WalterBlueCherry::setMsgHandler(walterModemBlueCherryMsgHandler handler, void* args)
+bool WalterBlueCherry::setMsgHandler(blueCherryMsgHandler handler, void* args)
 {
   _bluecherry_opdata.msg_handler = handler;
   _bluecherry_opdata.msg_handler_args = args;
   return true;
 }
 
-bool WalterBlueCherry::setOtaHandler(walterModemBlueCherryOtaHandler handler, void* args)
+bool WalterBlueCherry::setOtaHandler(blueCherryOtaHandler handler, void* args)
 {
   _bluecherry_opdata.ota_handler = handler;
   _bluecherry_opdata.ota_handler_args = args;

@@ -318,8 +318,7 @@ void myMessageHandler(uint8_t topic, uint16_t len, const uint8_t* data, void* ar
  *
  * @return True when this handler took the event's decision.
  */
-bool myOtaHandler(WalterModemBlueCherryOtaEvent event, const WalterModemBlueCherryOtaInfo* info,
-                  void* args)
+bool myOtaHandler(BlueCherryOtaEvent event, const BlueCherryOtaInfo* info, void* args)
 {
   switch(event) {
   case BLUECHERRY_OTA_EVENT_AVAILABLE:
@@ -362,7 +361,7 @@ bool myOtaHandler(WalterModemBlueCherryOtaEvent event, const WalterModemBlueCher
  *
  * @return void
  */
-void myStateHandler(WalterModemBlueCherryState state, void* args)
+void myStateHandler(BlueCherryState state, void* args)
 {
   switch(state) {
   case BLUECHERRY_STATE_NOT_PROVISIONED:
@@ -396,7 +395,7 @@ static bool initializeBlueCherry(void)
 {
   /* PSRAM, falling back to a library-allocated one in internal RAM. This descriptor is read during
    * init and not kept, so only the buffer it points at has to outlive the call. */
-  WalterModemBlueCherryPublishBuffer publishBuffer = {};
+  BlueCherryPublishBuffer publishBuffer = {};
   publishBuffer.buffer = (uint8_t*) heap_caps_malloc(BC_PUBLISH_BUFFER_SIZE, MALLOC_CAP_SPIRAM);
   publishBuffer.size = BC_PUBLISH_BUFFER_SIZE;
 
@@ -405,11 +404,15 @@ static bool initializeBlueCherry(void)
     publishBuffer.size = 0;
   }
 
-  if(!bc.init(BC_TLS_PROFILE, BC_DEVICE_TYPE, myMessageHandler, NULL,
+  if(!bc.init(BC_TLS_PROFILE, BC_DEVICE_TYPE,
               publishBuffer.buffer != NULL ? &publishBuffer : NULL)) {
     ESP_LOGE(TAG, "Could not initialize BlueCherry");
     return false;
   }
+
+  /* Optional, but recommended: the only way this application sees its downlink. The library has
+   * no default for it, the payloads being application data it cannot interpret. */
+  bc.setMsgHandler(myMessageHandler, NULL);
 
   /* Both optional: without them the library takes the update decisions itself, and bc.getState()
    * answers what the state handler reports. */

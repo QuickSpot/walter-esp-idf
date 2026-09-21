@@ -178,6 +178,21 @@ menu "walter-modem"
                             holding a few kilobytes in nested frames, then a SECP256R1 key
                             generation. 4096 is not enough for that and overflows. Lower it only
                             if you never use ZTP.
+
+                    config WALTER_MODEM_BLUECHERRY_WDT_TIMEOUT_S
+                        int "synchronisation task watchdog timeout (seconds)"
+                        default 60
+                        range 30 300
+                        help
+                            The task watchdog budget the synchronisation task needs. The watchdog
+                            has one timeout shared by every subscribed task, so this widens the
+                            whole timer when it is currently narrower; it never narrows it, and
+                            it leaves the panic and idle-core settings alone.
+
+                            A cycle feeds the watchdog around each blocking step, but socketDial
+                            cannot be broken up: the DTLS handshake runs inside AT+SQNSD and is
+                            allowed 20 seconds on its own. The floor of 30 keeps a margin over
+                            that. Arduino has no Kconfig and is fixed at the 60 second default.
                 endmenu
             endif
 

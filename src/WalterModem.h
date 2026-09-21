@@ -249,6 +249,16 @@ CONFIG_INT(WALTER_MODEM_BLUECHERRY_PUBLISH_BUFFER_SIZE, 4096)
  */
 CONFIG_INT(WALTER_MODEM_BLUECHERRY_SYNC_TASK_STACK_SIZE, 8192)
 
+/**
+ * @brief The task watchdog budget the BlueCherry synchronisation task needs, in seconds.
+ *
+ * The watchdog has one timeout shared by every subscribed task, so BlueCherry widens the whole
+ * timer to this when it is currently narrower, and never narrows it. A cycle feeds the watchdog
+ * around each blocking step, but socketDial cannot be broken up: the DTLS handshake runs inside
+ * AT+SQNSD and is allowed 20 seconds on its own. Arduino has no Kconfig, so it takes this literal.
+ */
+CONFIG_INT(WALTER_MODEM_BLUECHERRY_WDT_TIMEOUT_S, 60)
+
 #endif
 
 /**
