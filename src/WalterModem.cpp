@@ -46,7 +46,7 @@
  */
 
 #include <WalterDefines.h>
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+#if CONFIG_BLUECHERRY_ENABLE
 #include <WalterBlueCherry.h>
 #endif
 
@@ -61,7 +61,7 @@
 #include <esp_system.h>
 #include <esp_timer.h>
 
-#if CONFIG_WALTER_MODEM_ENABLE_MOTA || CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+#if CONFIG_WALTER_MODEM_ENABLE_MOTA || CONFIG_BLUECHERRY_ENABLE
 
 #include <esp_ota_ops.h>
 
@@ -71,7 +71,7 @@
 #include <driver/uart.h>
 #include <esp_task_wdt.h>
 
-#if CONFIG_WALTER_MODEM_ENABLE_MOTA || CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+#if CONFIG_WALTER_MODEM_ENABLE_MOTA || CONFIG_BLUECHERRY_ENABLE
 
 #include <esp_image_format.h>
 #include <esp_partition.h>
@@ -1634,7 +1634,7 @@ void WalterModem::_eventProcessingTask(void* args)
       /* Small delay to allow rsp processor to complete */
       vTaskDelay(pdMS_TO_TICKS(10));
 
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+#if CONFIG_BLUECHERRY_ENABLE
 
       if(qItem.type == WALTER_MODEM_EVENT_TYPE_SOCKET &&
          qItem.socket.data.conn_id == WalterBlueCherry::_socketId()) {
@@ -3961,7 +3961,7 @@ void WalterModem::_sleepPrepare()
   memcpy(_socketCtxSetRTC, _socketSet, WALTER_MODEM_MAX_SOCKETS * sizeof(WalterModemSocket));
 
 #endif
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+#if CONFIG_BLUECHERRY_ENABLE
 
   WalterBlueCherry::_sleepPrepare();
 

@@ -66,7 +66,7 @@
  *     modem.sleep(300);
  *
  * The enumerator names below are deliberately the BLUECHERRY_* ones used by the bluecherry-esp-idf
- * client rather than WALTER_MODEM_BLUECHERRY_*. The protocol logic is shared between the two
+ * client rather than WalterModem-prefixed ones. The protocol logic is shared between the two
  * implementations line for line, so keeping the names identical is what lets a fix on one side be
  * carried to the other without rewriting it. The type names are BlueCherry* rather than
  * WalterModem*: BlueCherry is its own client now, not a WalterModem abstraction, and the
@@ -78,14 +78,88 @@
 
 #include "WalterModem.h"
 
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+#if CONFIG_BLUECHERRY_ENABLE
 
+#pragma region CONFIGURATION
+
+/* Each of these is a Kconfig symbol under menu "BlueCherry". Under ESP-IDF the value arrives in
+ * sdkconfig.h; Arduino has no Kconfig and no sdkconfig.h, so the literal below is what it takes.
+ * The symbols are BlueCherry's own and are read without regard to WALTER_MODEM_KCONFIG, which
+ * configures the modem driver. */
+
+/**
+ * @brief The default hostname for Bluecherry.
+ */
+#ifndef CONFIG_BLUECHERRY_HOSTNAME
+#define CONFIG_BLUECHERRY_HOSTNAME "coap.bluecherry.io"
+#endif
+static constexpr const char* BLUECHERRY_HOSTNAME = CONFIG_BLUECHERRY_HOSTNAME;
+
+/**
+ * @brief The default port for Bluecherry CoAP.
+ */
+#ifndef CONFIG_BLUECHERRY_PORT
+#define CONFIG_BLUECHERRY_PORT 5684
+#endif
+static constexpr uint16_t BLUECHERRY_PORT = CONFIG_BLUECHERRY_PORT;
+
+/**
+ * @brief The port of the BlueCherry Zero-Touch Provisioning server. Shares the host with
+ * BLUECHERRY_HOSTNAME.
+ */
+#ifndef CONFIG_BLUECHERRY_ZTP_PORT
+#define CONFIG_BLUECHERRY_ZTP_PORT 5688
+#endif
+static constexpr uint16_t BLUECHERRY_ZTP_PORT = CONFIG_BLUECHERRY_ZTP_PORT;
+
+/**
+ * @brief The size of the buffer holding messages waiting to be published, in bytes.
+ *
+ * Used only when the application passes no buffer of its own to WalterBlueCherry::init. Each
+ * queued message costs its payload plus 9 bytes.
+ */
+#ifndef CONFIG_BLUECHERRY_PUBLISH_BUFFER_SIZE
+#define CONFIG_BLUECHERRY_PUBLISH_BUFFER_SIZE 4096
+#endif
+static constexpr int BLUECHERRY_PUBLISH_BUFFER_SIZE = CONFIG_BLUECHERRY_PUBLISH_BUFFER_SIZE;
+
+/**
+ * @brief The stack of the BlueCherry synchronisation task, in bytes.
+ *
+ * The task runs every network operation BlueCherry performs. The deepest path is Zero-Touch
+ * Provisioning: a DTLS handshake, then CBOR exchanges holding a few kilobytes in nested frames,
+ * then a SECP256R1 key generation. 4096 is not enough for that and overflows.
+ */
+#ifndef CONFIG_BLUECHERRY_SYNC_TASK_STACK_SIZE
+#define CONFIG_BLUECHERRY_SYNC_TASK_STACK_SIZE 8192
+#endif
+static constexpr int BLUECHERRY_SYNC_TASK_STACK_SIZE = CONFIG_BLUECHERRY_SYNC_TASK_STACK_SIZE;
+
+/**
+ * @brief The task watchdog budget the BlueCherry synchronisation task needs, in seconds.
+ *
+ * The watchdog has one timeout shared by every subscribed task, so BlueCherry widens the whole
+ * timer to this when it is currently narrower, and never narrows it. A cycle feeds the watchdog
+ * around each blocking step, but socketDial cannot be broken up: the DTLS handshake runs inside
+ * AT+SQNSD and is allowed 20 seconds on its own. Arduino has no Kconfig, so it takes this literal.
+ */
+#ifndef CONFIG_BLUECHERRY_WDT_TIMEOUT_S
+#define CONFIG_BLUECHERRY_WDT_TIMEOUT_S 60
+#endif
+static constexpr int BLUECHERRY_WDT_TIMEOUT_S = CONFIG_BLUECHERRY_WDT_TIMEOUT_S;
+
+#pragma endregion
 #pragma region CONSTANTS
 
 /**
  * @brief The length of a partition SHA-256 digest.
  */
 #define BLUECHERRY_PARTITION_HASH_LEN 32
+
+/**
+ * @brief The maximum size of an incoming BlueCherry message payload.
+ */
+constexpr uint16_t BLUECHERRY_MAX_INCOMING_MESSAGE_LEN = 1220;
 
 /**
  * @brief The size of the firmware staging buffer.
@@ -265,7 +339,7 @@ typedef struct {
  * @brief Where the queue of messages waiting to be published lives.
  *
  * Passed to init, or NULL to let the library allocate
- * CONFIG_WALTER_MODEM_BLUECHERRY_PUBLISH_BUFFER_SIZE bytes in internal RAM. Supplying a buffer is
+ * CONFIG_BLUECHERRY_PUBLISH_BUFFER_SIZE bytes in internal RAM. Supplying a buffer is
  * how an application decides both the size of the queue and the memory it comes out of; PSRAM and
  * static arrays both work.
  *

@@ -100,8 +100,8 @@ for efficient configuration management."
 #ifndef CONFIG_WALTER_MODEM_ENABLE_COAP
 #define CONFIG_WALTER_MODEM_ENABLE_COAP 1
 #endif
-#ifndef CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
-#define CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY 1
+#ifndef CONFIG_BLUECHERRY_ENABLE
+#define CONFIG_BLUECHERRY_ENABLE 1
 #endif
 #ifndef CONFIG_WALTER_MODEM_ENABLE_MOTA
 #define CONFIG_WALTER_MODEM_ENABLE_MOTA 1
@@ -109,11 +109,11 @@ for efficient configuration management."
 
 #endif
 
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY && !CONFIG_WALTER_MODEM_ENABLE_MOTA
+#if CONFIG_BLUECHERRY_ENABLE && !CONFIG_WALTER_MODEM_ENABLE_MOTA
 #error Bluecherry cannot be enabled with OTA or MOTA disabled.
 #endif
 
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY && !CONFIG_WALTER_MODEM_ENABLE_SOCKETS
+#if CONFIG_BLUECHERRY_ENABLE && !CONFIG_WALTER_MODEM_ENABLE_SOCKETS
 #error Bluecherry cannot be enabled with sockets disabled. Please enable sockets in the configuration.
 #endif
 
@@ -212,52 +212,6 @@ CONFIG_UINT8(WALTER_MODEM_MAX_TLS_PROFILES, 6)
  * @brief The maximum number of sockets.
  */
 CONFIG_UINT8(WALTER_MODEM_MAX_SOCKETS, 6)
-
-#endif
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
-
-/**
- * @brief The default hostname for Bluecherry.
- */
-CONFIG(WALTER_MODEM_BLUECHERRY_HOSTNAME, const char*, "coap.bluecherry.io")
-
-/**
- * @brief The default port for Bluecherry CoAP.
- */
-CONFIG(WALTER_MODEM_BLUECHERRY_PORT, uint16_t, 5684)
-
-/**
- * @brief The port of the BlueCherry Zero-Touch Provisioning server. Shares the host with
- * WALTER_MODEM_BLUECHERRY_HOSTNAME.
- */
-CONFIG(WALTER_MODEM_BLUECHERRY_ZTP_PORT, uint16_t, 5688)
-
-/**
- * @brief The size of the buffer holding messages waiting to be published, in bytes.
- *
- * Used only when the application passes no buffer of its own to WalterBlueCherry::init. Each
- * queued message costs its payload plus 9 bytes.
- */
-CONFIG_INT(WALTER_MODEM_BLUECHERRY_PUBLISH_BUFFER_SIZE, 4096)
-
-/**
- * @brief The stack of the BlueCherry synchronisation task, in bytes.
- *
- * The task runs every network operation BlueCherry performs. The deepest path is Zero-Touch
- * Provisioning: a DTLS handshake, then CBOR exchanges holding a few kilobytes in nested frames,
- * then a SECP256R1 key generation. 4096 is not enough for that and overflows.
- */
-CONFIG_INT(WALTER_MODEM_BLUECHERRY_SYNC_TASK_STACK_SIZE, 8192)
-
-/**
- * @brief The task watchdog budget the BlueCherry synchronisation task needs, in seconds.
- *
- * The watchdog has one timeout shared by every subscribed task, so BlueCherry widens the whole
- * timer to this when it is currently narrower, and never narrows it. A cycle feeds the watchdog
- * around each blocking step, but socketDial cannot be broken up: the DTLS handshake runs inside
- * AT+SQNSD and is allowed 20 seconds on its own. Arduino has no Kconfig, so it takes this literal.
- */
-CONFIG_INT(WALTER_MODEM_BLUECHERRY_WDT_TIMEOUT_S, 60)
 
 #endif
 
@@ -369,20 +323,6 @@ CONFIG_UINT8(WALTER_MODEM_MQTT_MAX_TOPICS, 4)
 #define WALTER_MODEM_MQTT_TOPIC_BUF_SIZE (WALTER_MODEM_MQTT_TOPIC_MAX_SIZE + 1)
 
 #endif
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY || CONFIG_WALTER_MODEM_ENABLE_MOTA
-
-/**
- * @brief The maximum size of an incoming protocol message payload.
- */
-constexpr uint16_t WALTER_MODEM_MAX_INCOMING_MESSAGE_LEN = 1220;
-
-/**
- * @brief The maximum size of an outgoing message payload.
- */
-constexpr uint16_t WALTER_MODEM_MAX_OUTGOING_MESSAGE_LEN = 1024;
-
-#endif
-
 /**
  * @brief SPI flash sectors per erase block, usually large erase block is 32k/64k.
  */
@@ -448,7 +388,7 @@ constexpr uint16_t WALTER_MODEM_MAX_OUTGOING_MESSAGE_LEN = 1024;
 
 #include <condition_variable>
 
-#if CONFIG_WALTER_MODEM_ENABLE_MOTA || CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+#if CONFIG_WALTER_MODEM_ENABLE_MOTA || CONFIG_BLUECHERRY_ENABLE
 
 #include <esp_partition.h>
 #include <esp_vfs.h>
@@ -817,7 +757,6 @@ typedef enum {
   WALTER_MODEM_RSP_DATA_TYPE_GNSS_UTC_TIME,
   WALTER_MODEM_RSP_DATA_TYPE_CLOCK,
   WALTER_MODEM_RSP_DATA_TYPE_IDENTITY,
-  WALTER_MODEM_RSP_DATA_TYPE_BLUECHERRY,
   WALTER_MODEM_RSP_DATA_TYPE_HTTP,
   WALTER_MODEM_RSP_DATA_TYPE_COAP,
   WALTER_MODEM_RSP_DATA_TYPE_MQTT,
@@ -3034,13 +2973,13 @@ struct WalterModemStpResponseTransferBlock {
  * @brief The WalterModem class allows you to use the Sequans Monarch 2 modem and positioning
  * functionality.
  */
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+#if CONFIG_BLUECHERRY_ENABLE
 class WalterBlueCherry;
 #endif
 
 class WalterModem
 {
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+#if CONFIG_BLUECHERRY_ENABLE
   /* BlueCherry is layered on top of the modem driver rather than part of it, but it reaches for
    * three things the public API does not expose: socket reservation, socket lookup and the TLS
    * credential presence check. It also shares the firmware staging buffer with the modem firmware
@@ -4486,7 +4425,7 @@ public:
    */
 
 #pragma region CLASS PUBLIC METHODS PROTO BLUECHERRY
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+#if CONFIG_BLUECHERRY_ENABLE
 
   /**
    * @brief Upload BlueCherry credentials to the modem.

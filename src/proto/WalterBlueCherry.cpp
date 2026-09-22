@@ -56,7 +56,7 @@
 #include <WalterBlueCherry.h>
 #include <esp_log.h>
 
-#if CONFIG_WALTER_MODEM_ENABLE_BLUECHERRY
+#if CONFIG_BLUECHERRY_ENABLE
 
 #include <esp_attr.h>
 #include <esp_heap_caps.h>
@@ -262,7 +262,7 @@ static const uint32_t BLUECHERRY_SSL_READ_TIMEOUT = 100;
 /**
  * @brief The hostname of the BlueCherry cloud.
  */
-static const char* BLUECHERRY_HOST = WALTER_MODEM_BLUECHERRY_HOSTNAME;
+static const char* BLUECHERRY_HOST = BLUECHERRY_HOSTNAME;
 
 /**
  * @brief The BlueCherry CA root + intermediate certificate used for CoAP DTLS communication.
@@ -475,7 +475,7 @@ typedef struct {
   size_t in_buf_len;
 
   /** @brief The receive buffer, sized for the largest datagram the modem will hand over. */
-  uint8_t in_buf[WALTER_MODEM_MAX_INCOMING_MESSAGE_LEN];
+  uint8_t in_buf[BLUECHERRY_MAX_INCOMING_MESSAGE_LEN];
 
   /**
    * @brief One flash sector of firmware staged on its way to the partition.
@@ -713,7 +713,7 @@ static void _bluecherry_widen_watchdog(uint16_t current_sec)
     current_sec = CONFIG_ESP_TASK_WDT_TIMEOUT_S;
   }
 
-  if(current_sec >= WALTER_MODEM_BLUECHERRY_WDT_TIMEOUT_S) {
+  if(current_sec >= BLUECHERRY_WDT_TIMEOUT_S) {
     return;
   }
 
@@ -721,7 +721,7 @@ static void _bluecherry_widen_watchdog(uint16_t current_sec)
    * of. Forcing an idle check onto a core the project excluded, or a panic it turned off, would
    * change behaviour that is not ours to change; only the timeout is. */
   esp_task_wdt_config_t twdt_config = {};
-  twdt_config.timeout_ms = (uint32_t) WALTER_MODEM_BLUECHERRY_WDT_TIMEOUT_S * 1000UL;
+  twdt_config.timeout_ms = (uint32_t) BLUECHERRY_WDT_TIMEOUT_S * 1000UL;
 #if CONFIG_ESP_TASK_WDT_CHECK_IDLE_TASK_CPU0
   twdt_config.idle_core_mask |= 1 << 0;
 #endif
@@ -740,10 +740,10 @@ static void _bluecherry_widen_watchdog(uint16_t current_sec)
 
   if(ret == ESP_OK) {
     ESP_LOGD(TAG, "Task watchdog widened from %us to %ds", current_sec,
-             WALTER_MODEM_BLUECHERRY_WDT_TIMEOUT_S);
+             BLUECHERRY_WDT_TIMEOUT_S);
   } else {
     ESP_LOGW(TAG, "Could not widen the %us task watchdog to %ds, a dial may trip it", current_sec,
-             WALTER_MODEM_BLUECHERRY_WDT_TIMEOUT_S);
+             BLUECHERRY_WDT_TIMEOUT_S);
   }
 #endif
 }
@@ -879,7 +879,7 @@ static esp_err_t _bluecherry_ring_init(const BlueCherryPublishBuffer* cfg)
     ring->size = cfg->size;
     ring->owned = false;
   } else {
-    ring->size = WALTER_MODEM_BLUECHERRY_PUBLISH_BUFFER_SIZE;
+    ring->size = BLUECHERRY_PUBLISH_BUFFER_SIZE;
     ring->buf = (uint8_t*) malloc(ring->size);
     if(ring->buf == NULL) {
       ESP_LOGE(TAG, "Could not allocate the %uB publish buffer", (unsigned) ring->size);
@@ -3234,7 +3234,7 @@ static bool _bluecherry_provision(void)
       goto fail;
     }
 
-    if(!_bluecherry_dtls_connect(BLUECHERRY_HOST, WALTER_MODEM_BLUECHERRY_ZTP_PORT)) {
+    if(!_bluecherry_dtls_connect(BLUECHERRY_HOST, BLUECHERRY_ZTP_PORT)) {
       ESP_LOGE(TAG, "(ZTP) Could not connect to the provisioning server");
       goto fail;
     }
@@ -3371,7 +3371,7 @@ static esp_err_t _bluecherry_sync_once(void)
     int64_t elapsed_ms = (now_us - last_retry_time_us) / 1000;
     if(elapsed_ms >= retry_interval_ms) {
       last_retry_time_us = now_us;
-      if(!_bluecherry_dtls_connect(BLUECHERRY_HOST, WALTER_MODEM_BLUECHERRY_PORT)) {
+      if(!_bluecherry_dtls_connect(BLUECHERRY_HOST, BLUECHERRY_PORT)) {
         ESP_LOGE(TAG, "Could not connect to BlueCherry server");
         retry_interval_ms = (retry_interval_ms < 30000) ? retry_interval_ms * 2 : 30000;
         return ESP_ERR_NOT_FINISHED;
@@ -3826,7 +3826,7 @@ bool WalterBlueCherry::init(uint8_t tls_profile_id, const char* device_type_id,
    * DTLS handshake, the CBOR buffers and an EC key generation. */
   if(_sync_task == NULL) {
     BaseType_t ret =
-        xTaskCreate(_bluecherry_sync_task, "bc_sync", WALTER_MODEM_BLUECHERRY_SYNC_TASK_STACK_SIZE,
+        xTaskCreate(_bluecherry_sync_task, "bc_sync", BLUECHERRY_SYNC_TASK_STACK_SIZE,
                     NULL, BLUECHERRY_SP, &_sync_task);
     if(ret != pdPASS) {
       _sync_task = NULL;
