@@ -1,12 +1,18 @@
 message(STATUS "WalterModem Configuration:")
 
-foreach(feature IN ITEMS BLUECHERRY GNSS MOTA SOCKETS COAP MQTT HTTP)
+foreach(feature IN ITEMS GNSS MOTA SOCKETS COAP MQTT HTTP)
     if(CONFIG_WALTER_MODEM_ENABLE_${feature} STREQUAL "y")
         message(STATUS "${feature} enabled: true")
     else()
         message(STATUS "${feature} enabled: false")
     endif()
 endforeach()
+
+if(CONFIG_BLUECHERRY_ENABLE STREQUAL "y")
+    message(STATUS "BLUECHERRY enabled: true")
+else()
+    message(STATUS "BLUECHERRY enabled: false")
+endif()
 
 idf_component_register(
     SRCS "src/WalterModem.cpp"
@@ -17,7 +23,7 @@ idf_component_register(
          "src/proto/WalterMQTT.cpp"
          "src/proto/WalterSocket.cpp"
     INCLUDE_DIRS "src"
-    REQUIRES fatfs esp_partition app_update spi_flash esp_driver_uart vfs
+    REQUIRES fatfs esp_partition app_update spi_flash esp_driver_uart vfs mbedtls bootloader_support
     PRIV_REQUIRES esp_timer
 )
 

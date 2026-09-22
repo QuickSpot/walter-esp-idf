@@ -116,33 +116,6 @@ menu "walter-modem"
                 endmenu
             endif
 
-            config WALTER_MODEM_ENABLE_BLUECHERRY
-                bool "Enable BlueCherry IoT functionality"
-                default y
-                select WALTER_MODEM_ENABLE_MOTA
-                select WALTER_MODEM_ENABLE_SOCKETS
-                help
-                    Enable BlueCherry IoT functionality
-
-            if WALTER_MODEM_ENABLE_BLUECHERRY
-                menu "Bluecherry"
-                    comment "Mota, OTA and socket functions are forced on when BlueCherry is enabled!"
-
-                    config WALTER_MODEM_BLUECHERRY_HOSTNAME
-                        string "bluecherry server hostname"
-                        default coap.bluecherry.io
-                        help
-                            The hostname to use for Bluecherry.
-
-                    config WALTER_MODEM_BLUECHERRY_PORT
-                        int "bluecherry server port"
-                        default 5684
-                        help
-                            The port to use for Bluecherry
-                endmenu
-            endif
-
-
         endmenu
         menu "Pinout"
             if WALTER_MODEM_KCONFIG
@@ -274,14 +247,100 @@ menu "walter-modem"
         endmenu
    
         menu "Firmware upgrade"
-        if WALTER_MODEM_ENABLE_BLUECHERRY
+        if BLUECHERRY_ENABLE
             comment "BlueCherry has been enabled MOTA & OTA have been forced on!"
         endif
         config WALTER_MODEM_ENABLE_MOTA
             bool "Enable MOTA functionality (Modem firmware)"
             default y
+            depends on BLUECHERRY_ENABLE
             help
                 Enable Modem firmware upgrade functions.
+
+                Over-the-air is what MOTA means, and the air is BlueCherry: the update is
+                scheduled, delivered and acknowledged over the BlueCherry session, and the
+                transfer stages through BlueCherry's firmware buffer. There is nothing left to
+                enable with BlueCherry switched off, so this follows it.
         endmenu
+    endif
+endmenu
+
+menu "BlueCherry"
+    config BLUECHERRY_ENABLE
+        bool "Enable BlueCherry IoT functionality"
+        default y
+        select WALTER_MODEM_ENABLE_MOTA
+        select WALTER_MODEM_ENABLE_SOCKETS
+        select MBEDTLS_X509_CREATE_C
+        select MBEDTLS_X509_CSR_WRITE_C
+        help
+            Enable BlueCherry IoT functionality.
+
+            MBEDTLS_X509_CREATE_C and MBEDTLS_X509_CSR_WRITE_C are requirements rather
+            than preferences: Zero-Touch Provisioning builds its request with the X.509
+            CSR writer. ESP-IDF 6 made them optional and defaults them off, which breaks
+            provisioning at link time; earlier versions compile them in unconditionally
+            and have no such symbols, where selecting them is silently ignored.
+
+    if BLUECHERRY_ENABLE
+        comment "Mota, OTA and socket functions are forced on when BlueCherry is enabled!"
+
+        config BLUECHERRY_HOSTNAME
+            string "bluecherry server hostname"
+            default coap.bluecherry.io
+            help
+                The hostname to use for Bluecherry.
+
+        config BLUECHERRY_PORT
+            int "bluecherry server port"
+            default 5684
+            help
+                The port to use for Bluecherry
+
+        config BLUECHERRY_ZTP_PORT
+            int "bluecherry zero-touch provisioning server port"
+            default 5688
+            help
+                The port to use for Bluecherry Zero-Touch Provisioning, on the same
+                host as the Bluecherry server hostname.
+
+        config BLUECHERRY_PUBLISH_BUFFER_SIZE
+            int "publish buffer size (bytes)"
+            default 4096
+            range 256 262144
+            help
+                Size of the buffer holding messages that are waiting to be published,
+                used only when the application passes no buffer of its own to
+                WalterBlueCherry::init. Each queued message costs its payload plus 9
+                bytes; a message that does not fit in the buffer can never be queued
+                at all. Pass a buffer to place this in PSRAM or in memory the
+                application reserved itself.
+
+        config BLUECHERRY_SYNC_TASK_STACK_SIZE
+            int "synchronisation task stack size (bytes)"
+            default 8192
+            range 4096 32768
+            help
+                Stack for the background synchronisation task, which runs every
+                network operation BlueCherry performs. The deepest path is
+                Zero-Touch Provisioning: a DTLS handshake, then CBOR exchanges
+                holding a few kilobytes in nested frames, then a SECP256R1 key
+                generation. 4096 is not enough for that and overflows. Lower it only
+                if you never use ZTP.
+
+        config BLUECHERRY_WDT_TIMEOUT_S
+            int "synchronisation task watchdog timeout (seconds)"
+            default 60
+            range 30 300
+            help
+                The task watchdog budget the synchronisation task needs. The watchdog
+                has one timeout shared by every subscribed task, so this widens the
+                whole timer when it is currently narrower; it never narrows it, and
+                it leaves the panic and idle-core settings alone.
+
+                A cycle feeds the watchdog around each blocking step, but socketDial
+                cannot be broken up: the DTLS handshake runs inside AT+SQNSD and is
+                allowed 20 seconds on its own. The floor of 30 keeps a margin over
+                that. Arduino has no Kconfig and is fixed at the 60 second default.
     endif
 endmenu
