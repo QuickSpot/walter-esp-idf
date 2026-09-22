@@ -9,6 +9,7 @@ discussion: "https://discord.gg/RH7qCfRmkx"
 license: LICENSE
 exclude:
   - examples/**
+  - tests/**
 tags:
   - IoT
   - cellular
