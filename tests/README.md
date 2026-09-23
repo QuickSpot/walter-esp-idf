@@ -15,7 +15,7 @@ over UART, so "does it work" means an example talking to a live network.
 - **A Walter board on USB**, with an antenna and an activated SIM. There is
   nothing to run without one.
 - **Reachable demo servers.** Every example except `bluecherry` talks to public
-  infrastructure - `coap.me`, `quickspot.io`, `broker.emqx.io`,
+  infrastructure - `coap.me`, `httpbin.org`, `broker.emqx.io`,
   `walterdemo.quickspot.io`. `bluecherry` needs a BlueCherry tenant, and
   `positioning` needs a GNSS antenna with a view of the sky.
 
