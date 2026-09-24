@@ -4,8 +4,9 @@
 
 This example demonstrates how Walter can securely connect using **MQTT with TLS
 certificates**. Walter will publish a counter value along with its MAC address
-to the MQTT broker on the topic. It will subscribe to the same topic for
-incoming messages.
+to the MQTT broker on the topic, followed by about 2 KB of text, alternating
+between multi-line and single-line messages at QoS 1 and QoS 0. It will
+subscribe to the same topic for incoming messages.
 
 ## Required hardware
 

@@ -46,6 +46,9 @@
             # --- the modem driver's entire ESP_LOGE surface ---------------
             'No free buffers'
             'No free sockets available'
+            'AT command does not fit in'
+            # --- received payload lost (logged at WARN) --------------------
+            'Payload does not fit the receive buffer'
         )
 
         # A single AT retry is normal; three means the modem stopped
@@ -159,7 +162,7 @@
         http = @{
             Banner       = '=== WalterModem HTTP example'
             Features     = @('HTTP')
-            Infra        = 'quickspot.io:80 (/hello/get, /hello/post)'
+            Infra        = 'httpbin.org:80 (/get, /post, /html)'
             TimeoutSec   = 0
             QuietSec     = 0
             AllowedResets = 1
@@ -174,8 +177,10 @@
                 'Successfully configured the HTTP profile'
                 'HTTP GET successfully sent'
                 're:HTTP: Message received on profile 1\. \(status: 200'
-                'Received message for profile 1:'
+                'Received message for profile 1 ('
                 'HTTP POST successfully sent'
+                # The ~3.7 KB multi-line /html page, streamed past the pool buffer size.
+                're:Received message for profile 1 \(\d{4,} bytes\)'
             )
             Blacklist = @(
                 'Could not initialize the modem'
@@ -193,7 +198,7 @@
         https = @{
             Banner       = '=== WalterModem HTTPS example'
             Features     = @('HTTP')
-            Infra        = 'quickspot.io:443, ISRG Root X1 pinned in main/https.cpp'
+            Infra        = 'httpbin.org:443 (/get, /post, /html), Amazon Root CA 1 pinned in main/https.cpp'
             TimeoutSec   = 0
             QuietSec     = 0
             AllowedResets = 1
@@ -208,8 +213,10 @@
                 'Successfully configured the HTTP profile'
                 'HTTPS GET successfully sent'
                 're:HTTP: Message received on profile 1\. \(status: 200'
-                'Received message for profile 1:'
+                'Received message for profile 1 ('
                 'HTTPS POST successfully sent'
+                # See http above.
+                're:Received message for profile 1 \(\d{4,} bytes\)'
             )
             Blacklist = @(
                 'Could not initialize the modem'
