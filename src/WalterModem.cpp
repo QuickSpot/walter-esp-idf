@@ -113,7 +113,7 @@ CONFIG_INT(WALTER_MODEM_BAUD, 115200)
 /**
  * @brief The maximum duration of an event in milliseconds.
  */
-CONFIG_INT(WALTER_MODEM_MAX_EVENT_DURATION_MS, 500)
+CONFIG_INT(WALTER_MODEM_MAX_EVENT_DURATION_MS, 1500)
 
 /**
  * @brief UART buffer size.
@@ -1323,8 +1323,8 @@ size_t WalterModem::_armPayloadSink(WalterModemCmd* cmd, uint16_t hdrAt, bool he
   size_t expected = 0;
 
   portENTER_CRITICAL(&_sinkLock);
-  bool usable = cmd != NULL && cmd == _curCmd && sink->owner != cmd &&
-                (!headerless || cmd->payloadSize > 0);
+  bool usable =
+      cmd != NULL && cmd == _curCmd && sink->owner != cmd && (!headerless || cmd->payloadSize > 0);
 
   if(usable || !headerless) {
     sink->buf = usable ? cmd->payload : NULL;
@@ -2068,9 +2068,9 @@ void WalterModem::_processModemRSP(WalterModemCmd* cmd, WalterModemBuffer* buff)
                    sink->dropped);
     sink->hdrBuf = NULL;
   } else {
-    Buffer* escaped = escapeBuffer((const uint8_t*) buff->data, buff->size,
-                                   WALTER_MODEM_AT_BUFFER_SIZE, _logEscapeBuffer,
-                                   sizeof(_logEscapeBuffer));
+    Buffer* escaped =
+        escapeBuffer((const uint8_t*) buff->data, buff->size, WALTER_MODEM_AT_BUFFER_SIZE,
+                     _logEscapeBuffer, sizeof(_logEscapeBuffer));
     if(escaped) {
       ESP_LOGD("WalterModem", "RX: %.*s", escaped->size, escaped->data);
     }
