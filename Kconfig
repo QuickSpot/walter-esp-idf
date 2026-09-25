@@ -253,10 +253,11 @@ menu "walter-modem"
 
             config WALTER_MODEM_MAX_TLS_PROFILES
                 int "Max tls profiles"
-                range 1 3
-                default 3
+                range 1 6
+                default 6
                 help
-                    The maximum number of TLS profiles that the library can support.
+                    The maximum number of TLS profiles that the library can support. The modem
+                    numbers its profiles 1 to 6.
         endmenu
    
         menu "Firmware upgrade"
