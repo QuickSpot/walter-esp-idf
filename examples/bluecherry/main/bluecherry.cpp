@@ -520,7 +520,7 @@ extern "C" void app_main(void)
   bc.sync();
 
   /* No time-out on purpose: an unsettled exchange is still retrying, or still pulling a firmware
-   * update down, and sleeping through either costs the transfer its progress. */
+   * update down, and finishing it now is faster than resuming it after the sleep. */
   while(!bc_synchronized) {
     vTaskDelay(pdMS_TO_TICKS(100));
   }
