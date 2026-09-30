@@ -304,13 +304,17 @@ void myMessageHandler(uint8_t topic, uint16_t len, const uint8_t* data, void* ar
 }
 
 /**
- * @brief Handle a firmware update event, taking both update decisions in the application.
+ * @brief Handle a firmware update event, taking all three update decisions in the application.
  *
- * Runs on the BlueCherry synchronisation task, so it must not block.
+ * Runs on the BlueCherry synchronisation task, or during bc.init for the events raised there, so
+ * it must not block.
  *
- * Two events carry a decision: AVAILABLE, where otaStart accepts the offer, and COMPLETE, where
- * the image is installed and only the restart is left. Returning false hands either back to the
- * library, which then downloads and restarts on its own. The other three are notifications.
+ * Three events carry a decision: DOWNLOAD_AVAILABLE, where otaStartDownload accepts the offer,
+ * DOWNLOAD_COMPLETE, where the image is downloaded and verified but nothing boots it until
+ * otaInstall, and FIRSTBOOT, where the new firmware runs for the first time and is rolled back on
+ * the next restart or deep sleep unless otaMarkValid is called. Returning false hands any of them
+ * back to the library, which then downloads, installs, restarts and keeps the new firmware on its
+ * own. The other three are notifications.
  *
  * @param event The event that occurred.
  * @param info Details for the event, valid only for the duration of the call.
@@ -321,24 +325,36 @@ void myMessageHandler(uint8_t topic, uint16_t len, const uint8_t* data, void* ar
 bool myOtaHandler(BlueCherryOtaEvent event, const BlueCherryOtaInfo* info, void* args)
 {
   switch(event) {
-  case BLUECHERRY_OTA_EVENT_AVAILABLE:
+  case BLUECHERRY_OTA_EVENT_DOWNLOAD_AVAILABLE:
     ESP_LOGI(TAG, "OTA: firmware v%d available (%lu bytes), accepting", info->version,
              (unsigned long) info->size);
-    bc.otaStart();
+    /* Accept now, or call this later to update when it suits you - there is no deadline, and
+     * this event repeats on every reconnect while the update is on offer. */
+    bc.otaStartDownload();
     return true;
 
-  case BLUECHERRY_OTA_EVENT_STARTED:
+  case BLUECHERRY_OTA_EVENT_DOWNLOAD_STARTED:
     ESP_LOGI(TAG, "OTA: downloading firmware v%d", info->version);
     break;
 
-  case BLUECHERRY_OTA_EVENT_PROGRESS:
+  case BLUECHERRY_OTA_EVENT_DOWNLOAD_PROGRESS:
     ESP_LOGI(TAG, "OTA: %lu / %lu bytes", (unsigned long) info->bytes_received,
              (unsigned long) info->size);
     break;
 
-  case BLUECHERRY_OTA_EVENT_COMPLETE:
-    ESP_LOGI(TAG, "OTA: firmware v%d installed, restarting", info->version);
+  case BLUECHERRY_OTA_EVENT_DOWNLOAD_COMPLETE:
+    ESP_LOGI(TAG, "OTA: firmware v%d downloaded, installing and restarting", info->version);
+    /* Both calls can wait if a restart now would interrupt your application. Walter keeps running
+     * this firmware until then, and a download waiting for its install survives a deep sleep. */
+    bc.otaInstall();
     esp_restart();
+    return true;
+
+  case BLUECHERRY_OTA_EVENT_FIRSTBOOT:
+    ESP_LOGI(TAG, "OTA: first boot of new firmware, keeping it");
+    /* Or confirm it later, once your application has checked it works, but before the first deep
+     * sleep. bc.otaRollbackRestart() returns to the previous firmware instead. */
+    bc.otaMarkValid();
     return true;
 
   case BLUECHERRY_OTA_EVENT_FAILED:
@@ -404,6 +420,10 @@ static bool initializeBlueCherry(void)
     publishBuffer.size = 0;
   }
 
+  /* Optional: without it the library takes the update decisions itself. Registered before init,
+   * which can raise OTA events itself. */
+  bc.setOtaHandler(myOtaHandler, NULL);
+
   if(!bc.init(BC_TLS_PROFILE, BC_DEVICE_TYPE,
               publishBuffer.buffer != NULL ? &publishBuffer : NULL)) {
     ESP_LOGE(TAG, "Could not initialize BlueCherry");
@@ -414,9 +434,7 @@ static bool initializeBlueCherry(void)
    * no default for it, the payloads being application data it cannot interpret. */
   bc.setMsgHandler(myMessageHandler, NULL);
 
-  /* Both optional: without them the library takes the update decisions itself, and bc.getState()
-   * answers what the state handler reports. */
-  bc.setOtaHandler(myOtaHandler, NULL);
+  /* Optional: bc.getState() answers what the state handler reports. */
   bc.setStateHandler(myStateHandler, NULL);
 
   ESP_LOGI(TAG, "Successfully initialized BlueCherry");
