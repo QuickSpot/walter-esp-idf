@@ -75,6 +75,11 @@ if ($envSpec.SourceProfile) {
 # console, which would hand the matcher the serial log in bursts, minutes late.
 $env:PYTHONUNBUFFERED = '1'
 
+# UTF-8 mode, so idf.py writes UTF-8 to the pipe instead of the ANSI code page.
+# ESP-IDF 6 warns about the console encoding without it, and characters such as
+# the degree sign came out mangled. Read back as UTF-8 in Invoke-Phase.
+$env:PYTHONUTF8 = '1'
+
 $python = $envSpec.Python
 $idfPy = $envSpec.IdfPy
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
@@ -152,6 +157,7 @@ function Invoke-Phase {
         $psi.WorkingDirectory = $ProjDir
         $psi.UseShellExecute = $false
         $psi.RedirectStandardOutput = $true
+        $psi.StandardOutputEncoding = $utf8NoBom
         # stdin is deliberately NOT redirected: esp_idf_monitor exits unless
         # it sees a TTY there.
 
