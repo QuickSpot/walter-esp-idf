@@ -301,7 +301,7 @@ menu "BlueCherry"
 
         config BLUECHERRY_HOSTNAME
             string "bluecherry server hostname"
-            default coap.bluecherry.io
+            default "coap.bluecherry.io"
             help
                 The hostname to use for Bluecherry.
 
