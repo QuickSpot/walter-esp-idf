@@ -5,7 +5,7 @@
 #   're:<regex>'    -> case-sensitive .NET regex match
 #
 # Every example logs under the same tag "[EXAMPLE]", so only the banner tells
-# them apart. Match it WITHOUT the "(IDF v1.5.1)" suffix, so a release bump
+# them apart. Match it WITHOUT the "(IDF v1.6.0)" suffix, so a release bump
 # does not invalidate every criterion.
 
 @{

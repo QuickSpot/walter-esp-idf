@@ -1,8 +1,8 @@
 /**
  * @file mqtts.cpp
  * @author Arnoud Devoogdt <arnoud@dptechnics.com>
- * @date 21 September 2026
- * @version 1.5.1
+ * @date 2 October 2026
+ * @version 1.6.0
  * @copyright DPTechnics bv <info@dptechnics.com>
  * @brief Walter Modem library examples
  *
@@ -449,7 +449,7 @@ static void buildMessage(char* out, size_t size, int seq, bool multiLine)
  */
 extern "C" void app_main()
 {
-  ESP_LOGI(TAG, "\r\n\r\n=== WalterModem MQTTS example (IDF v1.5.1) ===\r\n\r\n");
+  ESP_LOGI(TAG, "\r\n\r\n=== WalterModem MQTTS example (IDF v1.6.0) ===\r\n\r\n");
 
   uint8_t mac[6] = { 0 };
   esp_read_mac(mac, ESP_MAC_WIFI_STA);
