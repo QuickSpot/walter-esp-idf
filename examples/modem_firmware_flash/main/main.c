@@ -47,11 +47,11 @@
 
 #include "modem.h"
 
-#define LATEST_RELEASE "LR8.2.1.0-61488"
+#define LATEST_RELEASE "LR8.2.2.1-63493"
 
 #define FATFS_BASE_PATH "/ffat"
 #define MTOOLS_PATH FATFS_BASE_PATH "/mtools.elf"
-#define DUP_IMG_PATH FATFS_BASE_PATH "/GP02RBAQ-DM_LR8.2.1.0-61488.dup"
+#define DUP_IMG_PATH FATFS_BASE_PATH "/GP02RBAQ-DM_LR8.2.2.1-63493.dup"
 
 static const char* TAG = "main";
 
