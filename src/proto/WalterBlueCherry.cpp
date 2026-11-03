@@ -753,6 +753,16 @@ static portMUX_TYPE _bluecherry_state_lock = portMUX_INITIALIZER_UNLOCKED;
 static bool _sync_requested = false;
 
 /**
+ * @brief Whether the application has started synchronising.
+ *
+ * Set by the task when it runs a cycle, which only a sync request or an automatic synchronisation
+ * makes it do. Until then a missing session or missing credentials are no reason to run one: init
+ * leaves the network alone, and the application decides when its network is ready. close clears it
+ * again, so a session closed on purpose stays closed until the next request.
+ */
+static bool _sync_started = false;
+
+/**
  * @brief Raised by _sleepPrepare. The synchronisation task stops at its next step and does not
  * run again before the deep sleep.
  */
@@ -1266,17 +1276,26 @@ static uint32_t _bluecherry_sync_wait_ms(void)
  * @brief Whether a cycle is due without anything having asked for one.
  *
  * The wait is capped so the watchdog stays fed, so it expiring says nothing about whether there is
- * work: this is the actual test. Provisioning and connecting are always due, because their own
- * backoff gates decide whether the cycle does anything.
+ * work: this is the actual test. An automatic synchronisation is due in any state. Provisioning
+ * and connecting are retried on their own backoff gates, but only once synchronisation has started.
  *
  * @return True when the task should run a cycle of its own accord.
  */
 static bool _bluecherry_sync_due(void)
 {
-  switch(_bluecherry_opdata.state) {
-  case BLUECHERRY_STATE_UNINITIALIZED:
+  if(_bluecherry_opdata.state == BLUECHERRY_STATE_UNINITIALIZED) {
     return false;
+  }
 
+  if(_auto_sync_interval_sec > 0 && esp_timer_get_time() >= _next_auto_sync_us) {
+    return true;
+  }
+
+  if(!_sync_started) {
+    return false;
+  }
+
+  switch(_bluecherry_opdata.state) {
   case BLUECHERRY_STATE_NOT_PROVISIONED:
     return esp_timer_get_time() >= _next_provision_us;
 
@@ -1284,10 +1303,8 @@ static bool _bluecherry_sync_due(void)
     return true;
 
   default:
-    break;
+    return false;
   }
-
-  return _auto_sync_interval_sec > 0 && esp_timer_get_time() >= _next_auto_sync_us;
 }
 
 /**
@@ -1340,6 +1357,8 @@ static void _bluecherry_sync_task(void* args)
     if(triggered == 0 && !_bluecherry_sync_due()) {
       continue;
     }
+
+    _sync_started = true;
 
     /* Cleared as the cycle starts rather than when it ends, so a publish or a sync that arrives
      * while this one is running still holds the state out of idle afterwards. */
