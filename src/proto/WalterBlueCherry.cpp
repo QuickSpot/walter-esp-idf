@@ -4281,22 +4281,14 @@ bool WalterBlueCherry::init(uint8_t tls_profile_id, const char* device_type_id,
 
   /* A session that survived a deep sleep is picked up here rather than in the modem's own wake
    * path, because that runs before the application has re-supplied any of the above. */
-  if(_bluecherry_session_resume()) {
-    /* Deliberately without a first cycle. The session is already up, so there is nothing left to
-     * establish, and an exchange the application did not ask for costs it data and raises a state
-     * change it has no reason to expect. A device that wakes every few seconds to read a sensor
-     * and publishes once a day would spend its entire budget confirming a connection it was not
-     * about to use. Downlink still arrives on the next requested sync, or on the auto sync
-     * interval where one is set. */
-    return true;
+  if(!_bluecherry_session_resume()) {
+    _bluecherry_set_state(isProvisioned() ? BLUECHERRY_STATE_AWAIT_CONNECTION
+                                          : BLUECHERRY_STATE_NOT_PROVISIONED);
   }
 
-  _bluecherry_set_state(isProvisioned() ? BLUECHERRY_STATE_AWAIT_CONNECTION
-                                        : BLUECHERRY_STATE_NOT_PROVISIONED);
-
-  /* A cold start has a connection or a provisioning run still ahead of it, so start the first
-   * cycle rather than wait it out. */
-  xTaskNotifyGive(_sync_task);
+  /* Deliberately without a first cycle. An exchange the application did not ask for costs it
+   * data, raises state changes it has no reason to expect, and can come before its network is up.
+   * The first one waits for a sync request or automatic synchronisation. */
   return true;
 }
 
@@ -4394,10 +4386,10 @@ bool WalterBlueCherry::setAutoSync(uint32_t interval_sec)
   _bluecherry_arm_auto_sync();
 
   if(interval_sec > 0) {
-    /* Only when the new interval leaves one already overdue. Setting a schedule is not the same
-     * as asking for a synchronisation, and anything still in the future is picked up by the
-     * task's next wake anyway. */
-    if(esp_timer_get_time() >= _next_auto_sync_us) {
+    /* Run one now if the new interval leaves one overdue, or if synchronisation has not started
+     * yet: enabling it is then what starts it. Anything still in the future is picked up by the
+     * task's next wake. */
+    if(!_sync_started || esp_timer_get_time() >= _next_auto_sync_us) {
       xTaskNotifyGive(_sync_task);
     }
     ESP_LOGI(TAG, "Automatic synchronisation every %lu s", (unsigned long) interval_sec);
@@ -4511,6 +4503,7 @@ bool WalterBlueCherry::close()
 {
   _bluecherry_cleanup_session();
   _bluecherry_rtc.magic = 0;
+  _sync_started = false;
 
   if(_bluecherry_opdata.state != BLUECHERRY_STATE_UNINITIALIZED &&
      _bluecherry_opdata.state != BLUECHERRY_STATE_NOT_PROVISIONED) {
