@@ -170,12 +170,85 @@ menu "walter-modem"
                     The hardware flow control buffer threshold size for modem communication
         endmenu
         menu "CMD settings"
-            config WALTER_MODEM_CMD_TIMEOUT_MS
+            config WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS
                 int "Default cmd timeout in MS"
+                default 3000
+                help
+                    The milliseconds to wait for the modem's reply, per attempt, for every
+                    command without a slower default below. Each method also takes timeout_ms.
+
+            config WALTER_MODEM_CMD_BOOT_TIMEOUT_MS
+                int "Modem boot timeout in MS"
                 default 30000
                 help
-                    The maximum number of milliseconds to wait before a command is considered timed out.
-            
+                    The default timeout_ms of reset() and softReset(), which wait for the
+                    modem to boot.
+
+            config WALTER_MODEM_CMD_CFUN_TIMEOUT_MS
+                int "AT+CFUN timeout in MS"
+                default 30000
+                help
+                    The default timeout_ms of setOpState().
+
+            config WALTER_MODEM_CMD_COPS_TIMEOUT_MS
+                int "AT+COPS timeout in MS"
+                default 190000
+                help
+                    The default timeout_ms of setNetworkSelectionMode(), which waits for the
+                    network.
+
+            config WALTER_MODEM_CMD_CGATT_TIMEOUT_MS
+                int "AT+CGATT timeout in MS"
+                default 150000
+                help
+                    The default timeout_ms of setNetworkAttachmentState(), which waits for the
+                    network.
+
+            config WALTER_MODEM_CMD_CGACT_TIMEOUT_MS
+                int "AT+CGACT timeout in MS"
+                default 160000
+                help
+                    The default timeout_ms of setPDPContextActive(), which waits for the
+                    network.
+
+            config WALTER_MODEM_CMD_SOCKET_DIAL_TIMEOUT_MS
+                int "Socket dial timeout in MS"
+                default 130000
+                help
+                    The default timeout_ms of socketDial(). It covers the longest connection
+                    timeout the modem accepts.
+
+            config WALTER_MODEM_CMD_SOCKET_CLOSE_TIMEOUT_MS
+                int "Socket close timeout in MS"
+                default 15000
+                help
+                    The default timeout_ms of socketClose().
+
+            config WALTER_MODEM_CMD_HTTP_CONNECT_TIMEOUT_MS
+                int "HTTP connect timeout in MS"
+                default 130000
+                help
+                    The default timeout_ms of httpConnect(), which waits until the connection
+                    is set up.
+
+            config WALTER_MODEM_CMD_COAP_CREATE_TIMEOUT_MS
+                int "CoAP context create timeout in MS"
+                default 130000
+                help
+                    The default timeout_ms of coapCreateContext().
+
+            config WALTER_MODEM_CMD_NVM_WRITE_TIMEOUT_MS
+                int "Credential write timeout in MS"
+                default 15000
+                help
+                    The default timeout_ms of tlsWriteCredential().
+
+            config WALTER_MODEM_CMD_SIM_TIMEOUT_MS
+                int "SIM unlock timeout in MS"
+                default 10000
+                help
+                    The default timeout_ms of unlockSIM().
+
             config WALTER_MODEM_CMD_QUEUE_MAX_ITEMS
                 int "The maximum commands that can be pending at one moment"
                 range 8 64

@@ -54,7 +54,8 @@
 
 #pragma region PUBLIC_METHODS
 bool WalterModem::coapReceive(int profile_id, int message_id, uint8_t* buf, size_t buf_size,
-                              WalterModemRsp* rsp, walterModemCb cb, void* args)
+                              WalterModemRsp* rsp, walterModemCb cb, void* args,
+                              uint32_t timeout_ms)
 {
   if(profile_id >= WALTER_MODEM_MAX_COAP_PROFILES) {
     _returnState(WALTER_MODEM_STATE_NO_SUCH_PROFILE);
@@ -65,14 +66,14 @@ bool WalterModem::coapReceive(int profile_id, int message_id, uint8_t* buf, size
   WalterModemBuffer* stringsBuffer = _getFreeBuffer();
   _bufPrintf(stringsBuffer, "AT+SQNCOAPRCV=%d,%u,%u", profile_id, message_id, readable_size);
 
-  _runCmd(arr((const char*) stringsBuffer->data), "OK", rsp, cb, args, NULL, NULL,
+  _runCmd(arr((const char*) stringsBuffer->data), "OK", rsp, cb, args, timeout_ms, NULL, NULL,
           WALTER_MODEM_CMD_TYPE_TX_WAIT, buf, readable_size, stringsBuffer);
   _returnAfterReply();
 }
 
 bool WalterModem::coapCreateContext(int profile_id, const char* hostname, int port,
                                     int tls_profile_id, int local_port, WalterModemRsp* rsp,
-                                    walterModemCb cb, void* args)
+                                    walterModemCb cb, void* args, uint32_t timeout_ms)
 {
   if(profile_id >= WALTER_MODEM_MAX_COAP_PROFILES) {
     _returnState(WALTER_MODEM_STATE_NO_SUCH_PROFILE);
@@ -95,12 +96,13 @@ bool WalterModem::coapCreateContext(int profile_id, const char* hostname, int po
     _bufPrintf(stringsBuffer, ",,%d", tls_profile_id);
   }
 
-  _runCmd(arr((const char*) stringsBuffer->data), "OK", rsp, cb, args, NULL, NULL,
+  _runCmd(arr((const char*) stringsBuffer->data), "OK", rsp, cb, args, timeout_ms, NULL, NULL,
           WALTER_MODEM_CMD_TYPE_TX_WAIT, NULL, 0, stringsBuffer);
   _returnAfterReply();
 }
 
-bool WalterModem::coapClose(int profile_id, WalterModemRsp* rsp, walterModemCb cb, void* args)
+bool WalterModem::coapClose(int profile_id, WalterModemRsp* rsp, walterModemCb cb, void* args,
+                            uint32_t timeout_ms)
 {
   if(profile_id == 0) {
     _returnState(WALTER_MODEM_STATE_ERROR);
@@ -110,21 +112,23 @@ bool WalterModem::coapClose(int profile_id, WalterModemRsp* rsp, walterModemCb c
     _returnState(WALTER_MODEM_STATE_NO_SUCH_PROFILE);
   }
 
-  _runCmd(arr("AT+SQNCOAPCLOSE=", _atNum(profile_id)), "OK", rsp, cb, args);
+  _runCmd(arr("AT+SQNCOAPCLOSE=", _atNum(profile_id)), "OK", rsp, cb, args, timeout_ms);
   _returnAfterReply();
 }
 
 bool WalterModem::coapSetHeader(int profile_id, int message_id, const char* token,
-                                WalterModemRsp* rsp, walterModemCb cb, void* args)
+                                WalterModemRsp* rsp, walterModemCb cb, void* args,
+                                uint32_t timeout_ms)
 {
   _runCmd(arr("AT+SQNCOAPHDR=", _atNum(profile_id), ",", _atNum(message_id), ",\"", token, "\""),
-          "OK", rsp, cb, args);
+          "OK", rsp, cb, args, timeout_ms);
   _returnAfterReply();
 }
 
 bool WalterModem::coapSetOptions(int profile_id, WalterModemCoapOptAction action,
                                  WalterModemCoapOptCode code, const char* const values,
-                                 WalterModemRsp* rsp, walterModemCb cb, void* args)
+                                 WalterModemRsp* rsp, walterModemCb cb, void* args,
+                                 uint32_t timeout_ms)
 {
   if(profile_id == 0) {
     _returnState(WALTER_MODEM_STATE_ERROR);
@@ -150,18 +154,20 @@ bool WalterModem::coapSetOptions(int profile_id, WalterModemCoapOptAction action
     _bufPrintf(stringsBuffer, "AT");
   }
 
-  _runCmd(arr((const char*) stringsBuffer->data), "OK", rsp, cb, args, NULL, NULL,
+  _runCmd(arr((const char*) stringsBuffer->data), "OK", rsp, cb, args, timeout_ms, NULL, NULL,
           WALTER_MODEM_CMD_TYPE_TX_WAIT, NULL, 0, stringsBuffer);
   _returnAfterReply();
 }
 
 bool WalterModem::coapSendData(int profile_id, WalterModemCoapSendType type,
                                WalterModemCoapSendMethodRsp method_rsp, int buf_size, uint8_t* buf,
-                               WalterModemRsp* rsp, walterModemCb cb, void* args)
+                               WalterModemRsp* rsp, walterModemCb cb, void* args,
+                               uint32_t timeout_ms)
 {
   _runCmd(arr("AT+SQNCOAPSEND=", _atNum(profile_id), ",", _atNum(type), ",", _atNum(method_rsp),
               ",", _atNum(buf_size)),
-          "OK", rsp, cb, args, NULL, NULL, WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT, buf, buf_size);
+          "OK", rsp, cb, args, timeout_ms, NULL, NULL, WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT, buf,
+          buf_size);
   _returnAfterReply();
 }
 

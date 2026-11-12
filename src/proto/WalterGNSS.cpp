@@ -53,29 +53,30 @@
 
 bool WalterModem::gnssConfig(WalterModemGNSSSensMode sens_mode, WalterModemGNSSAcqMode acq_mode,
                              WalterModemGNSSLocMode loc_mode, WalterModemRsp* rsp, walterModemCb cb,
-                             void* args)
+                             void* args, uint32_t timeout_ms)
 {
   _runCmd(arr("AT+LPGNSSCFG=", _digitStr(loc_mode), ",", _digitStr(sens_mode), ",2,,1,",
               _digitStr(acq_mode)),
-          "OK", rsp, cb, args);
+          "OK", rsp, cb, args, timeout_ms);
   _returnAfterReply();
 }
 
-bool WalterModem::gnssGetAssistanceStatus(WalterModemRsp* rsp, walterModemCb cb, void* args)
+bool WalterModem::gnssGetAssistanceStatus(WalterModemRsp* rsp, walterModemCb cb, void* args,
+                                          uint32_t timeout_ms)
 {
-  _runCmd(arr("AT+LPGNSSASSISTANCE?"), "OK", rsp, cb, args);
+  _runCmd(arr("AT+LPGNSSASSISTANCE?"), "OK", rsp, cb, args, timeout_ms);
   _returnAfterReply();
 }
 
 bool WalterModem::gnssUpdateAssistance(WMGNSSAssistanceType type, WalterModemRsp* rsp,
-                                       walterModemCb cb, void* args)
+                                       walterModemCb cb, void* args, uint32_t timeout_ms)
 {
-  _runCmd(arr("AT+LPGNSSASSISTANCE=", _digitStr(type)), "OK", rsp, cb, args);
+  _runCmd(arr("AT+LPGNSSASSISTANCE=", _digitStr(type)), "OK", rsp, cb, args, timeout_ms);
   _returnAfterReply();
 }
 
 bool WalterModem::gnssPerformAction(WalterModemGNSSAction action, WalterModemRsp* rsp,
-                                    walterModemCb cb, void* args)
+                                    walterModemCb cb, void* args, uint32_t timeout_ms)
 {
   auto gnssActionStr = [](WalterModemGNSSAction action) {
     switch(action) {
@@ -88,12 +89,12 @@ bool WalterModem::gnssPerformAction(WalterModemGNSSAction action, WalterModemRsp
     return "";
   };
 
-  _runCmd(arr("AT+LPGNSSFIXPROG=\"", gnssActionStr(action), "\""), "OK", rsp, cb, args);
+  _runCmd(arr("AT+LPGNSSFIXPROG=\"", gnssActionStr(action), "\""), "OK", rsp, cb, args, timeout_ms);
   _returnAfterReply();
 }
 
 bool WalterModem::gnssSetUTCTime(uint64_t epoch_time, WalterModemRsp* rsp, walterModemCb cb,
-                                 void* args)
+                                 void* args, uint32_t timeout_ms)
 {
   char utcTimeStr[32] = { 0 };
 
@@ -101,13 +102,14 @@ bool WalterModem::gnssSetUTCTime(uint64_t epoch_time, WalterModemRsp* rsp, walte
     return false; // conversion failed
   }
 
-  _runCmd(arr("AT+LPGNSSUTCTIME=", _atStr(utcTimeStr)), "OK", rsp, cb, args);
+  _runCmd(arr("AT+LPGNSSUTCTIME=", _atStr(utcTimeStr)), "OK", rsp, cb, args, timeout_ms);
   _returnAfterReply();
 }
 
-bool WalterModem::gnssGetUTCTime(WalterModemRsp* rsp, walterModemCb cb, void* args)
+bool WalterModem::gnssGetUTCTime(WalterModemRsp* rsp, walterModemCb cb, void* args,
+                                 uint32_t timeout_ms)
 {
-  _runCmd(arr("AT+LPGNSSUTCTIME?"), "OK", rsp, cb, args);
+  _runCmd(arr("AT+LPGNSSUTCTIME?"), "OK", rsp, cb, args, timeout_ms);
   _returnAfterReply();
 }
 
