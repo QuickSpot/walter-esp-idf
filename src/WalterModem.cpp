@@ -2255,6 +2255,17 @@ void WalterModem::_processModemRSP(WalterModemCmd* cmd, WalterModemBuffer* buff,
     }
   }
 
+  /* No modem line starts with a byte above 0x7F. Such a byte is line noise, seen in front of the
+   * first reply after a deep-sleep wake, and left there it keeps the reply from matching. */
+  size_t noise = 0;
+  while(noise < buff->size && buff->data[noise] >= 0x80) {
+    noise++;
+  }
+  if(noise > 0) {
+    memmove(buff->data, buff->data + noise, buff->size - noise);
+    buff->size -= noise;
+  }
+
   // Skip leading \r\n if present
   if(buff->size >= 2 && buff->data[0] == '\r' && buff->data[1] == '\n') {
     memmove(buff->data, buff->data + 2, buff->size - 2);
