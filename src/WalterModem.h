@@ -130,9 +130,68 @@ for efficient configuration management."
 #pragma region KCONFIG
 
 /**
- * @brief The maximum number of milliseconds to wait.
+ * @brief The default milliseconds to wait for the modem's reply, per attempt, for every command
+ * without a slower default below. Each method also takes timeout_ms.
  */
-CONFIG_INT(WALTER_MODEM_CMD_TIMEOUT_MS, 180000)
+CONFIG_INT(WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS, 3000)
+
+/**
+ * @brief The default timeout_ms of reset() and softReset(), which wait for the modem to boot.
+ */
+CONFIG_UINT32(WALTER_MODEM_CMD_BOOT_TIMEOUT_MS, 30000)
+
+/**
+ * @brief The default timeout_ms of setOpState() (AT+CFUN).
+ */
+CONFIG_UINT32(WALTER_MODEM_CMD_CFUN_TIMEOUT_MS, 30000)
+
+/**
+ * @brief The default timeout_ms of setNetworkSelectionMode() (AT+COPS), which waits for the
+ * network.
+ */
+CONFIG_UINT32(WALTER_MODEM_CMD_COPS_TIMEOUT_MS, 190000)
+
+/**
+ * @brief The default timeout_ms of setNetworkAttachmentState() (AT+CGATT), which waits for the
+ * network.
+ */
+CONFIG_UINT32(WALTER_MODEM_CMD_CGATT_TIMEOUT_MS, 150000)
+
+/**
+ * @brief The default timeout_ms of setPDPContextActive() (AT+CGACT), which waits for the network.
+ */
+CONFIG_UINT32(WALTER_MODEM_CMD_CGACT_TIMEOUT_MS, 160000)
+
+/**
+ * @brief The default timeout_ms of socketDial() (AT+SQNSD). It covers the longest connection
+ * timeout the modem accepts.
+ */
+CONFIG_UINT32(WALTER_MODEM_CMD_SOCKET_DIAL_TIMEOUT_MS, 130000)
+
+/**
+ * @brief The default timeout_ms of socketClose() (AT+SQNSH).
+ */
+CONFIG_UINT32(WALTER_MODEM_CMD_SOCKET_CLOSE_TIMEOUT_MS, 15000)
+
+/**
+ * @brief The default timeout_ms of httpConnect(), which waits until the connection is set up.
+ */
+CONFIG_UINT32(WALTER_MODEM_CMD_HTTP_CONNECT_TIMEOUT_MS, 130000)
+
+/**
+ * @brief The default timeout_ms of coapCreateContext() (AT+SQNCOAPCREATE).
+ */
+CONFIG_UINT32(WALTER_MODEM_CMD_COAP_CREATE_TIMEOUT_MS, 130000)
+
+/**
+ * @brief The default timeout_ms of tlsWriteCredential() (AT+SQNSNVW).
+ */
+CONFIG_UINT32(WALTER_MODEM_CMD_NVM_WRITE_TIMEOUT_MS, 15000)
+
+/**
+ * @brief The default timeout_ms of unlockSIM() (AT+CPIN).
+ */
+CONFIG_UINT32(WALTER_MODEM_CMD_SIM_TIMEOUT_MS, 10000)
 
 /**
  * @brief The maximum number of items in the CMD queue.
@@ -2779,6 +2838,11 @@ typedef struct sWalterModemCmd {
   TickType_t attemptStart = 0;
 
   /**
+   * @brief The time to wait for the modem's reply, per attempt.
+   */
+  TickType_t timeout = 0;
+
+  /**
    * @brief A lock and condition variable used to implement the blocking API.
    */
   WalterModemCmdLock cmdLock = {};
@@ -3599,9 +3663,11 @@ private:
   /**
    * @brief this function retrieves and updates all the socketStates
    *
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
+   *
    * @return True on success, false on error.
    */
-  static bool _socketUpdateStates();
+  static bool _socketUpdateStates(uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
 #endif
 #pragma endregion
@@ -3887,6 +3953,7 @@ private:
    * @param rsp Pointer to the response used to save command results.
    * @param userCb Optional user callback.
    * @param userCbArgs Optional user callback arguments.
+   * @param timeoutMs Milliseconds to wait for the modem's reply, per attempt.
    * @param completeHandler Optional complete handler function.
    * @param completeHandlerArg Optional argument for the complete handler.
    * @param type The type of queue AT command.
@@ -3899,8 +3966,8 @@ private:
    * available.
    */
   static WalterModemCmd* _queueModemCMD(
-      const char* atCmd[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] = { NULL }, const char* atRsp = NULL,
-      WalterModemRsp* rsp = NULL, walterModemCb userCb = NULL, void* userCbArgs = NULL,
+      const char* atCmd[WALTER_MODEM_COMMAND_MAX_ELEMS + 1], const char* atRsp, WalterModemRsp* rsp,
+      walterModemCb userCb, void* userCbArgs, uint32_t timeoutMs,
       void (*completeHandler)(struct sWalterModemCmd* cmd, WalterModemState result) = NULL,
       void* completeHandlerArg = NULL, WalterModemCmdType type = WALTER_MODEM_CMD_TYPE_TX_WAIT,
       uint8_t* data = NULL, uint16_t dataSize = 0, WalterModemBuffer* stringsBuffer = NULL,
@@ -3919,6 +3986,20 @@ private:
    * @return None.
    */
   static void _finishModemCMD(WalterModemCmd* cmd, WalterModemState result = WALTER_MODEM_STATE_OK);
+
+  /**
+   * @brief Block until the command task finishes a command of the blocking API.
+   *
+   * The calling task feeds the task watchdog while it waits, when it is subscribed to it: a slow
+   * command can outlast the watchdog, and the command task bounds the wait with the command's
+   * time-out.
+   *
+   * @param cmd The command to wait for.
+   * @param lock The command's lock, held by the caller. It is released before returning.
+   *
+   * @return The result of the command.
+   */
+  static WalterModemState _awaitReply(WalterModemCmd* cmd, std::unique_lock<std::mutex>& lock);
 
   /**
    * @brief Process an AT command from the queue.
@@ -4115,10 +4196,12 @@ public:
    * @param isPrivateKey True if it's a private key, false if it's a certificate
    * @param slotIdx slot index within the modem NVRAM keystore
    * @param credential NULL-terminated string containing the PEM key/cert data
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True if succeeded, false if not.
    */
-  static bool tlsWriteCredential(bool isPrivateKey, uint8_t slotIdx, const char* credential);
+  static bool tlsWriteCredential(bool isPrivateKey, uint8_t slotIdx, const char* credential,
+                                 uint32_t timeout_ms = WALTER_MODEM_CMD_NVM_WRITE_TIMEOUT_MS);
 
   /**
    * =============================================================================================
@@ -4193,11 +4276,13 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True when the expected response is received, false otherwise.
    */
   static bool sendCmd(const char* at_cmd, const char* at_cmd_rsp = "OK", WalterModemRsp* rsp = NULL,
-                      walterModemCb cb = NULL, void* args = NULL);
+                      walterModemCb cb = NULL, void* args = NULL,
+                      uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Software reset the modem and wait for it to reset, this is required when switching
@@ -4206,10 +4291,12 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "+SYSSTART" response, false otherwise.
    */
-  static bool softReset(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+  static bool softReset(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                        uint32_t timeout_ms = WALTER_MODEM_CMD_BOOT_TIMEOUT_MS);
 
   /**
    * @brief Physically reset the modem and wait for it to start. All connections will be lost
@@ -4219,10 +4306,12 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on a successfull reset, false otherwise.
    */
-  static bool reset(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+  static bool reset(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                    uint32_t timeout_ms = WALTER_MODEM_CMD_BOOT_TIMEOUT_MS);
 
   /**
    * @brief Check communication between the ESP32 and the modem.
@@ -4232,10 +4321,12 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
-  static bool checkComm(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+  static bool checkComm(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                        uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Put Walter to deep or light sleep.
@@ -4268,12 +4359,14 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool configCMEErrorReports(
       WalterModemCMEErrorReportsType type = WALTER_MODEM_CME_ERROR_REPORTS_NUMERIC,
-      WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+      WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+      uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Configure the CEREG status reports.
@@ -4286,12 +4379,14 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool
   configCEREGReports(WalterModemCEREGReportsType type = WALTER_MODEM_CEREG_REPORTS_ENABLED,
-                     WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+                     WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                     uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Get the current signal quality.
@@ -4302,10 +4397,12 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
-  static bool getRSSI(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+  static bool getRSSI(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                      uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Get extended RSRQ and RSRP signal quality.
@@ -4315,11 +4412,13 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool getSignalQuality(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL,
-                               void* args = NULL);
+                               void* args = NULL,
+                               uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Get information on the serving and neighbouring cells.
@@ -4332,12 +4431,14 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool
   getCellInformation(WalterModemSQNMONIReportsType type = WALTER_MODEM_SQNMONI_REPORTS_SERVING_CELL,
-                     WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+                     WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                     uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Get the identity of the modem (IMEI, IMEISV, SVN).
@@ -4347,10 +4448,12 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
-  static bool getIdentity(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+  static bool getIdentity(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                          uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Configure a TLS profile.
@@ -4374,6 +4477,7 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
@@ -4381,7 +4485,8 @@ public:
       int profile_id, WalterModemTlsValidation tls_valid = WALTER_MODEM_TLS_VALIDATION_NONE,
       WalterModemTlsVersion tls_version = WALTER_MODEM_TLS_VERSION_12, uint8_t ca_cert_id = 0xff,
       uint8_t client_ca_id = 0xff, uint8_t client_priv_key_id = 0xff, WalterModemRsp* rsp = NULL,
-      walterModemCb cb = NULL, void* args = NULL);
+      walterModemCb cb = NULL, void* args = NULL,
+      uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Get the current modem time and date.
@@ -4391,10 +4496,12 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
-  static bool getClock(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+  static bool getClock(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                       uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
 #pragma region CLASS PUBLIC METHODS PROTO
 
@@ -4424,12 +4531,14 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool mqttConfig(const char* client_id = "walter-mqtt-client", const char* username = NULL,
                          const char* password = NULL, uint8_t tls_profile_id = 0,
-                         WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+                         WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                         uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Disconnect an MQTT connection.
@@ -4439,11 +4548,12 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
-  static bool mqttDisconnect(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL,
-                             void* args = NULL);
+  static bool mqttDisconnect(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                             uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Initialize MQTT and establish connection.
@@ -4456,11 +4566,13 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool mqttConnect(const char* hostname, uint16_t port, uint16_t keep_alive = 60,
-                          WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+                          WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                          uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Publish something through MQTT.
@@ -4475,11 +4587,13 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool mqttPublish(const char* topic, uint8_t* buf, uint16_t buf_size, uint8_t qos = 1,
-                          WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+                          WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                          uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Subscribe to a MQTT topic.
@@ -4492,11 +4606,13 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool mqttSubscribe(const char* topic, uint8_t qos = 1, WalterModemRsp* rsp = NULL,
-                            walterModemCb cb = NULL, void* args = NULL);
+                            walterModemCb cb = NULL, void* args = NULL,
+                            uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Receive data from an incoming MQTT connection.
@@ -4528,11 +4644,13 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool mqttReceive(const char* topic, int message_id, uint8_t* buf, size_t buf_size,
-                          WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+                          WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                          uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
 #endif
 #pragma endregion
@@ -4566,6 +4684,7 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
@@ -4574,7 +4693,8 @@ public:
                                 const char* auth_user = "", const char* auth_pass = "",
                                 uint16_t max_timeout = 120, uint16_t cnx_timeout = 60,
                                 uint8_t inactivity_timeout = 15, WalterModemRsp* rsp = NULL,
-                                walterModemCb cb = NULL, void* args = NULL);
+                                walterModemCb cb = NULL, void* args = NULL,
+                                uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Establish a HTTP connection.
@@ -4589,11 +4709,13 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool httpConnect(int profile_id, WalterModemRsp* rsp = NULL, walterModemCb cb = NULL,
-                          void* args = NULL);
+                          void* args = NULL,
+                          uint32_t timeout_ms = WALTER_MODEM_CMD_HTTP_CONNECT_TIMEOUT_MS);
 
   /**
    * @brief Close a HTTP connection
@@ -4605,11 +4727,13 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool httpClose(int profile_id, WalterModemRsp* rsp = NULL, walterModemCb cb = NULL,
-                        void* args = NULL);
+                        void* args = NULL,
+                        uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Get the status of a HTTP context.
@@ -4635,6 +4759,7 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
@@ -4642,7 +4767,8 @@ public:
                         WalterModemHttpQueryCmd http_query_cmd = WALTER_MODEM_HTTP_QUERY_CMD_GET,
                         char* content_type_buf = NULL, uint16_t content_type_buf_size = 0,
                         const char* extra_header_line = NULL, WalterModemRsp* rsp = NULL,
-                        walterModemCb cb = NULL, void* args = NULL);
+                        walterModemCb cb = NULL, void* args = NULL,
+                        uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Perform a HTTP POST or PUT request.
@@ -4663,6 +4789,7 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
@@ -4672,7 +4799,8 @@ public:
            WalterModemHttpPostParam http_post_param = WALTER_MODEM_HTTP_POST_PARAM_UNSPECIFIED,
            char* content_type_buf = NULL, uint16_t content_type_buf_size = 0,
            const char* extra_header_line = NULL, WalterModemRsp* rsp = NULL,
-           walterModemCb cb = NULL, void* args = NULL);
+           walterModemCb cb = NULL, void* args = NULL,
+           uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Receive data from an incoming HTTP connection.
@@ -4703,11 +4831,13 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool httpReceive(int profile_id, uint8_t* buf, size_t buf_size, WalterModemRsp* rsp = NULL,
-                          walterModemCb cb = NULL, void* args = NULL);
+                          walterModemCb cb = NULL, void* args = NULL,
+                          uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
 #endif
 #pragma endregion
@@ -4735,13 +4865,15 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool coapCreateContext(int profile_id, const char* hostname, int port,
                                 int tls_profile_id = 0, int local_port = -1,
                                 WalterModemRsp* rsp = NULL, walterModemCb cb = NULL,
-                                void* args = NULL);
+                                void* args = NULL,
+                                uint32_t timeout_ms = WALTER_MODEM_CMD_COAP_CREATE_TIMEOUT_MS);
 
   /**
    * @brief Close a CoAP context.
@@ -4754,11 +4886,13 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool coapClose(int profile_id, WalterModemRsp* rsp = NULL, walterModemCb cb = NULL,
-                        void* args = NULL);
+                        void* args = NULL,
+                        uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Get the connection status of a CoAP context.
@@ -4784,11 +4918,13 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool coapSetHeader(int profile_id, int message_id = 1, const char* token = "NO_TOKEN",
-                            WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+                            WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                            uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Set the options for the next CoAP message.
@@ -4801,13 +4937,14 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool coapSetOptions(int profile_id, WalterModemCoapOptAction action,
                              WalterModemCoapOptCode code, const char* const values = NULL,
-                             WalterModemRsp* rsp = NULL, walterModemCb cb = NULL,
-                             void* args = NULL);
+                             WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                             uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Send a datagram (with header set and options set before)
@@ -4822,12 +4959,14 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool coapSendData(int profile_id, WalterModemCoapSendType type,
                            WalterModemCoapSendMethodRsp method_rsp, int buf_size, uint8_t* buf,
-                           WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+                           WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                           uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Receive data from an incoming CoAP connection.
@@ -4849,11 +4988,13 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool coapReceive(int profile_id, int message_id, uint8_t* buf, size_t buf_size,
-                          WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+                          WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                          uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
 #endif
 #pragma endregion
@@ -4896,13 +5037,15 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool socketConfig(int socket_id, int pdp_ctx_id = 1, uint16_t mtu = 300,
                            uint16_t exchange_timeout = 0, uint16_t conn_timeout = 20,
                            uint16_t send_delay_ms = 5000, WalterModemRsp* rsp = NULL,
-                           walterModemCb cb = NULL, void* args = NULL);
+                           walterModemCb cb = NULL, void* args = NULL,
+                           uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Configure the socket extended parameters.
@@ -4933,6 +5076,7 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
@@ -4942,7 +5086,8 @@ public:
       WalterModemSocketRecvMode recv_mode = WALTER_MODEM_SOCKET_RECV_MODE_TEXT, int keep_alive = 0,
       WalterModemSocketListenMode listen_mode = WALTER_MODEM_SOCKET_LISTEN_MODE_DISABLED,
       WalterModemsocketSendMode send_mode = WALTER_MODEM_SOCKET_SEND_MODE_TEXT,
-      WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+      WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+      uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Enable or disable (D)TLS on a socket.
@@ -4967,12 +5112,14 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool socketConfigSecure(int socket_id, bool enable_tls, int tls_profile_id = 1,
                                  WalterModemRsp* rsp = NULL, walterModemCb cb = NULL,
-                                 void* args = NULL);
+                                 void* args = NULL,
+                                 uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Dial a socket after which data can be exchanged.
@@ -5004,6 +5151,7 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
@@ -5011,7 +5159,8 @@ public:
       int socket_id, WalterModemSocketProto protocol, uint16_t remote_port, const char* remote_host,
       uint16_t local_port = 0,
       WalterModemSocketAcceptAnyRemote accept_any_remote = WALTER_MODEM_ACCEPT_ANY_REMOTE_DISABLED,
-      WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+      WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+      uint32_t timeout_ms = WALTER_MODEM_CMD_SOCKET_DIAL_TIMEOUT_MS);
 
   /**
    * @brief Close a socket.
@@ -5032,11 +5181,13 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool socketClose(int socket_id, WalterModemRsp* rsp = NULL, walterModemCb cb = NULL,
-                          void* args = NULL);
+                          void* args = NULL,
+                          uint32_t timeout_ms = WALTER_MODEM_CMD_SOCKET_CLOSE_TIMEOUT_MS);
 
   /**
    * @brief Send data over a socket.
@@ -5070,12 +5221,14 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool socketSend(int socket_id, uint8_t* buf, uint16_t buf_size,
                          WalterModemRAI rai = WALTER_MODEM_RAI_NO_INFO, WalterModemRsp* rsp = NULL,
-                         walterModemCb cb = NULL, void* args = NULL);
+                         walterModemCb cb = NULL, void* args = NULL,
+                         uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief This function listens for incoming socket connections.
@@ -5100,6 +5253,7 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
@@ -5107,7 +5261,7 @@ public:
   socketListen(int socket_id, WalterModemSocketProto protocol,
                WalterModemSocketListenState listen_state = WALTER_MODEM_SOCKET_LISTEN_STATE_IPV4,
                int listen_port = 0, WalterModemRsp* rsp = NULL, walterModemCb cb = NULL,
-               void* args = NULL);
+               void* args = NULL, uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Accepts an incoming socket connetion.
@@ -5128,6 +5282,7 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @warning This function must be preceded by a call to socketListen.
    * @warning An incoming socket connection URC must have been received prior.
@@ -5135,7 +5290,8 @@ public:
    * @return True on "OK" response, false otherwise.
    */
   static bool socketAccept(int socket_id, bool connection_mode = false, WalterModemRsp* rsp = NULL,
-                           walterModemCb cb = NULL, void* args = NULL);
+                           walterModemCb cb = NULL, void* args = NULL,
+                           uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @deprecated This method is deprecated and will be removed in a future release.
@@ -5161,21 +5317,25 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool socketReceive(int socket_id, uint8_t* buf, size_t buf_size,
-                            WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+                            WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                            uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief This function updates all the socket states and returns the current state for the
    * requested socket.
    *
    * @param[in] socket_id The socket id to retrieve the current state. (1-6)
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
-  static WalterModemSocketState socketGetState(int socket_id = 0);
+  static WalterModemSocketState
+  socketGetState(int socket_id = 0, uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Resumes a suspended socket connection.
@@ -5184,11 +5344,13 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool socketResume(int socket_id, WalterModemRsp* rsp = NULL, walterModemCb cb = NULL,
-                           void* args = NULL);
+                           void* args = NULL,
+                           uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
 #endif
 #pragma endregion
@@ -5216,6 +5378,7 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
@@ -5223,7 +5386,8 @@ public:
   gnssConfig(WalterModemGNSSSensMode sens_mode = WALTER_MODEM_GNSS_SENS_MODE_HIGH,
              WalterModemGNSSAcqMode acq_mode = WALTER_MODEM_GNSS_ACQ_MODE_COLD_WARM_START,
              WalterModemGNSSLocMode loc_mode = WALTER_MODEM_GNSS_LOC_MODE_ON_DEVICE_LOCATION,
-             WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+             WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+             uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Get the current GNSS assistance data status.
@@ -5234,11 +5398,13 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool gnssGetAssistanceStatus(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL,
-                                      void* args = NULL);
+                                      void* args = NULL,
+                                      uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Update the GNSS assistance data.
@@ -5251,12 +5417,14 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "+LPGNSSASSISTANCE:" response, false otherwise.
    */
   static bool gnssUpdateAssistance(
       WMGNSSAssistanceType type = WALTER_MODEM_GNSS_ASSISTANCE_TYPE_REALTIME_EPHEMERIS,
-      WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+      WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+      uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Perform a GNSS action.
@@ -5267,12 +5435,14 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool
   gnssPerformAction(WalterModemGNSSAction action = WALTER_MODEM_GNSS_ACTION_GET_SINGLE_FIX,
-                    WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+                    WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                    uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
   /**
    * @brief sets the UTC time for gnss usage
    *
@@ -5280,11 +5450,13 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool gnssSetUTCTime(uint64_t epoch_time, WalterModemRsp* rsp = NULL,
-                             walterModemCb cb = NULL, void* args = NULL);
+                             walterModemCb cb = NULL, void* args = NULL,
+                             uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief gets the UTC time for gnss usage
@@ -5292,14 +5464,15 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    *
    * @note
    * the utc time can be found in the clock portion of the rspData.
    */
-  static bool gnssGetUTCTime(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL,
-                             void* args = NULL);
+  static bool gnssGetUTCTime(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                             uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
 #endif
 #pragma endregion
@@ -5312,9 +5485,12 @@ public:
    * This function returns the current network registration state. This is buffered by the
    * library and thus instantly available.
    *
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
+   *
    * @return The current modem registration state.
    */
-  static WalterModemNetworkRegState getNetworkRegState();
+  static WalterModemNetworkRegState
+  getNetworkRegState(uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Get the operational state of the modem.
@@ -5324,10 +5500,12 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
-  static bool getOpState(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+  static bool getOpState(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                         uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Set the operational state of the modem.
@@ -5338,11 +5516,13 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool setOpState(WalterModemOpState op_state, WalterModemRsp* rsp = NULL,
-                         walterModemCb cb = NULL, void* args = NULL);
+                         walterModemCb cb = NULL, void* args = NULL,
+                         uint32_t timeout_ms = WALTER_MODEM_CMD_CFUN_TIMEOUT_MS);
 
 #pragma endregion // CLASS PUBLIC METHODS MODEM_STATE
 #pragma region CLASS PUBLIC METHODS RADIO
@@ -5355,10 +5535,12 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
-  static bool getRAT(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+  static bool getRAT(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                     uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Set the RAT (Radio Access Technology).
@@ -5369,11 +5551,12 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool setRAT(WalterModemRAT rat, WalterModemRsp* rsp = NULL, walterModemCb cb = NULL,
-                     void* args = NULL);
+                     void* args = NULL, uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Get the radio bands that the modem is configured to use.
@@ -5383,10 +5566,12 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
-  static bool getRadioBands(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+  static bool getRadioBands(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                            uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Set the radio bands the modem will use.
@@ -5398,11 +5583,13 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool setRadioBands(WalterModemRAT rat, uint32_t bands, WalterModemRsp* rsp = NULL,
-                            walterModemCb cb = NULL, void* args = NULL);
+                            walterModemCb cb = NULL, void* args = NULL,
+                            uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
 #pragma endregion // CLASS PUBLIC METHODS RADIO
 #pragma region CLASS PUBLIC METHODS SIM_MANAGEMENT
@@ -5415,10 +5602,12 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
-  static bool getSIMState(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+  static bool getSIMState(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                          uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Get the SIM ICCID and/or eUICCID.
@@ -5431,10 +5620,12 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
-  static bool getSIMCardID(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+  static bool getSIMCardID(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                           uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Get the IMSI on the SIM card.
@@ -5447,11 +5638,12 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
-  static bool getSIMCardIMSI(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL,
-                             void* args = NULL);
+  static bool getSIMCardIMSI(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                             uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Set the SIM card's PIN code.
@@ -5463,11 +5655,13 @@ public:
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
    * @param[in] pin The PIN code of the SIM card or NULL for no pin.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool unlockSIM(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
-                        const char* pin = NULL);
+                        const char* pin = NULL,
+                        uint32_t timeout_ms = WALTER_MODEM_CMD_SIM_TIMEOUT_MS);
 
 #pragma endregion // CLASS PUBLIC METHODS SIM_MANAGEMENT
 #pragma region CLASS PUBLIC METHODS NETWORK
@@ -5483,6 +5677,7 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
@@ -5490,7 +5685,8 @@ public:
       WalterModemNetworkSelMode mode = WALTER_MODEM_NETWORK_SEL_MODE_AUTOMATIC,
       const char* operator_name = NULL,
       WalterModemOperatorFormat format = WALTER_MODEM_OPERATOR_FORMAT_LONG_ALPHANUMERIC,
-      WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+      WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+      uint32_t timeout_ms = WALTER_MODEM_CMD_COPS_TIMEOUT_MS);
 
 #pragma endregion // CLASS PUBLIC METHODS NETWORK
 #pragma region CLASS PUBLIC METHODS POWER_SAVING
@@ -5509,12 +5705,14 @@ public:
    * @param[out] rsp Modem response structure to save the result in.
    * @param[in] cb Callback function, if set this function will not block.
    * @param[in] args Argument to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool configPSM(WalterModemPSMMode mode = WALTER_MODEM_PSM_DISABLE,
                         const char* req_tau = NULL, const char* req_active = NULL,
-                        WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+                        WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                        uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Configure extended DRX Setting.
@@ -5528,12 +5726,14 @@ public:
    * @param[out] rsp Modem response structure to save the result in.
    * @param[in] cb Callback function, if set this function will not block.
    * @param[in] args Argument to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool configEDRX(WalterModemEDRXMode mode = WALTER_MODEM_EDRX_DISABLE,
                          const char* req_edrx_val = NULL, const char* req_ptw = NULL,
-                         WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+                         WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                         uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Encode a TAU duration for use in PSM configuration.
@@ -5598,6 +5798,7 @@ public:
    * @param[in] useNASIPv4MTUDiscovery Set to use NAS for IPv4 MTU discovery.
    * @param[in] useLocalAddrInd Set when local IPs are supported in the TFT.
    * @param[in] useNASNonIPMTUDiscovery Set for NAS based no-IP MTU discovery.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
@@ -5612,7 +5813,8 @@ public:
       WalterModemPDPPCSCFDiscoveryMethod pcscfMethod = WALTER_MODEM_PDP_PCSCF_AUTO,
       bool forIMCN = false, bool useNSLPI = false, bool useSecurePCO = false,
       bool useNASIPv4MTUDiscovery = false, bool useLocalAddrInd = false,
-      bool useNASNonIPMTUDiscovery = false);
+      bool useNASNonIPMTUDiscovery = false,
+      uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Authenticate a PDP context.
@@ -5628,13 +5830,15 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool
   setPDPAuthParams(WalterModemPDPAuthProtocol auth_proto = WALTER_MODEM_PDP_AUTH_PROTO_NONE,
                    const char* auth_user = NULL, const char* auth_pass = NULL, int pdp_ctx_id = -1,
-                   WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+                   WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                   uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Activate or deactivate a PDP context.
@@ -5647,12 +5851,14 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool setPDPContextActive(bool active = true, int pdp_ctx_id = -1,
                                   WalterModemRsp* rsp = NULL, walterModemCb cb = NULL,
-                                  void* args = NULL);
+                                  void* args = NULL,
+                                  uint32_t timeout_ms = WALTER_MODEM_CMD_CGACT_TIMEOUT_MS);
 
   /**
    * @brief Attach the defined PDP contexts.
@@ -5663,11 +5869,13 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool setNetworkAttachmentState(bool attach = true, WalterModemRsp* rsp = NULL,
-                                        walterModemCb cb = NULL, void* args = NULL);
+                                        walterModemCb cb = NULL, void* args = NULL,
+                                        uint32_t timeout_ms = WALTER_MODEM_CMD_CGATT_TIMEOUT_MS);
 
   /**
    * @brief Get a list of PDP addresses of a PDP context.
@@ -5678,11 +5886,13 @@ public:
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
    * @param[in] pdp_ctx_id The PDP context id or -1 to re-use the last one.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool getPDPAddress(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
-                            int pdp_ctx_id = -1);
+                            int pdp_ctx_id = -1,
+                            uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
 #pragma endregion // CLASS PUBLIC METHODS PDP_CONTEXT
 #pragma region CLASS PUBLIC METHODS MOTA
@@ -5718,13 +5928,15 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool configTemperatureMonitor(WalterModemTempMonitorMode mode, int8_t extreme_low = -40,
                                        int8_t warning_low = -30, int8_t warning_high = 80,
                                        int8_t extreme_high = 90, WalterModemRsp* rsp = NULL,
-                                       walterModemCb cb = NULL, void* args = NULL);
+                                       walterModemCb cb = NULL, void* args = NULL,
+                                       uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Get the current temperature from the modem.
@@ -5734,11 +5946,12 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
-  static bool getTemperature(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL,
-                             void* args = NULL);
+  static bool getTemperature(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                             uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
 #pragma endregion // CLASS PUBLIC METHODS TEMPERATURE_MONITOR
 #pragma region CLASS PUBLIC METHODS VOLTAGE_MONITOR
@@ -5755,12 +5968,14 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
   static bool configVoltageMonitor(WalterModemVoltageMonitorMode mode, uint16_t threshold = 25,
                                    uint16_t period = 30, WalterModemRsp* rsp = NULL,
-                                   walterModemCb cb = NULL, void* args = NULL);
+                                   walterModemCb cb = NULL, void* args = NULL,
+                                   uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
   /**
    * @brief Get the current voltage configuration and reading from the modem.
@@ -5770,10 +5985,12 @@ public:
    * @param[out] rsp Pointer to the response structure to save the result in.
    * @param[in] cb Callback function, if not NULL this function will not block.
    * @param[in] args Arguments to pass to the callback.
+   * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
    *
    * @return True on "OK" response, false otherwise.
    */
-  static bool getVoltage(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL);
+  static bool getVoltage(WalterModemRsp* rsp = NULL, walterModemCb cb = NULL, void* args = NULL,
+                         uint32_t timeout_ms = WALTER_MODEM_CMD_DEFAULT_TIMEOUT_MS);
 
 #pragma endregion // CLASS PUBLIC METHODS VOLTAGE_MONITOR
 #pragma region CLASS PUBLIC METHODS EVENT_HANDLERS

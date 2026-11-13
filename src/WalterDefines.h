@@ -255,11 +255,12 @@ bool strToFloat(const char* str, int len, float* result);
  * @param rsp Pointer to the response structure to save the response in.
  * @param cb Optional user callback for asynchronous API.
  * @param[in] args Arguments to pass to the callback.
+ * @param timeout_ms Milliseconds to wait for the modem's reply, per attempt.
  * @param ... Optional arguments for the _queueModemCMD function.
  */
-#define _runCmd(atCmd, atRsp, rsp, cb, args, ...)                                                  \
+#define _runCmd(atCmd, atRsp, rsp, cb, args, timeout_ms, ...)                                      \
   const char* _cmdArr[WALTER_MODEM_COMMAND_MAX_ELEMS + 1] = atCmd;                                 \
-  WalterModemCmd* cmd = _queueModemCMD(_cmdArr, atRsp, rsp, cb, args, ##__VA_ARGS__);              \
+  WalterModemCmd* cmd = _queueModemCMD(_cmdArr, atRsp, rsp, cb, args, timeout_ms, ##__VA_ARGS__);  \
   if(cmd == NULL) {                                                                                \
     _returnState(WALTER_MODEM_STATE_NO_MEMORY);                                                    \
   }                                                                                                \
@@ -276,12 +277,7 @@ bool strToFloat(const char* str, int len, float* result);
     lock.unlock();                                                                                 \
     return true;                                                                                   \
   }                                                                                                \
-  cmd->cmdLock.cond.wait(                                                                          \
-      lock, [cmd] { return cmd->state == WALTER_MODEM_CMD_STATE_SYNC_LOCK_NOTIFIED; });            \
-  WalterModemState rspResult = cmd->rsp->result;                                                   \
-  cmd->state = WALTER_MODEM_CMD_STATE_COMPLETE;                                                    \
-  lock.unlock();                                                                                   \
-  return rspResult == WALTER_MODEM_STATE_OK;
+  return _awaitReply(cmd, lock) == WALTER_MODEM_STATE_OK;
 
 /**
  * @brief Transmit all elements of a command.

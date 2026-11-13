@@ -52,7 +52,7 @@
 #pragma region PUBLIC_METHODS
 bool WalterModem::mqttConfig(const char* client_id, const char* username, const char* password,
                              uint8_t tls_profile_id, WalterModemRsp* rsp, walterModemCb cb,
-                             void* args)
+                             void* args, uint32_t timeout_ms)
 {
   WalterModemBuffer* buf = _getFreeBuffer();
   _bufPrintf(buf, "AT+SQNSMQTTCFG=0,\"%s\"", client_id);
@@ -69,19 +69,21 @@ bool WalterModem::mqttConfig(const char* client_id, const char* username, const 
     _bufPrintf(buf, ",%u", tls_profile_id);
   }
 
-  _runCmd(arr((const char*) buf->data), "OK", rsp, cb, args, NULL, NULL,
+  _runCmd(arr((const char*) buf->data), "OK", rsp, cb, args, timeout_ms, NULL, NULL,
           WALTER_MODEM_CMD_TYPE_TX_WAIT, NULL, 0, buf);
   _returnAfterReply();
 }
 
-bool WalterModem::mqttDisconnect(WalterModemRsp* rsp, walterModemCb cb, void* args)
+bool WalterModem::mqttDisconnect(WalterModemRsp* rsp, walterModemCb cb, void* args,
+                                 uint32_t timeout_ms)
 {
-  _runCmd(arr("AT+SQNSMQTTDISCONNECT=0"), "OK", rsp, cb, args);
+  _runCmd(arr("AT+SQNSMQTTDISCONNECT=0"), "OK", rsp, cb, args, timeout_ms);
   _returnAfterReply();
 }
 
 bool WalterModem::mqttConnect(const char* hostname, uint16_t port, uint16_t keep_alive,
-                              WalterModemRsp* rsp, walterModemCb cb, void* args)
+                              WalterModemRsp* rsp, walterModemCb cb, void* args,
+                              uint32_t timeout_ms)
 {
   // Free all topics on connect
   for(size_t i = 0; i < WALTER_MODEM_MQTT_MAX_TOPICS; i++) {
@@ -90,20 +92,22 @@ bool WalterModem::mqttConnect(const char* hostname, uint16_t port, uint16_t keep
 
   _runCmd(
       arr("AT+SQNSMQTTCONNECT=0,", _atStr(hostname), ",", _atNum(port), ",", _atNum(keep_alive)),
-      "OK", rsp, cb, args);
+      "OK", rsp, cb, args, timeout_ms);
   _returnAfterReply();
 }
 
 bool WalterModem::mqttPublish(const char* topic, uint8_t* buf, uint16_t buf_size, uint8_t qos,
-                              WalterModemRsp* rsp, walterModemCb cb, void* args)
+                              WalterModemRsp* rsp, walterModemCb cb, void* args,
+                              uint32_t timeout_ms)
 {
   _runCmd(arr("AT+SQNSMQTTPUBLISH=0,", _atStr(topic), ",", _atNum(qos), ",", _atNum(buf_size)),
-          "OK", rsp, cb, args, NULL, NULL, WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT, buf, buf_size);
+          "OK", rsp, cb, args, timeout_ms, NULL, NULL, WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT, buf,
+          buf_size);
   _returnAfterReply();
 }
 
 bool WalterModem::mqttSubscribe(const char* topic, uint8_t qos, WalterModemRsp* rsp,
-                                walterModemCb cb, void* args)
+                                walterModemCb cb, void* args, uint32_t timeout_ms)
 {
   int index = -1;
 
@@ -140,25 +144,27 @@ bool WalterModem::mqttSubscribe(const char* topic, uint8_t qos, WalterModemRsp* 
   };
 
   _runCmd(arr("AT+SQNSMQTTSUBSCRIBE=0,", _atStr(topic), ",", _atNum(qos)), "OK", rsp, cb, args,
-          completeHandler);
+          timeout_ms, completeHandler);
   _returnAfterReply();
 }
 
 bool WalterModem::mqttReceive(const char* topic, int message_id, uint8_t* buf, size_t buf_size,
-                              WalterModemRsp* rsp, walterModemCb cb, void* args)
+                              WalterModemRsp* rsp, walterModemCb cb, void* args,
+                              uint32_t timeout_ms)
 {
   /* The response carries no length, buf_size is the number of bytes read (the ring's msg_length) */
   size_t readable_size = (buf_size > 4096) ? 4096 : buf_size;
 
   if(message_id == 0) {
     /* no msg id means qos 0 message */
-    _runCmd(arr("AT+SQNSMQTTRCVMESSAGE=0,", _atStr(topic)), "OK", rsp, cb, args, NULL, NULL,
-            WALTER_MODEM_CMD_TYPE_TX_WAIT, buf, readable_size);
+    _runCmd(arr("AT+SQNSMQTTRCVMESSAGE=0,", _atStr(topic)), "OK", rsp, cb, args, timeout_ms, NULL,
+            NULL, WALTER_MODEM_CMD_TYPE_TX_WAIT, buf, readable_size);
     _returnAfterReply();
   } else {
     _runCmd(arr("AT+SQNSMQTTRCVMESSAGE=0,", _atStr(topic), ",", _atNum(message_id), ",",
                 _atNum(readable_size)),
-            "OK", rsp, cb, args, NULL, NULL, WALTER_MODEM_CMD_TYPE_TX_WAIT, buf, readable_size);
+            "OK", rsp, cb, args, timeout_ms, NULL, NULL, WALTER_MODEM_CMD_TYPE_TX_WAIT, buf,
+            readable_size);
     _returnAfterReply();
   }
 }

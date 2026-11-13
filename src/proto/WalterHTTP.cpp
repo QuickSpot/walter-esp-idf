@@ -57,7 +57,7 @@ bool WalterModem::httpConfigProfile(int profile_id, const char* hostname, uint16
                                     const char* auth_user, const char* auth_pass,
                                     uint16_t max_timeout, uint16_t cnx_timeout,
                                     uint8_t inactivity_timeout, WalterModemRsp* rsp,
-                                    walterModemCb cb, void* args)
+                                    walterModemCb cb, void* args, uint32_t timeout_ms)
 {
   if(profile_id >= WALTER_MODEM_MAX_HTTP_PROFILES) {
     _returnState(WALTER_MODEM_STATE_NO_SUCH_PROFILE);
@@ -94,12 +94,13 @@ bool WalterModem::httpConfigProfile(int profile_id, const char* hostname, uint16
 
   _bufPrintf(stringsBuffer, "%u,%u", cnx_timeout, inactivity_timeout);
 
-  _runCmd(arr((const char*) stringsBuffer->data), "OK", rsp, cb, args, NULL, NULL,
+  _runCmd(arr((const char*) stringsBuffer->data), "OK", rsp, cb, args, timeout_ms, NULL, NULL,
           WALTER_MODEM_CMD_TYPE_TX_WAIT, NULL, 0, stringsBuffer);
   _returnAfterReply();
 }
 
-bool WalterModem::httpConnect(int profile_id, WalterModemRsp* rsp, walterModemCb cb, void* args)
+bool WalterModem::httpConnect(int profile_id, WalterModemRsp* rsp, walterModemCb cb, void* args,
+                              uint32_t timeout_ms)
 {
   if(profile_id >= WALTER_MODEM_MAX_HTTP_PROFILES) {
     _returnState(WALTER_MODEM_STATE_NO_SUCH_PROFILE);
@@ -109,24 +110,26 @@ bool WalterModem::httpConnect(int profile_id, WalterModemRsp* rsp, walterModemCb
     _returnState(WALTER_MODEM_STATE_OK);
   }
 
-  _runCmd(arr("AT+SQNHTTPCONNECT=", _atNum(profile_id)), "+SQNHTTPCONNECT: ", rsp, cb, args);
+  _runCmd(arr("AT+SQNHTTPCONNECT=", _atNum(profile_id)), "+SQNHTTPCONNECT: ", rsp, cb, args,
+          timeout_ms);
   _returnAfterReply();
 }
 
-bool WalterModem::httpClose(int profile_id, WalterModemRsp* rsp, walterModemCb cb, void* args)
+bool WalterModem::httpClose(int profile_id, WalterModemRsp* rsp, walterModemCb cb, void* args,
+                            uint32_t timeout_ms)
 {
   if(profile_id >= WALTER_MODEM_MAX_HTTP_PROFILES) {
     _returnState(WALTER_MODEM_STATE_NO_SUCH_PROFILE);
   }
 
-  _runCmd(arr("AT+SQNHTTPDISCONNECT=", _atNum(profile_id)), "OK", rsp, cb, args);
+  _runCmd(arr("AT+SQNHTTPDISCONNECT=", _atNum(profile_id)), "OK", rsp, cb, args, timeout_ms);
   _returnAfterReply();
 }
 
 bool WalterModem::httpQuery(int profile_id, const char* uri, WalterModemHttpQueryCmd http_query_cmd,
                             char* content_type_buf, uint16_t content_type_buf_size,
                             const char* extra_header_line, WalterModemRsp* rsp, walterModemCb cb,
-                            void* args)
+                            void* args, uint32_t timeout_ms)
 {
   if(profile_id >= WALTER_MODEM_MAX_HTTP_PROFILES) {
     _returnState(WALTER_MODEM_STATE_NO_SUCH_PROFILE);
@@ -139,7 +142,7 @@ bool WalterModem::httpQuery(int profile_id, const char* uri, WalterModemHttpQuer
     _bufPrintf(stringsBuffer, ",\"%s\"", extra_header_line);
   }
 
-  _runCmd(arr((const char*) stringsBuffer->data), "OK", rsp, cb, args, NULL, NULL,
+  _runCmd(arr((const char*) stringsBuffer->data), "OK", rsp, cb, args, timeout_ms, NULL, NULL,
           WALTER_MODEM_CMD_TYPE_TX_WAIT, NULL, 0, stringsBuffer);
   _returnAfterReply();
 }
@@ -148,8 +151,7 @@ bool WalterModem::httpSend(int profile_id, const char* uri, uint8_t* buf, uint16
                            WalterModemHttpSendCmd http_send_cmd,
                            WalterModemHttpPostParam http_post_param, char* content_type_buf,
                            uint16_t content_type_buf_size, const char* extra_header_line,
-                           WalterModemRsp* rsp, walterModemCb cb,
-                           void* args)
+                           WalterModemRsp* rsp, walterModemCb cb, void* args, uint32_t timeout_ms)
 {
   if(profile_id >= WALTER_MODEM_MAX_HTTP_PROFILES) {
     _returnState(WALTER_MODEM_STATE_NO_SUCH_PROFILE);
@@ -167,7 +169,7 @@ bool WalterModem::httpSend(int profile_id, const char* uri, uint8_t* buf, uint16
     }
   }
 
-  _runCmd(arr((const char*) stringsBuffer->data), "OK", rsp, cb, args, NULL, NULL,
+  _runCmd(arr((const char*) stringsBuffer->data), "OK", rsp, cb, args, timeout_ms, NULL, NULL,
           WALTER_MODEM_CMD_TYPE_DATA_TX_WAIT, buf, buf_size, stringsBuffer);
   _returnAfterReply();
 }
@@ -182,7 +184,7 @@ bool WalterModem::httpDidRing(uint8_t profileId, uint8_t* targetBuf, uint16_t ta
 }
 
 bool WalterModem::httpReceive(int profile_id, uint8_t* buf, size_t buf_size, WalterModemRsp* rsp,
-                              walterModemCb cb, void* args)
+                              walterModemCb cb, void* args, uint32_t timeout_ms)
 {
   if(profile_id >= WALTER_MODEM_MAX_HTTP_PROFILES) {
     _returnState(WALTER_MODEM_STATE_NO_SUCH_PROFILE);
@@ -196,7 +198,7 @@ bool WalterModem::httpReceive(int profile_id, uint8_t* buf, size_t buf_size, Wal
   WalterModemBuffer* stringsBuffer = _getFreeBuffer();
   _bufPrintf(stringsBuffer, "AT+SQNHTTPRCV=%d", profile_id);
 
-  _runCmd(arr((const char*) stringsBuffer->data), "OK", rsp, cb, args, NULL, NULL,
+  _runCmd(arr((const char*) stringsBuffer->data), "OK", rsp, cb, args, timeout_ms, NULL, NULL,
           WALTER_MODEM_CMD_TYPE_TX_WAIT, buf, readable_size, stringsBuffer);
   _returnAfterReply();
 }
