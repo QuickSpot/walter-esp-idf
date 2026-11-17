@@ -88,7 +88,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        idf: [v5.2.6, v6.1]
+        # The oldest ESP-IDF the component builds with (esp_driver_uart arrived in 5.3), and the
+        # newest.
+        idf: [v5.3.4, v6.1]
         example: ${{ fromJSON(needs.checks.outputs.examples) }}
     steps:
       - uses: actions/checkout@v5
