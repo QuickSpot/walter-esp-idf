@@ -17,3 +17,7 @@ tags:
 
 targets:
   - esp32s3
+
+# esp_driver_uart, which the component requires, arrived in ESP-IDF 5.3.
+dependencies:
+  idf: ">=5.3.0"
