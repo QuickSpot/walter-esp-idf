@@ -1,0 +1,110 @@
+name: CI
+
+# Two stages: the checks, then the example builds, which start only when the checks passed.
+
+# Documentation alone runs nothing. Run the workflow by hand to build everything.
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["**.md", "docs/**", "LICENSE"]
+  pull_request:
+    paths-ignore: ["**.md", "docs/**", "LICENSE"]
+  workflow_dispatch:
+
+# A newer push to the same branch or pull request cancels the run still going.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  actions: read # the last green run, see "Pick the examples to build"
+  contents: read
+
+jobs:
+  # Stage 1 -----------------------------------------------------------------------------------
+
+  checks:
+    name: Checks
+    runs-on: ubuntu-24.04
+    outputs:
+      examples: ${{ steps.changes.outputs.examples }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # An example builds when it or the component changed. On main that is since the last green
+      # run, so a cancelled or failed run's changes are built again; in a pull request, since its
+      # base. Anything else, or no such commit in the history, builds every example.
+      - name: Pick the examples to build
+        id: changes
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          case "$EVENT" in
+            pull_request) base=$PR_BASE ;;
+            push) base=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=$GITHUB_REF_NAME&event=push&status=success&per_page=1" --jq '.workflow_runs[0].head_sha // empty' || true) ;;
+            *) base= ;;
+          esac
+          if [ -n "$base" ] && git cat-file -e "$base^{commit}" 2>/dev/null; then
+            changed=$(git diff --name-only "$base" HEAD)
+            printf 'Changed since %s:\n%s\n' "$base" "$changed"
+          else
+            changed=ALL
+            echo "Nothing to compare with: every example builds."
+          fi
+          has() { [ "$changed" = ALL ] || printf '%s\n' "$changed" | grep -qE "$1"; }
+          examples=()
+          for dir in examples/*/; do
+            example=$(basename "$dir")
+            # modem_firmware_flash does not use the component, so component changes leave it be.
+            if has "^examples/$example/|^\.github/workflows/ci\.yml$" ||
+              { grep -q 'dptechnics/walter-modem' "$dir/main/idf_component.yml" &&
+                has '^(src/|CMakeLists\.txt$|Kconfig$|idf_component\.yml$)'; }; then
+              examples+=("$example")
+            fi
+          done
+          json=$(printf '%s\n' "${examples[@]}" | jq -Rsc 'split("\n") | map(select(length > 0))')
+          echo "examples=$json" | tee -a "$GITHUB_OUTPUT"
+
+      # Pinned: clang-format releases lay some code out differently. The examples are not checked
+      # yet; a few of them are not formatted.
+      - name: Formatting of src/ (clang-format 22.1.8)
+        run: >
+          find src \( -name '*.c' -o -name '*.h' -o -name '*.cpp' \) -print0
+          | xargs -0 pipx run --spec clang-format==22.1.8 clang-format --dry-run --Werror
+
+  # Stage 2 -----------------------------------------------------------------------------------
+
+  # Each example's sdkconfig.defaults enables only the protocols it uses, so this also shows that
+  # every protocol builds without the others. walter-arduino covers the opposite: all of them on.
+  esp-idf:
+    name: "ESP-IDF ${{ matrix.idf }}: ${{ matrix.example }}"
+    needs: checks
+    if: ${{ needs.checks.outputs.examples != '[]' }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        idf: [v5.2.6, v6.1]
+        example: ${{ fromJSON(needs.checks.outputs.examples) }}
+    steps:
+      - uses: actions/checkout@v5
+
+      # The examples depend on the released component; build them against this checkout instead.
+      # modem_firmware_flash does not use the component at all.
+      - name: Use this checkout as the component
+        if: matrix.example != 'modem_firmware_flash'
+        run: >
+          yq -i 'del(.dependencies["dptechnics/walter-modem"])
+          | .dependencies["walter-esp-idf"].path = "../../../"'
+          examples/${{ matrix.example }}/main/idf_component.yml
+
+      - name: Build
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: ${{ matrix.idf }}
+          target: esp32s3
+          path: examples/${{ matrix.example }}
