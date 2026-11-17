@@ -13,7 +13,7 @@ and 16MB of flash memory.
 
 
 ## How to use
-This is the easiest way to use Walter Modem component.
+The component needs ESP-IDF 5.3 or newer. This is the easiest way to use Walter Modem component.
 
 ```bash
 idf.py add-dependency "dptechnics/walter-modem^1.6.1" 
