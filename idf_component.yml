@@ -1,9 +1,9 @@
 version: "1.6.1"
 
 description: "Walter Modem Driver"
-url: "https://github.com/QuickSpot/walter-esp-idf"
+url: "https://www.quickspot.io"
 repository: "https://github.com/QuickSpot/walter-esp-idf"
-documentation: "https://www.quickspot.io/documentation.html#/esp_idf"
+documentation: "https://www.quickspot.io/documentation.html#/walter-modem/arduino_esp-idf/setup/esp-idf"
 issues: "https://github.com/QuickSpot/walter-esp-idf/issues"
 discussion: "https://discord.gg/RH7qCfRmkx"
 license: LICENSE
@@ -12,8 +12,11 @@ exclude:
   - tests/**
 tags:
   - IoT
-  - cellular
+  - Cellular
   - Communication
+  - Walter
+  - Quickspot
+  - BlueCherry
 
 targets:
   - esp32s3
