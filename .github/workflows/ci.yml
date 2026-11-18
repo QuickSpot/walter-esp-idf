@@ -69,13 +69,13 @@ jobs:
           done
           json=$(printf '%s\n' "${examples[@]}" | jq -Rsc 'split("\n") | map(select(length > 0))')
           echo "examples=$json" | tee -a "$GITHUB_OUTPUT"
-          # src/ must also compile on Arduino, see "Arduino: walter-arduino sketches with this src/".
+          # src/ must also compile on Arduino, which the job "arduino" checks.
           if has '^src/|^\.github/workflows/ci\.yml$'; then src=true; else src=false; fi
           echo "src=$src" | tee -a "$GITHUB_OUTPUT"
 
-      # src/bluecherry/ is bluecherry-sdk's: only its sync pull request, opened by the SDK's CI on the
-      # branch bluecherry-sdk-sync of this repository, may change it.
-      - name: src/bluecherry/ only changes through the bluecherry-sdk sync
+      # src/bluecherry/ is bluecherry-lite-sdk's: only its sync pull request, opened by the SDK's CI
+      # on the branch bluecherry-lite-sdk-sync of this repository, may change it.
+      - name: src/bluecherry/ only changes through the bluecherry-lite-sdk sync
         if: github.event_name == 'pull_request'
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
@@ -83,8 +83,8 @@ jobs:
           HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
         run: |
           if git diff --name-only "$BASE" HEAD | grep -q '^src/bluecherry/' &&
-            { [ "$HEAD_REF" != bluecherry-sdk-sync ] || [ "$HEAD_REPO" != "$GITHUB_REPOSITORY" ]; }; then
-            echo "::error::src/bluecherry/ is copied from bluecherry-sdk. Change it there; its CI updates the bluecherry-sdk-sync pull request here."
+            { [ "$HEAD_REF" != bluecherry-lite-sdk-sync ] || [ "$HEAD_REPO" != "$GITHUB_REPOSITORY" ]; }; then
+            echo "::error::src/bluecherry/ is copied from bluecherry-lite-sdk. Change it there; its CI updates the bluecherry-lite-sdk-sync pull request here."
             exit 1
           fi
 
@@ -137,19 +137,37 @@ jobs:
     needs: checks
     if: ${{ needs.checks.outputs.src == 'true' }}
     runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          path: walter-esp-idf
-
+    env:
       # QuickSpot's, or a fork's when the variable WALTER_ARDUINO_REPO names one.
+      ARDUINO_REPO: ${{ vars.WALTER_ARDUINO_REPO || 'QuickSpot/walter-arduino' }}
+    steps:
+      # At the workspace root: compile-sketches reads the commit it reports on from there, and fails
+      # on a push when the root is not a git repository.
+      - uses: actions/checkout@v5
+
+      # A change that needs walter-arduino's examples to change too is built as a pair: its branch
+      # named like this one when there is one, its default branch otherwise.
+      - name: Pick walter-arduino's branch
+        id: arduino
+        env:
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          if git ls-remote --exit-code --heads "https://github.com/$ARDUINO_REPO.git" "refs/heads/$BRANCH" > /dev/null; then
+            echo "Building $ARDUINO_REPO at $BRANCH."
+            echo "ref=$BRANCH" >> "$GITHUB_OUTPUT"
+          else
+            echo "No branch $BRANCH in $ARDUINO_REPO: building its default branch."
+            echo "ref=" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v5
         with:
-          repository: ${{ vars.WALTER_ARDUINO_REPO || 'QuickSpot/walter-arduino' }}
+          repository: ${{ env.ARDUINO_REPO }}
+          ref: ${{ steps.arduino.outputs.ref }}
           path: walter-arduino
 
       - name: Use this src/
-        run: rm -rf walter-arduino/src && cp -R walter-esp-idf/src walter-arduino/src
+        run: rm -rf walter-arduino/src && cp -R src walter-arduino/src
 
       - name: Every sketch in walter-arduino
         uses: arduino/compile-sketches@v1
