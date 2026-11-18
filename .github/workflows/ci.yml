@@ -28,6 +28,7 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       examples: ${{ steps.changes.outputs.examples }}
+      src: ${{ steps.changes.outputs.src }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -68,6 +69,24 @@ jobs:
           done
           json=$(printf '%s\n' "${examples[@]}" | jq -Rsc 'split("\n") | map(select(length > 0))')
           echo "examples=$json" | tee -a "$GITHUB_OUTPUT"
+          # src/ must also compile on Arduino, see "Arduino: walter-arduino sketches with this src/".
+          if has '^src/|^\.github/workflows/ci\.yml$'; then src=true; else src=false; fi
+          echo "src=$src" | tee -a "$GITHUB_OUTPUT"
+
+      # src/bluecherry/ is bluecherry-sdk's: only its sync pull request, opened by the SDK's CI on the
+      # branch bluecherry-sdk-sync of this repository, may change it.
+      - name: src/bluecherry/ only changes through the bluecherry-sdk sync
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        run: |
+          if git diff --name-only "$BASE" HEAD | grep -q '^src/bluecherry/' &&
+            { [ "$HEAD_REF" != bluecherry-sdk-sync ] || [ "$HEAD_REPO" != "$GITHUB_REPOSITORY" ]; }; then
+            echo "::error::src/bluecherry/ is copied from bluecherry-sdk. Change it there; its CI updates the bluecherry-sdk-sync pull request here."
+            exit 1
+          fi
 
       # Pinned: clang-format releases lay some code out differently. The examples are not checked
       # yet; a few of them are not formatted.
@@ -110,3 +129,36 @@ jobs:
           esp_idf_version: ${{ matrix.idf }}
           target: esp32s3
           path: examples/${{ matrix.example }}
+
+  # The src sync carries src/ to walter-arduino once this merges, so its sketches are built against
+  # this src/ now: an Arduino break shows here, before it reaches walter-arduino's main.
+  arduino:
+    name: "Arduino: walter-arduino sketches with this src/"
+    needs: checks
+    if: ${{ needs.checks.outputs.src == 'true' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          path: walter-esp-idf
+
+      # QuickSpot's, or a fork's when the variable WALTER_ARDUINO_REPO names one.
+      - uses: actions/checkout@v5
+        with:
+          repository: ${{ vars.WALTER_ARDUINO_REPO || 'QuickSpot/walter-arduino' }}
+          path: walter-arduino
+
+      - name: Use this src/
+        run: rm -rf walter-arduino/src && cp -R walter-esp-idf/src walter-arduino/src
+
+      - name: Every sketch in walter-arduino
+        uses: arduino/compile-sketches@v1
+        with:
+          fqbn: esp32:esp32:walter
+          platforms: |
+            - name: esp32:esp32
+              source-url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          libraries: |
+            - source-path: ./walter-arduino
+          sketch-paths: |
+            - walter-arduino/examples
